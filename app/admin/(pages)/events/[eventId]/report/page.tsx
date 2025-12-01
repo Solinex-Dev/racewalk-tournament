@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "Event report – Racewalk Tournament",
+  title: "รายงานกิจกรรม – การแข่งขันเดินทน",
   description:
     "หน้าเตรียมข้อมูลสำหรับ Export รายงานผลการแข่งขันของ Event ที่เลือก ในระบบ Racewalk Tournament.",
 };

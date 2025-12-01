@@ -4,7 +4,7 @@ import { AthleteForm } from "@/components/athletes/athlete-form";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "เพิ่มนักกีฬาใหม่ – Racewalk Tournament",
+  title: "เพิ่มนักกีฬาใหม่ – การแข่งขันเดินทน",
   description:
     "ฟอร์มเพิ่มข้อมูลนักกีฬาใหม่ ระบุชื่อ สังกัด ประเทศ และหมายเหตุเพิ่มเติม สำหรับใช้งานใน Event ต่าง ๆ.",
 };

@@ -5,7 +5,7 @@ import { AthleteForm } from "@/components/athletes/athlete-form";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "แก้ไขข้อมูลนักกีฬา – Racewalk Tournament",
+  title: "แก้ไขข้อมูลนักกีฬา – การแข่งขันเดินทน",
   description:
     "หน้าแก้ไขข้อมูลนักกีฬาที่ลงทะเบียนในระบบ Racewalk Tournament สำหรับอัปเดตสังกัด ประเทศ และหมายเหตุ.",
 };

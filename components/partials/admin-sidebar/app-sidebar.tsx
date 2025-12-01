@@ -32,45 +32,45 @@ const sampleNotifications = [
     id: "1",
     avatar: "/avatars/01.png",
     fallback: "OM",
-    text: "New order received.",
-    time: "10m ago",
+    text: "ได้รับคำสั่งซื้อใหม่",
+    time: "10 นาทีที่แล้ว",
   },
   {
     id: "2",
     avatar: "/avatars/02.png",
     fallback: "JL",
-    text: "Server upgrade completed.",
-    time: "1h ago",
+    text: "อัปเกรดเซิร์ฟเวอร์เสร็จสิ้น",
+    time: "1 ชั่วโมงที่แล้ว",
   },
   {
     id: "3",
     avatar: "/avatars/03.png",
     fallback: "HH",
-    text: "New user signed up.",
-    time: "2h ago",
+    text: "มีผู้ใช้ใหม่ลงทะเบียน",
+    time: "2 ชั่วโมงที่แล้ว",
   },
 ];
 
 const dashboardRoutes: Route[] = [
   {
     id: "overview",
-    title: "Dashboard",
+    title: "แดชบอร์ด",
     icon: <Home className="size-4" />,
     link: "/admin",
   },
   {
     id: "events",
-    title: "Events",
+    title: "กิจกรรม",
     icon: <CalendarDays className="size-4" />,
     link: "/admin/events",
     subs: [
       {
-        title: "All events",
+        title: "กิจกรรมทั้งหมด",
         link: "/admin/events",
         icon: <CalendarDays className="size-4" />,
       },
       {
-        title: "New event",
+        title: "กิจกรรมใหม่",
         link: "/admin/events/new",
         icon: <CalendarDays className="size-4" />,
       },
@@ -78,17 +78,17 @@ const dashboardRoutes: Route[] = [
   },
   {
     id: "admins",
-    title: "Admins",
+    title: "ผู้ดูแล",
     icon: <UserCog className="size-4" />,
     link: "/admin/admins",
     subs: [
       {
-        title: "All admins",
+        title: "ผู้ดูแลทั้งหมด",
         link: "/admin/admins",
         icon: <UserCog className="size-4" />,
       },
       {
-        title: "New admin",
+        title: "ผู้ดูแลใหม่",
         link: "/admin/admins/new",
         icon: <UserCog className="size-4" />,
       },
@@ -96,17 +96,17 @@ const dashboardRoutes: Route[] = [
   },
   {
     id: "judges",
-    title: "Judges",
+    title: "กรรมการ",
     icon: <Users className="size-4" />,
     link: "/admin/judges",
     subs: [
       {
-        title: "All judges",
+        title: "กรรมการทั้งหมด",
         link: "/admin/judges",
         icon: <Users className="size-4" />,
       },
       {
-        title: "New judge",
+        title: "กรรมการใหม่",
         link: "/admin/judges/new",
         icon: <Users className="size-4" />,
       },
@@ -114,17 +114,17 @@ const dashboardRoutes: Route[] = [
   },
   {
     id: "athletes",
-    title: "Athletes",
+    title: "นักกีฬา",
     icon: <Medal className="size-4" />,
     link: "/admin/athletes",
     subs: [
       {
-        title: "All athletes",
+        title: "นักกีฬาทั้งหมด",
         link: "/admin/athletes",
         icon: <Medal className="size-4" />,
       },
       {
-        title: "New athlete",
+        title: "นักกีฬาใหม่",
         link: "/admin/athletes/new",
         icon: <Medal className="size-4" />,
       },
@@ -132,17 +132,17 @@ const dashboardRoutes: Route[] = [
   },
   {
     id: "affiliations",
-    title: "Affiliations",
+    title: "สังกัด",
     icon: <Building2 className="size-4" />,
     link: "/admin/affiliations",
     subs: [
       {
-        title: "All affiliations",
+        title: "สังกัดทั้งหมด",
         link: "/admin/affiliations",
         icon: <Building2 className="size-4" />,
       },
       {
-        title: "New affiliation",
+        title: "สังกัดใหม่",
         link: "/admin/affiliations/new",
         icon: <Building2 className="size-4" />,
       },
@@ -150,7 +150,7 @@ const dashboardRoutes: Route[] = [
   },
   {
     id: "settings",
-    title: "Settings",
+    title: "การตั้งค่า",
     icon: <Settings className="size-4" />,
     link: "/admin/settings",
   },
@@ -175,7 +175,7 @@ export function DashboardSidebar() {
           <Logo className="h-8 w-8" />
           {!isCollapsed && (
             <span className="font-semibold text-black dark:text-white">
-              Acme
+              การแข่งขันเดินทน
             </span>
           )}
         </a>
@@ -205,9 +205,9 @@ export function DashboardSidebar() {
           </div>
           {!isCollapsed && (
             <div className="flex flex-col">
-              <span className="truncate font-semibold">Alpha Inc.</span>
+              <span className="truncate font-semibold">ระบบจัดการแข่งขัน</span>
               <span className="truncate text-xs text-muted-foreground">
-                Free
+                เวอร์ชันฟรี
               </span>
             </div>
           )}
@@ -220,7 +220,7 @@ export function DashboardSidebar() {
           onClick={() => router.push("/admin/login")}
         >
           <LogOut className="h-3.5 w-3.5" />
-          <span>Sign out</span>
+          <span>ออกจากระบบ</span>
         </Button>
       </SidebarFooter>
     </Sidebar>

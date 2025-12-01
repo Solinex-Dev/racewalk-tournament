@@ -5,28 +5,28 @@ import { AdminForm } from "@/components/admins/admin-form";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "แก้ไข Admin – Racewalk Tournament",
+  title: "แก้ไขผู้ดูแลระบบ – การแข่งขันเดินทน",
   description:
     "หน้าแก้ไขข้อมูลผู้ดูแลระบบของ Racewalk Tournament สำหรับอัปเดตสิทธิ์และข้อมูลติดต่อของ Admin.",
 };
 
 const MOCK_ADMIN_BY_ID = {
   "adm-001": {
-    name: "System Admin",
+    name: "ผู้ดูแลระบบ",
     email: "admin@example.com",
-    role: "Owner",
+    role: "เจ้าของระบบ",
     status: "active" as const,
   },
   "adm-002": {
-    name: "Event Manager",
+    name: "ผู้จัดการกิจกรรม",
     email: "event@example.com",
-    role: "Event admin",
+    role: "ผู้ดูแลกิจกรรม",
     status: "active" as const,
   },
   "adm-003": {
-    name: "Scoring Staff",
+    name: "เจ้าหน้าที่คะแนน",
     email: "score@example.com",
-    role: "Score admin",
+    role: "ผู้ดูแลคะแนน",
     status: "inactive" as const,
   },
 };

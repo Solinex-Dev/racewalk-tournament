@@ -40,7 +40,7 @@ export default function AffiliationsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-              จัดการสังกัด / สโมสร (Affiliations)
+              จัดการสังกัด / สโมสร
             </h1>
             <p className="mt-1 text-sm text-slate-600">
               รายการสังกัด / สโมสรของนักกีฬา เพื่อใช้เชื่อมโยงกับข้อมูล Athlete

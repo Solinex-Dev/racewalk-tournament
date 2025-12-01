@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Admin overview – Racewalk Tournament",
+  title: "ภาพรวมผู้ดูแลระบบ – การแข่งขันเดินทน",
   description:
     "หน้าแดชบอร์ดภาพรวมสำหรับผู้ดูแลระบบ Racewalk Tournament แสดงสถานะ Event ปัจจุบัน, กรรมการ และนักกีฬา.",
 };
@@ -29,10 +29,10 @@ export default function AdminDashboardPage() {
       <div className="max-w-full space-y-8">
         <header className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-            Admin overview
+            ภาพรวมผู้ดูแลระบบ
           </h1>
           <p className="max-w-xl text-sm text-slate-600">
-            ภาพรวมการจัดการแข่งขันเดินทนบน Racewalk Tournament – ดูสถานะ Event,
+            ภาพรวมการจัดการแข่งขันเดินทน – ดูสถานะกิจกรรม,
             กรรมการ และนักกีฬาในระบบจากหน้านี้
           </p>
         </header>
@@ -40,7 +40,7 @@ export default function AdminDashboardPage() {
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium uppercase text-slate-500">
-              Events
+              กิจกรรม
             </p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">
               {stats.eventsTotal}
@@ -52,7 +52,7 @@ export default function AdminDashboardPage() {
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium uppercase text-slate-500">
-              Judges
+              กรรมการ
             </p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">
               {stats.judgesTotal}
@@ -64,7 +64,7 @@ export default function AdminDashboardPage() {
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium uppercase text-slate-500">
-              Athletes
+              นักกีฬา
             </p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">
               {stats.athletesTotal}
@@ -76,10 +76,10 @@ export default function AdminDashboardPage() {
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium uppercase text-slate-500">
-              System
+              ระบบ
             </p>
             <p className="mt-2 text-sm font-semibold text-slate-900">
-              Ready for configuration
+              พร้อมสำหรับการตั้งค่า
             </p>
             <p className="mt-1 text-xs text-slate-500">
               ตั้งค่า Event, Judges, Athletes และการรายงานผลจากเมนูด้านซ้าย
@@ -90,7 +90,7 @@ export default function AdminDashboardPage() {
         <section className="grid gap-4 lg:grid-cols-[2fr,1.3fr]">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-900">
-              Quick links
+              ลิงก์ด่วน
             </h2>
             <p className="mt-1 text-xs text-slate-500">
               ลิงก์ไปยังหน้าจัดการหลักของ Admin (จะเชื่อม route จริงภายหลัง)
@@ -118,13 +118,13 @@ export default function AdminDashboardPage() {
           <div className="space-y-4">
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-                Current event (กำลังดำเนินการ)
+                กิจกรรมปัจจุบัน (กำลังดำเนินการ)
               </p>
               <div className="mt-2 flex flex-col gap-2 text-sm text-slate-900">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold">{currentEvent.name}</p>
                   <span className="inline-flex items-center rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-medium text-white">
-                    Ongoing
+                    กำลังดำเนินการ
                   </span>
                 </div>
                 <p className="text-xs text-slate-600">
@@ -135,7 +135,7 @@ export default function AdminDashboardPage() {
                 <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-700">
                   <div className="rounded-xl bg-white/60 px-3 py-2">
                     <p className="text-[10px] font-medium uppercase text-slate-500">
-                      Athletes in event
+                      นักกีฬาในกิจกรรม
                     </p>
                     <p className="mt-1 text-sm font-semibold">
                       {currentEvent.athletesCount}
@@ -143,7 +143,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="rounded-xl bg-white/60 px-3 py-2">
                     <p className="text-[10px] font-medium uppercase text-slate-500">
-                      Judges in event
+                      กรรมการในกิจกรรม
                     </p>
                     <p className="mt-1 text-sm font-semibold">
                       {currentEvent.judgesCount}

@@ -5,7 +5,7 @@ import { JudgeForm } from "@/components/judges/judge-form";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "แก้ไขข้อมูลกรรมการ – Racewalk Tournament",
+  title: "แก้ไขข้อมูลกรรมการ – การแข่งขันเดินทน",
   description:
     "หน้าแก้ไขข้อมูลกรรมการที่ลงทะเบียนในระบบ Racewalk Tournament สำหรับอัปเดตแผนก องค์กร และสถานะการใช้งาน.",
 };

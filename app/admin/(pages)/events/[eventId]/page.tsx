@@ -5,7 +5,7 @@ import { EventForm, type EventFormValues } from "@/components/events/event-form"
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "แก้ไข Event – Racewalk Tournament",
+  title: "แก้ไขกิจกรรม – การแข่งขันเดินทน",
   description:
     "หน้าแก้ไขข้อมูล Event การแข่งขันเดินทนในระบบ Racewalk Tournament สำหรับอัปเดตวันที่ สถานที่ สถานะ และโค้ดสำหรับกรรมการ.",
 };

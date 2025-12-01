@@ -36,16 +36,16 @@ const MOCK_EVENTS: AdminEvent[] = [
 ];
 
 export const metadata: Metadata = {
-  title: "จัดการ Event – Racewalk Tournament",
+  title: "จัดการกิจกรรม – การแข่งขันเดินทน",
   description:
-    "หน้ารายการ Event ทั้งหมดในระบบจัดการการแข่งขันเดินทน Racewalk Tournament.",
+    "หน้ารายการกิจกรรมทั้งหมดในระบบจัดการการแข่งขันเดินทน",
 };
 
 const STATUS_LABEL: Record<AdminEvent["status"], string> = {
-  draft: "Draft",
-  scheduled: "Scheduled",
-  ongoing: "Ongoing",
-  finished: "Finished",
+  draft: "ร่าง",
+  scheduled: "กำหนดการ",
+  ongoing: "กำลังดำเนินการ",
+  finished: "เสร็จสิ้น",
 };
 
 export default function EventsPage() {
@@ -93,7 +93,7 @@ export default function EventsPage() {
                           {event.isCurrent && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              Current event
+                              กิจกรรมปัจจุบัน
                             </span>
                           )}
                         </div>
@@ -119,7 +119,7 @@ export default function EventsPage() {
                                 size="sm"
                                 className="rounded-lg border-emerald-300 bg-emerald-500/10 text-xs font-medium text-emerald-700 hover:bg-emerald-500/20"
                               >
-                                <span>Open event page</span>
+                                <span>เปิดหน้าอีเวนต์</span>
                                 <ArrowUpRight className="ml-1 h-3 w-3" />
                               </Button>
                             </Link>
@@ -139,7 +139,7 @@ export default function EventsPage() {
                               size="sm"
                               className="rounded-lg border-slate-200 text-xs"
                             >
-                              Report
+                              รายงาน
                             </Button>
                           </Link>
                           <Link href={`/admin/events/${event.id}/moderator`}>

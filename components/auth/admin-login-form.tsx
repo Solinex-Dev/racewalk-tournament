@@ -53,7 +53,7 @@ export function AdminLoginForm() {
                   htmlFor="username"
                   className="block text-sm font-medium text-foreground"
                 >
-                  Username
+                  ชื่อผู้ใช้
                 </label>
                 <Input
                   id="username"
@@ -69,7 +69,7 @@ export function AdminLoginForm() {
                   htmlFor="password"
                   className="block text-sm font-medium text-foreground"
                 >
-                  Password
+                  รหัสผ่าน
                 </label>
                 <Input
                   id="password"

@@ -15,31 +15,31 @@ type Admin = {
 const MOCK_ADMINS: Admin[] = [
   {
     id: "adm-001",
-    name: "System Admin",
-    role: "Owner",
+    name: "ผู้ดูแลระบบ",
+    role: "เจ้าของระบบ",
     email: "admin@example.com",
     status: "active",
   },
   {
     id: "adm-002",
-    name: "Event Manager",
-    role: "Event admin",
+    name: "ผู้จัดการกิจกรรม",
+    role: "ผู้ดูแลกิจกรรม",
     email: "event@example.com",
     status: "active",
   },
   {
     id: "adm-003",
-    name: "Scoring Staff",
-    role: "Score admin",
+    name: "เจ้าหน้าที่คะแนน",
+    role: "ผู้ดูแลคะแนน",
     email: "score@example.com",
     status: "inactive",
   },
 ];
 
 export const metadata: Metadata = {
-  title: "จัดการผู้ดูแลระบบ (Admins) – Racewalk Tournament",
+  title: "จัดการผู้ดูแลระบบ – การแข่งขันเดินทน",
   description:
-    "หน้ารายการผู้ดูแลระบบทั้งหมดของ Racewalk Tournament พร้อมลิงก์ดูรายละเอียดและสร้าง Admin ใหม่.",
+    "หน้ารายการผู้ดูแลระบบทั้งหมดพร้อมลิงก์ดูรายละเอียดและสร้างผู้ดูแลระบบใหม่",
 };
 
 export default function AdminsPage() {
@@ -49,11 +49,11 @@ export default function AdminsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-              จัดการผู้ดูแลระบบ (Admins)
+              จัดการผู้ดูแลระบบ
             </h1>
             <p className="mt-1 text-sm text-slate-600">
-              รายการผู้ดูแลระบบทั้งหมดของ Racewalk Tournament พร้อมลิงก์เข้าไปดู
-              / แก้ไข และสร้าง admin ใหม่
+              รายการผู้ดูแลระบบทั้งหมดพร้อมลิงก์เข้าไปดู
+              / แก้ไข และสร้างผู้ดูแลระบบใหม่
             </p>
           </div>
 

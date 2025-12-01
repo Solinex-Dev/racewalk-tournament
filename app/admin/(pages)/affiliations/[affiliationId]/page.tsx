@@ -5,7 +5,7 @@ import { AffiliationForm } from "@/components/affiliations/affiliation-form";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "แก้ไขสังกัด / สโมสร – Racewalk Tournament",
+  title: "แก้ไขสังกัด / สโมสร – การแข่งขันเดินทน",
   description:
     "หน้าแก้ไขข้อมูลสังกัด / สโมสร เช่น ชื่อสังกัด ผู้ดูแล วันที่เข้าร่วม และหมายเหตุ สำหรับใช้ร่วมกับข้อมูลนักกีฬา.",
 };

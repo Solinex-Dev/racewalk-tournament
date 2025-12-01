@@ -109,7 +109,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
 };
 
 export const metadata: Metadata = {
-  title: "Event live scoreboard – Racewalk Tournament",
+  title: "กระดานคะแนนสดกิจกรรม – การแข่งขันเดินทน",
   description:
     "หน้าดูผลการแข่งขันเดินทนแบบสด (Live scoreboard) สำหรับผู้ชมและผู้ติดตาม.",
 };
@@ -142,7 +142,7 @@ export default async function EventLivePage(props: EventLivePageProps) {
         <header className="flex flex-col gap-3 border-b border-slate-200 pb-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Racewalk Tournament – Live
+              การแข่งขันเดินทน – สด
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
               {event.name}
@@ -180,7 +180,7 @@ export default async function EventLivePage(props: EventLivePageProps) {
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Live leaderboard
+                กระดานคะแนนสด
               </p>
               <p className="text-[11px] text-slate-500">
                 อันดับเรียงตามเวลารวม (Total time) – ข้อมูลนี้เป็น mock
@@ -192,7 +192,7 @@ export default async function EventLivePage(props: EventLivePageProps) {
               <table className="min-w-full border-collapse text-xs">
                 <thead className="sticky top-0 border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500 backdrop-blur">
                   <tr>
-                    <th className="px-3 py-2 text-left">Pos</th>
+                    <th className="px-3 py-2 text-left">อันดับ</th>
                     <th className="px-3 py-2 text-left">BIB</th>
                     <th className="px-3 py-2 text-left">นักกีฬา</th>
                     <th className="px-3 py-2 text-left hidden sm:table-cell">
@@ -290,11 +290,11 @@ export default async function EventLivePage(props: EventLivePageProps) {
           <aside className="space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Event info
+                ข้อมูลกิจกรรม
               </p>
               <dl className="mt-3 space-y-2 text-xs text-slate-800">
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-500">Event ID</dt>
+                  <dt className="text-slate-500">รหัสกิจกรรม</dt>
                   <dd className="font-mono text-[11px] text-slate-800">
                     {event.id}
                   </dd>

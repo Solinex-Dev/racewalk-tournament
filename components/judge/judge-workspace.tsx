@@ -129,7 +129,7 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
         <header className="flex flex-col gap-3 border-b border-slate-200 pb-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Racewalk Tournament – Judge workspace
+              การแข่งขันเดินทน – หน้าทำงานกรรมการ
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
               หน้าทำงานของกรรมการ
@@ -137,14 +137,14 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
             {event ? (
               <>
                 <p className="mt-1 text-sm text-slate-600">
-                  Event:{" "}
+                  กิจกรรม:{" "}
                   <span className="font-semibold text-slate-900">
                     {event.name}
                   </span>{" "}
                   – {event.heat_name}
                 </p>
                 <p className="text-xs text-slate-500">
-                  Event ID:{" "}
+                  รหัสกิจกรรม:{" "}
                   <span className="font-mono text-[11px]">{event.id}</span> •
                   ระยะ {event.distance_km} กม. • Lap {event.currentLap} /{" "}
                   {event.lapCount}

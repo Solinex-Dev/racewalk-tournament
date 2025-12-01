@@ -9,7 +9,7 @@ import {
 } from "@/components/judge/card-matrix";
 
 export const metadata: Metadata = {
-  title: "Event moderator dashboard – Racewalk Tournament",
+  title: "แดชบอร์ดผู้ควบคุมกิจกรรม – การแข่งขันเดินทน",
   description:
     "หน้าสำหรับ Moderator ดูสถานะนักกีฬา ใบเหลือง/ใบแดง กรรมการ และ log กิจกรรมของ Event.",
 };

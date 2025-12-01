@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Racewalk Tournament",
+  title: "การแข่งขันเดินทน",
   description:
     "Landing page ของ Racewalk Tournament สำหรับผู้ชม กรรมการ และผู้จัดงาน – ดู Live scoreboard, เข้าร่วมเป็นกรรมการ และจัดการ Event ได้จากที่เดียว.",
 };
@@ -19,10 +19,10 @@ export default function Home() {
             </div>
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold tracking-tight">
-                Racewalk Tournament
+                การแข่งขันเดินทน
               </span>
               <span className="text-[11px] text-slate-500">
-                Real-time Judging &amp; Scoreboard
+                ระบบตัดสินและกระดานคะแนนแบบเรียลไทม์
               </span>
             </div>
           </div>
@@ -73,7 +73,7 @@ export default function Home() {
             >
               ดู Live scoreboard (ตัวอย่าง)
               <span className="text-[11px] font-normal text-sky-100">
-                Event mock: Racewalk Championship 2025
+                ตัวอย่าง: การแข่งขันเดินทนชิงแชมป์ 2025
               </span>
             </Link>
 

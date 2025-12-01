@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Admin Login – Racewalk Tournament",
-  description: "หน้าเข้าสู่ระบบผู้ดูแลสำหรับจัดการ Event ของ Racewalk Tournament",
+  title: "เข้าสู่ระบบผู้ดูแล – การแข่งขันเดินทน",
+  description: "หน้าเข้าสู่ระบบผู้ดูแลสำหรับจัดการกิจกรรมของการแข่งขันเดินทน",
 };
 
 export default function AdminAuthLayout({

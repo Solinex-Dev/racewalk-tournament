@@ -41,7 +41,7 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
         <CardContent className="space-y-6">
           <div className="space-y-2 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Racewalk Tournament – Judge
+              การแข่งขันเดินทน – กรรมการ
             </p>
             <h1 className="text-2xl font-semibold text-slate-900">
               เข้าร่วมเป็นกรรมการใน Event

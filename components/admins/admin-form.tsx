@@ -35,13 +35,13 @@ export function AdminForm({ mode, defaultValues }: AdminFormProps) {
               htmlFor="name"
               className="block text-xs font-medium text-slate-800"
             >
-              ชื่อแสดงผล (Display name)
+              ชื่อแสดงผล
             </label>
             <Input
               id="name"
               name="name"
               defaultValue={defaultValues?.name}
-              placeholder="เช่น System Admin"
+                placeholder="เช่น ผู้ดูแลระบบ"
               className="rounded-xl text-sm"
             />
           </div>
@@ -68,7 +68,7 @@ export function AdminForm({ mode, defaultValues }: AdminFormProps) {
               htmlFor="password"
               className="block text-xs font-medium text-slate-800"
             >
-              รหัสผ่าน (Password)
+              รหัสผ่าน
             </label>
             <Input
               id="password"
@@ -84,7 +84,7 @@ export function AdminForm({ mode, defaultValues }: AdminFormProps) {
               htmlFor="role"
               className="block text-xs font-medium text-slate-800"
             >
-              บทบาท (Role)
+              บทบาท
             </label>
             <select
               id="role"
@@ -95,9 +95,9 @@ export function AdminForm({ mode, defaultValues }: AdminFormProps) {
               <option value="" disabled>
                 เลือกบทบาทของ Admin
               </option>
-              <option value="owner">Owner / System admin</option>
-              <option value="event_admin">Event admin</option>
-              <option value="score_admin">Score admin</option>
+              <option value="owner">เจ้าของระบบ / ผู้ดูแลระบบ</option>
+              <option value="event_admin">ผู้ดูแลกิจกรรม</option>
+              <option value="score_admin">ผู้ดูแลคะแนน</option>
             </select>
           </div>
 

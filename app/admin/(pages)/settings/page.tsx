@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 export const metadata: Metadata = {
-  title: "Settings – Racewalk Tournament",
+  title: "การตั้งค่า – การแข่งขันเดินทน",
   description: "ตั้งค่าโปรไฟล์ผู้ดูแลระบบ (Admin profile settings).",
 };
 
@@ -14,7 +14,7 @@ export default function AdminSettingsPage() {
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-            Settings
+            การตั้งค่า
           </h1>
           <p className="text-sm text-slate-600">
             ตั้งค่าโปรไฟล์ของผู้ดูแลระบบ (Admin) เช่น ชื่อ อีเมล และรหัสผ่าน

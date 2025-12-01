@@ -33,9 +33,9 @@ const MOCK_ATHLETES: Athlete[] = [
 ];
 
 export const metadata: Metadata = {
-  title: "จัดการนักกีฬา (Athletes) – Racewalk Tournament",
+  title: "จัดการนักกีฬา – การแข่งขันเดินทน",
   description:
-    "หน้ารายชื่อนักกีฬาทั้งหมดที่ลงทะเบียนในระบบการแข่งขันเดินทน Racewalk Tournament.",
+    "หน้ารายชื่อนักกีฬาทั้งหมดที่ลงทะเบียนในระบบการแข่งขันเดินทน",
 };
 
 export default function AthletesPage() {
@@ -45,7 +45,7 @@ export default function AthletesPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-              จัดการนักกีฬา (Athletes)
+              จัดการนักกีฬา
             </h1>
             <p className="mt-1 text-sm text-slate-600">
               รายชื่อนักกีฬาทั้งหมดที่ถูกลงทะเบียนในระบบการแข่งขันเดินทน

@@ -7,7 +7,7 @@ import {
 import { DashboardSidebar } from "@/components/partials/admin-sidebar/app-sidebar";
 
 export const metadata: Metadata = {
-  title: "Admin Dashboard – Racewalk Tournament",
+  title: "แดชบอร์ดผู้ดูแลระบบ – การแข่งขันเดินทน",
   description:
     "หน้าแดชบอร์ดผู้ดูแลสำหรับจัดการ Event, Judges, Athletes และการตั้งค่าระบบ",
 };

@@ -36,9 +36,9 @@ const MOCK_JUDGES: Judge[] = [
 ];
 
 export const metadata: Metadata = {
-  title: "จัดการกรรมการ (Judges) – Racewalk Tournament",
+  title: "จัดการกรรมการ – การแข่งขันเดินทน",
   description:
-    "หน้ารายชื่อกรรมการทั้งหมดที่ใช้ในการตัดสินการแข่งขันเดินทน Racewalk Tournament.",
+    "หน้ารายชื่อกรรมการทั้งหมดที่ใช้ในการตัดสินการแข่งขันเดินทน",
 };
 
 export default function JudgesPage() {
@@ -48,7 +48,7 @@ export default function JudgesPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-              จัดการกรรมการ (Judges)
+              จัดการกรรมการ
             </h1>
             <p className="mt-1 text-sm text-slate-600">
               รายชื่อกรรมการทั้งหมดที่ถูกลงทะเบียนในระบบสำหรับใช้ตัดสินการแข่งขันเดินทน

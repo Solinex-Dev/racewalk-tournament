@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { JudgeWorkspace } from "@/components/judge/judge-workspace";
 
 export const metadata: Metadata = {
-  title: "Judge workspace – Racewalk Tournament",
+  title: "หน้าทำงานกรรมการ – การแข่งขันเดินทน",
   description:
     "หน้าทำงานสำหรับกรรมการในการบันทึกสถานะและผลการแข่งขันของ Event เดินทนบน Racewalk Tournament.",
 };

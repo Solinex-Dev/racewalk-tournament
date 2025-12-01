@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Racewalk Tournament - Real-time Judging &amp; Scoreboard",
+  title: "การแข่งขันเดินทน - ระบบตัดสินและกระดานคะแนนแบบเรียลไทม์",
   description:
-    "Racewalk Tournament ระบบจัดการแข่งขันเดินทนสำหรับสนามแข่งจริง พร้อม Scoreboard แบบ Real-time สำหรับกรรมการและผู้ชม",
+    "ระบบจัดการแข่งขันเดินทนสำหรับสนามแข่งจริง พร้อมกระดานคะแนนแบบเรียลไทม์สำหรับกรรมการและผู้ชม",
 };
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="th">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

@@ -379,10 +379,10 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
                   }))
                 }
               >
-                <option value="draft">Draft – ยังไม่เผยแพร่</option>
-                <option value="scheduled">Scheduled – ตั้งวันไว้แล้ว</option>
-                <option value="ongoing">Ongoing – กำลังแข่งขัน</option>
-                <option value="finished">Finished – แข่งขันเสร็จแล้ว</option>
+                <option value="draft">ร่าง – ยังไม่เผยแพร่</option>
+                <option value="scheduled">กำหนดการ – ตั้งวันไว้แล้ว</option>
+                <option value="ongoing">กำลังดำเนินการ – กำลังแข่งขัน</option>
+                <option value="finished">เสร็จสิ้น – แข่งขันเสร็จแล้ว</option>
               </select>
               <p className="text-[11px] text-slate-500">
                 ใช้กำหนด state หลักของ Event เพื่อแสดงผลและคุม flow อื่น ๆ
