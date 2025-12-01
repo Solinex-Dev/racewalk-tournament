@@ -26,7 +26,6 @@ import { Logo } from "@/components/partials/admin-sidebar/logo";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/partials/admin-sidebar/nav-main";
 import { NotificationsPopover } from "@/components/partials/admin-sidebar/nav-notifications";
-import { TeamSwitcher } from "@/components/partials/admin-sidebar/team-switcher";
 
 const sampleNotifications = [
   {
@@ -157,12 +156,6 @@ const dashboardRoutes: Route[] = [
   },
 ];
 
-const teams = [
-  { id: "1", name: "Alpha Inc.", logo: Logo, plan: "Free" },
-  { id: "2", name: "Beta Corp.", logo: Logo, plan: "Free" },
-  { id: "3", name: "Gamma Tech", logo: Logo, plan: "Free" },
-];
-
 export function DashboardSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -205,7 +198,20 @@ export function DashboardSidebar() {
         <DashboardNavigation routes={dashboardRoutes} />
       </SidebarContent>
       <SidebarFooter className="flex flex-col gap-2 px-2 pb-3 pt-0">
-        <TeamSwitcher teams={teams} />
+        {/* Current team / user display (no dropdown) */}
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-background px-3 py-2 text-left text-sm">
+          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-slate-100 text-foreground">
+            <Logo className="size-4" />
+          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col">
+              <span className="truncate font-semibold">Alpha Inc.</span>
+              <span className="truncate text-xs text-muted-foreground">
+                Free
+              </span>
+            </div>
+          )}
+        </div>
         <Button
           type="button"
           variant="outline"
