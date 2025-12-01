@@ -26,8 +26,16 @@ const MOCK_EVENT_BY_ID: Record<string, EventFormValues> = {
       { athlete_id: "ath-002", bib_no: "102" },
     ],
     judges: [
-      { judge_id: "jud-001", table_no: "1" },
-      { judge_id: "jud-002", table_no: "2" },
+      {
+        judge_id: "jud-001",
+        table_no: "1",
+        event_secret_code: "AB12CD",
+      },
+      {
+        judge_id: "jud-002",
+        table_no: "2",
+        event_secret_code: "EF34GH",
+      },
     ],
   },
   "evt-002": {
@@ -41,7 +49,13 @@ const MOCK_EVENT_BY_ID: Record<string, EventFormValues> = {
     max_athletes: "30",
     max_judges: "5",
     athletes: [{ athlete_id: "ath-003", bib_no: "201" }],
-    judges: [{ judge_id: "jud-003", table_no: "HEAD" }],
+    judges: [
+      {
+        judge_id: "jud-003",
+        table_no: "HEAD",
+        event_secret_code: "JK56LM",
+      },
+    ],
   },
 };
 

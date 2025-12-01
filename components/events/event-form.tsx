@@ -13,6 +13,7 @@ type AthleteEntry = {
 type JudgeEntry = {
   judge_id: string;
   table_no: string;
+  event_secret_code: string;
 };
 
 type EventFormProps = {
@@ -61,10 +62,42 @@ const MOCK_JUDGE_OPTIONS = [
   { id: "jud-003", name: "Head Judge" },
 ];
 
+const EVENT_SECRET_CODE_LENGTH = 6;
+const EVENT_SECRET_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function generateEventSecretCode() {
+  let code = "";
+  for (let i = 0; i < EVENT_SECRET_CODE_LENGTH; i += 1) {
+    const idx = Math.floor(Math.random() * EVENT_SECRET_CODE_CHARS.length);
+    code += EVENT_SECRET_CODE_CHARS[idx] ?? "X";
+  }
+  return code;
+}
+
 export function EventForm({ mode, defaultValues }: EventFormProps) {
-  const [form, setForm] = React.useState<EventFormValues>({
-    ...EMPTY_VALUES,
-    ...defaultValues,
+  const [form, setForm] = React.useState<EventFormValues>(() => {
+    const merged: EventFormValues = {
+      ...EMPTY_VALUES,
+      ...defaultValues,
+      athletes: defaultValues?.athletes ?? EMPTY_VALUES.athletes,
+      judges: (defaultValues?.judges as any) ?? EMPTY_VALUES.judges,
+    };
+
+    const judgesWithCode: JudgeEntry[] = (merged.judges ?? []).map(
+      (judge: any) => ({
+        judge_id: judge.judge_id ?? "",
+        table_no: judge.table_no ?? "",
+        event_secret_code:
+          judge.event_secret_code && typeof judge.event_secret_code === "string"
+            ? judge.event_secret_code
+            : generateEventSecretCode(),
+      }),
+    );
+
+    return {
+      ...merged,
+      judges: judgesWithCode,
+    };
   });
 
   const isEdit = mode === "edit";
@@ -225,11 +258,29 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
       ...prev,
       judges: [
         ...prev.judges,
-        ...toAdd.map((id) => ({ judge_id: id, table_no: "" })),
+        ...toAdd.map((id) => ({
+          judge_id: id,
+          table_no: "",
+          event_secret_code: generateEventSecretCode(),
+        })),
       ],
     }));
 
     setJudgePickerOpen(false);
+  };
+
+  const handleRegenerateJudgeSecret = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      judges: prev.judges.map((j, i) =>
+        i === index
+          ? {
+              ...j,
+              event_secret_code: generateEventSecretCode(),
+            }
+          : j,
+      ),
+    }));
   };
 
   // TODO: เชื่อมต่อ submit กับ server action / API จริงภายหลัง
@@ -529,7 +580,11 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
                 เลือกกรรมการสำหรับ Event นี้
                 และกำหนด{" "}
                 <span className="font-medium">หมายเลขโต๊ะที่นั่งของกรรมการ</span>{" "}
-                แต่ละคน
+                และ{" "}
+                <span className="font-medium">
+                  รหัสลับของกรรมการใน Event (event secret code)
+                </span>{" "}
+                สำหรับใช้ยืนยันตัวตนในฝั่ง Judger
               </p>
             </div>
 
@@ -565,6 +620,9 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
                       <th className="px-3 py-2 text-left">#</th>
                       <th className="px-3 py-2 text-left">กรรมการ</th>
                       <th className="px-3 py-2 text-left">โต๊ะที่นั่ง</th>
+                      <th className="px-3 py-2 text-left">
+                        รหัสลับใน Event (6 ตัวอักษร)
+                      </th>
                       <th className="px-3 py-2 text-right">ลบ</th>
                     </tr>
                   </thead>
@@ -606,6 +664,22 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
                             }
                             placeholder="เช่น 1, 2, A, B"
                           />
+                        </td>
+                        <td className="px-3 py-2 align-middle">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-800">
+                              {row.event_secret_code || "------"}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 rounded-lg border-slate-200 px-2 text-[11px]"
+                              onClick={() => handleRegenerateJudgeSecret(index)}
+                            >
+                              รีเซ็ตโค้ด
+                            </Button>
+                          </div>
                         </td>
                         <td className="px-3 py-2 align-middle text-right">
                           <Button
