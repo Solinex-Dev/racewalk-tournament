@@ -1,0 +1,311 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+
+type PublicEvent = {
+  id: string;
+  name: string;
+  date: string;
+  location: string;
+  distance_km: string;
+  status: "scheduled" | "ongoing" | "finished";
+  heat_name: string;
+  lapCount: number;
+  currentLap: number;
+  elapsed: string;
+  athletes: {
+    bib: string;
+    name: string;
+    affiliation: string;
+    country: string;
+    position: number;
+    splitTime: string;
+    totalTime: string;
+    status: "OK" | "DQ" | "DNF";
+  }[];
+};
+
+const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
+  "evt-001": {
+    id: "evt-001",
+    name: "Racewalk Championship 2025",
+    date: "15 มีนาคม 2025",
+    location: "สนามกีฬาแห่งชาติ",
+    distance_km: "20",
+    status: "ongoing",
+    heat_name: "รุ่นทั่วไป ระยะ 20 กม.",
+    lapCount: 20,
+    currentLap: 7,
+    elapsed: "00:46:32",
+    athletes: [
+      {
+        bib: "101",
+        name: "Somchai Rakdee",
+        affiliation: "ชมรมเดินทนกรุงเทพฯ",
+        country: "THA",
+        position: 1,
+        splitTime: "02:14",
+        totalTime: "00:46:32",
+        status: "OK",
+      },
+      {
+        bib: "102",
+        name: "Jane Doe",
+        affiliation: "Example Athletic Club",
+        country: "USA",
+        position: 2,
+        splitTime: "02:18",
+        totalTime: "00:46:45",
+        status: "OK",
+      },
+      {
+        bib: "103",
+        name: "Chanida Runfast",
+        affiliation: "Chiangmai Racewalk Team",
+        country: "THA",
+        position: 3,
+        splitTime: "02:20",
+        totalTime: "00:47:02",
+        status: "OK",
+      },
+      {
+        bib: "104",
+        name: "Luis Garcia",
+        affiliation: "Madrid Racewalk Club",
+        country: "ESP",
+        position: 4,
+        splitTime: "02:25",
+        totalTime: "00:48:10",
+        status: "OK",
+      },
+      {
+        bib: "105",
+        name: "Mai Tanaka",
+        affiliation: "Tokyo Walkers",
+        country: "JPN",
+        position: 5,
+        splitTime: "02:27",
+        totalTime: "00:48:45",
+        status: "OK",
+      },
+    ],
+  },
+};
+
+export const metadata: Metadata = {
+  title: "Event live scoreboard – Racewalk Tournament",
+  description:
+    "หน้าดูผลการแข่งขันเดินทนแบบสด (Live scoreboard) สำหรับผู้ชมและผู้ติดตาม.",
+};
+
+type EventLivePageProps = {
+  params: Promise<{
+    eventId: string;
+  }>;
+};
+
+export default async function EventLivePage(props: EventLivePageProps) {
+  const { eventId } = await props.params;
+
+  const event = MOCK_PUBLIC_EVENT[eventId];
+
+  if (!event) {
+    // TODO: ภายหลังให้ดึงข้อมูลจากฐานข้อมูลจริง และอาจ redirect ไปหน้า default current event ถ้าไม่พบ
+    notFound();
+  }
+
+  const statusLabel: Record<PublicEvent["status"], string> = {
+    scheduled: "ยังไม่เริ่ม",
+    ongoing: "กำลังแข่งขัน",
+    finished: "จบการแข่งขันแล้ว",
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-6 lg:py-10">
+        <header className="flex flex-col gap-3 border-b border-slate-200 pb-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Racewalk Tournament – Live
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+              {event.name}
+            </h1>
+            <p className="mt-1 text-sm text-slate-600">
+              {event.heat_name} • ระยะ {event.distance_km} กม. •{" "}
+              {event.location}
+            </p>
+            <p className="text-xs text-slate-500">แข่งขันวันที่ {event.date}</p>
+          </div>
+
+          <div className="flex items-end gap-4">
+            <div className="text-right text-xs">
+              <p className="text-slate-500">
+                Lap ปัจจุบัน{" "}
+                <span className="font-semibold text-slate-900">
+                  {event.currentLap}
+                </span>{" "}
+                / {event.lapCount}
+              </p>
+              <p className="text-slate-500">
+                เวลาแข่งขัน{" "}
+                <span className="font-mono text-sm font-semibold text-emerald-600">
+                  {event.elapsed}
+                </span>
+              </p>
+            </div>
+            <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+              ● {statusLabel[event.status]}
+            </span>
+          </div>
+        </header>
+
+        <section className="grid gap-4 lg:grid-cols-[2fr,1.1fr]">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Live leaderboard
+              </p>
+              <p className="text-[11px] text-slate-500">
+                อันดับเรียงตามเวลารวม (Total time) – ข้อมูลนี้เป็น mock
+                สำหรับดีไซน์ UI
+              </p>
+            </div>
+
+            <div className="max-h-[520px] overflow-auto">
+              <table className="min-w-full border-collapse text-xs">
+                <thead className="sticky top-0 border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500 backdrop-blur">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Pos</th>
+                    <th className="px-3 py-2 text-left">BIB</th>
+                    <th className="px-3 py-2 text-left">นักกีฬา</th>
+                    <th className="px-3 py-2 text-left hidden sm:table-cell">
+                      สังกัด / สโมสร
+                    </th>
+                    <th className="px-3 py-2 text-left hidden md:table-cell">
+                      ประเทศ
+                    </th>
+                    <th className="px-3 py-2 text-left">Lap ล่าสุด</th>
+                    <th className="px-3 py-2 text-left">เวลารวม (Total)</th>
+                    <th className="px-3 py-2 text-left hidden md:table-cell">
+                      สถานะ
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {event.athletes.map((athlete) => (
+                    <tr
+                      key={athlete.bib}
+                      className="transition-colors hover:bg-slate-50"
+                    >
+                      <td className="px-3 py-2 text-sm font-semibold text-slate-900">
+                        {athlete.position}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-sm text-amber-600">
+                        {athlete.bib}
+                      </td>
+                      <td className="px-3 py-2">
+                        <p className="text-xs font-medium text-slate-900">
+                          {athlete.name}
+                        </p>
+                        <p className="text-[10px] text-slate-500 sm:hidden">
+                          {athlete.affiliation}
+                        </p>
+                      </td>
+                      <td className="hidden px-3 py-2 text-[11px] text-slate-700 sm:table-cell">
+                        {athlete.affiliation}
+                      </td>
+                      <td className="hidden px-3 py-2 text-[11px] text-slate-700 md:table-cell">
+                        {athlete.country}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-[11px] text-slate-900">
+                        {athlete.splitTime}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-[11px] text-slate-900">
+                        {athlete.totalTime}
+                      </td>
+                      <td className="px-3 py-2 hidden md:table-cell">
+                        {athlete.status === "OK" && (
+                          <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+                            OK
+                          </span>
+                        )}
+                        {athlete.status === "DQ" && (
+                          <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-700 ring-1 ring-red-200">
+                            DQ
+                          </span>
+                        )}
+                        {athlete.status === "DNF" && (
+                          <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
+                            DNF
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <aside className="space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Event info
+              </p>
+              <dl className="mt-3 space-y-2 text-xs text-slate-800">
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-slate-500">Event ID</dt>
+                  <dd className="font-mono text-[11px] text-slate-800">
+                    {event.id}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-slate-500">ประเภท/รุ่น</dt>
+                  <dd className="text-right">{event.heat_name}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-slate-500">ระยะทาง</dt>
+                  <dd className="text-right">{event.distance_km} กม.</dd>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-slate-500">จำนวน Lap ทั้งหมด</dt>
+                  <dd className="text-right">{event.lapCount}</dd>
+                </div>
+              </dl>
+              <p className="mt-3 text-[10px] text-slate-500">
+                * ข้อมูลในหน้านี้เป็นตัวอย่าง UI – ภายหลังจะเชื่อมต่อกับข้อมูล
+                real-time จากกรรมการในสนาม
+              </p>
+            </div>
+
+            <div className="space-y-2 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                สำหรับกรรมการ
+              </p>
+              <p className="text-[11px] text-slate-600">
+                ถ้าคุณเป็นกรรมการของ Event นี้ ให้เข้าไปยังหน้าสำหรับกรรมการ
+                เพื่อใช้บันทึกผลการแข่งขัน
+              </p>
+              <div className="mt-2 flex flex-col gap-2 text-xs">
+                <a
+                  href={`/judge/events/${event.id}/join`}
+                  className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-slate-50 hover:bg-slate-800"
+                >
+                  ไปหน้ากรอกรหัสกรรมการ (Join event)
+                </a>
+                <a
+                  href={`/judge/events/${event.id}`}
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-1.5 text-[11px] font-medium text-slate-800 hover:bg-slate-100"
+                >
+                  ไปหน้าใช้งานสำหรับกรรมการ (Judge workspace)
+                </a>
+              </div>
+            </div>
+          </aside>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+
