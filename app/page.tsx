@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Racewalk Tournament",
   description:
-    "Landing page ของ Racewalk Tournament แนะนำระบบ, ฟีเจอร์, และลิงก์เข้าส่วนสำคัญ เช่น Event live page, Judger join และ Admin console.",
+    "Landing page ของ Racewalk Tournament สำหรับผู้ชม กรรมการ และผู้จัดงาน – ดู Live scoreboard, เข้าร่วมเป็นกรรมการ และจัดการ Event ได้จากที่เดียว.",
 };
 
 export default function Home() {
@@ -43,71 +43,53 @@ export default function Home() {
         {/* Hero section */}
         <section className="flex-1 space-y-8">
           <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
-            ระบบจัดการแข่งขันเดินทนสำหรับสนามแข่งจริง
+            การแข่งขันเดินทน (Racewalk) ระดับสนามจริง
             <span className="h-1 w-1 rounded-full bg-sky-500" />
-            รองรับกรรมการหลายคนแบบ Real-time
+            ดูผลสด – เข้าใจง่ายทั้งนักกีฬาและผู้ชม
           </div>
 
           <div className="space-y-4">
             <h1 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
-              ติดตามผลการแข่งขันเดินทนแบบ{" "}
-              <span className="text-sky-600">Real-time</span>
+              ติดตาม{" "}
+              <span className="text-sky-600">ผลการแข่งขันเดินทนแบบสด</span>{" "}
+              เห็นอันดับ เวลารวม และใบเหลือง–ใบแดง ชัดเจน
             </h1>
             <p className="max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
-              ระบบ Racewalk Tournament ช่วยให้สนามแข่งขัน, กรรมการ และผู้ชม
-              เห็นคะแนนและสถานะการแข่งขันได้ทันที
-              เชื่อมต่อการให้คะแนนของกรรมการหลายคนเข้าสู่ Scoreboard กลางเดียวกัน
+              Racewalk Tournament ถูกออกแบบมาสำหรับ{" "}
+              <span className="font-medium">
+                นักกีฬาเดินทน, โค้ช, ผู้ชมข้างสนาม และครอบครัวที่ติดตามอยู่บ้าน
+              </span>
+              – หน้า Live จะแสดงอันดับ ป้ายประเทศ สโมสร เวลาต่อ Lap
+              และจำนวนใบเหลือง–ใบแดงของนักกีฬาแต่ละคนอย่างชัดเจน
+              เพื่อให้เข้าใจสถานการณ์ในสนามแบบเรียลไทม์
             </p>
           </div>
 
           {/* Primary actions */}
           <div className="flex flex-wrap items-center gap-3">
             <Link
-              href="/events/current"
+              href="/events/evt-001"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-sky-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-sky-700"
             >
-              ดูการแข่งขันปัจจุบัน
+              ดู Live scoreboard (ตัวอย่าง)
               <span className="text-[11px] font-normal text-sky-100">
-                หากมี Event ที่กำลังแข่ง
+                Event mock: Racewalk Championship 2025
               </span>
             </Link>
 
             <Link
-              href="/events"
+              href="/judge/events/evt-001/join"
               className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
             >
-              ดูการแข่งขันทั้งหมด
+              สำหรับกรรมการในสนาม – กรอกรหัสเพื่อเข้าร่วม Event ตัวอย่าง
             </Link>
 
             <Link
-              href="/judge/events/preview/join"
+              href="/admin/login"
               className="inline-flex items-center justify-center rounded-full border border-dashed border-slate-300 px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-400 hover:bg-slate-100"
             >
-              สำหรับกรรมการ – กรอกรหัสเพื่อเข้าร่วม Event
+              สำหรับผู้จัดงาน / สมาคม – เข้าสู่ระบบจัดการ Event
             </Link>
-          </div>
-
-          {/* Target audiences */}
-          <div className="grid gap-4 text-sm sm:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                สำหรับสนามแข่งขัน / ผู้จัดงาน
-              </h2>
-              <ul className="space-y-1.5 text-slate-600">
-                <li>• ตั้งค่า Event, รายชื่อนักกีฬา และกรรมการได้จากหน้าเดียว</li>
-                <li>• มีหน้า Dashboard และ Report สำหรับออกรายงานหลังแข่ง</li>
-              </ul>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                สำหรับกรรมการ (Judger)
-              </h2>
-              <ul className="space-y-1.5 text-slate-600">
-                <li>• Join การแข่งขันด้วยรหัสที่ Admin กำหนด</li>
-                <li>• บันทึกคะแนนและสถานะการแข่งขันแบบ Real-time</li>
-              </ul>
-            </div>
           </div>
         </section>
 
@@ -115,43 +97,33 @@ export default function Home() {
         <aside className="mt-6 w-full max-w-md space-y-4 lg:mt-0">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              ฟีเจอร์หลักของระบบ
+              ถ้าเข้าหน้า Live / ใช้งานในสนาม คุณจะได้อะไรบ้าง
             </h2>
             <dl className="space-y-2 text-sm text-slate-700">
               <div className="flex gap-2">
-                <dt className="w-28 shrink-0 text-slate-500">Public</dt>
+                <dt className="w-28 shrink-0 text-slate-500">สำหรับผู้ชม</dt>
                 <dd className="flex-1">
-                  Event live page พร้อม Scoreboard
-                  และลิงก์แชร์ผลการแข่งขันแต่ละ Event
+                  เห็นอันดับนักกีฬาแบบอัปเดตตลอด เวลา Lap ล่าสุด เวลารวม
+                  และจำนวนใบเหลือง/ใบแดง ทำให้เข้าใจกติกาเดินทนและตามเชียร์ได้สนุกขึ้น
                 </dd>
               </div>
               <div className="flex gap-2">
-                <dt className="w-28 shrink-0 text-slate-500">Judger</dt>
+                <dt className="w-28 shrink-0 text-slate-500">สำหรับกรรมการ</dt>
                 <dd className="flex-1">
-                  Join match ด้วยรหัส, บันทึกคะแนน และอัปเดตสถานะการแข่งขัน
+                  ใช้ workspace ตัดสินจากจุดของตัวเอง
+                  ลดการใช้กระดาษและลดโอกาสจดผิด บันทึกข้อมูลตรงเข้าสู่ระบบกลาง
                 </dd>
               </div>
               <div className="flex gap-2">
-                <dt className="w-28 shrink-0 text-slate-500">Admin</dt>
+                <dt className="w-28 shrink-0 text-slate-500">สำหรับสมาคม</dt>
                 <dd className="flex-1">
-                  จัดการ Event, Judges, Athletes และดาวน์โหลดรายงานผลการแข่งขัน
+                  ได้ข้อมูลการแข่งขันที่เก็บเป็นระบบ สามารถใช้ทบทวนผลการแข่งขัน
+                  หรืออ้างอิงในรายการต่อ ๆ ไปได้ง่าย
                 </dd>
               </div>
             </dl>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-900 p-4 text-slate-50 shadow-sm">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Tech stack
-            </h2>
-            <p className="mb-2 text-sm">
-              Next.js (App Router) + TypeScript + Tailwind CSS
-              เชื่อมต่อฐานข้อมูล MySQL ด้วย Prisma
-            </p>
-            <p className="text-xs text-slate-400">
-              ดีไซน์โทน Light เน้นความอ่านง่าย รองรับทั้งภาษาไทยและอังกฤษ
-            </p>
-          </div>
         </aside>
       </main>
     </div>

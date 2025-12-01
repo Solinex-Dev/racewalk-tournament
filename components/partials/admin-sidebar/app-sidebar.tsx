@@ -18,7 +18,10 @@ import {
   Medal,
   Settings,
   Building2,
+  LogOut,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/partials/admin-sidebar/logo";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/partials/admin-sidebar/nav-main";
@@ -163,6 +166,7 @@ const teams = [
 export function DashboardSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const router = useRouter();
 
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -200,8 +204,18 @@ export function DashboardSidebar() {
       <SidebarContent className="gap-4 px-2 py-4">
         <DashboardNavigation routes={dashboardRoutes} />
       </SidebarContent>
-      <SidebarFooter className="px-2">
+      <SidebarFooter className="flex flex-col gap-2 px-2 pb-3 pt-0">
         <TeamSwitcher teams={teams} />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-100"
+          onClick={() => router.push("/admin/login")}
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          <span>Sign out</span>
+        </Button>
       </SidebarFooter>
     </Sidebar>
   );
