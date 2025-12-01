@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  JudgeCardMatrix,
+  MAX_YELLOW,
+  MAX_RED,
+} from "@/components/judge/card-matrix";
 
 export const metadata: Metadata = {
   title: "Event moderator dashboard – Racewalk Tournament",
@@ -165,10 +170,9 @@ export default async function EventModeratorPage(
                   <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
                     <tr>
                       <th className="px-3 py-2 text-left">Bib</th>
-                      <th className="px-3 py-2 text-left">ชื่อ</th>
-                      <th className="px-3 py-2 text-left">สังกัด</th>
-                      <th className="px-3 py-2 text-center">ใบเหลือง</th>
-                      <th className="px-3 py-2 text-center">ใบแดง</th>
+          <th className="px-3 py-2 text-left">ชื่อ</th>
+          <th className="px-3 py-2 text-left">สังกัด</th>
+          <th className="px-3 py-2 text-center">ใบเหลือง / ใบแดง</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 bg-white">
@@ -184,14 +188,22 @@ export default async function EventModeratorPage(
                           {athlete.affiliation}
                         </td>
                         <td className="px-3 py-2 text-center">
-                          <span className="inline-flex min-w-[2rem] items-center justify-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                            {athlete.yellowCards}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <span className="inline-flex min-w-[2rem] items-center justify-center rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">
-                            {athlete.redCards}
-                          </span>
+                          <div className="inline-flex items-center gap-2">
+                            <JudgeCardMatrix
+                              yellow={athlete.yellowCards}
+                              red={athlete.redCards}
+                            />
+                            <span className="text-[10px] text-slate-500">
+                              <span className="font-medium text-amber-700">
+                                Y{" "}
+                                {Math.min(athlete.yellowCards, MAX_YELLOW)}
+                              </span>
+                              {" / "}
+                              <span className="font-medium text-red-700">
+                                R {Math.min(athlete.redCards, MAX_RED)}
+                              </span>
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     ))}
