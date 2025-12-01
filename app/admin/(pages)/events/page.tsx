@@ -10,6 +10,7 @@ type AdminEvent = {
   location: string;
   distance_km: string;
   status: "draft" | "scheduled" | "ongoing" | "finished";
+  isCurrent?: boolean;
 };
 
 // TODO: เชื่อมต่อกับฐานข้อมูล / API จริงภายหลัง
@@ -20,7 +21,8 @@ const MOCK_EVENTS: AdminEvent[] = [
     date: "2025-03-15",
     location: "สนามกีฬาแห่งชาติ",
     distance_km: "20",
-    status: "scheduled",
+    status: "ongoing",
+    isCurrent: true,
   },
   {
     id: "evt-002",
@@ -85,7 +87,15 @@ export default function EventsPage() {
                   {MOCK_EVENTS.map((event) => (
                     <tr key={event.id} className="hover:bg-slate-50/80">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                        {event.name}
+                        <div className="flex items-center gap-2">
+                          <span>{event.name}</span>
+                          {event.isCurrent && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                              Current event
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {event.date}
@@ -117,6 +127,15 @@ export default function EventsPage() {
                               className="rounded-lg border-slate-200 text-xs"
                             >
                               Report
+                            </Button>
+                          </Link>
+                          <Link href={`/admin/events/${event.id}/moderator`}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-lg border-emerald-200 text-xs text-emerald-700 hover:bg-emerald-50"
+                            >
+                              Moderator
                             </Button>
                           </Link>
                         </div>
