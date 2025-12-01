@@ -17,6 +17,8 @@ type PublicEvent = {
     name: string;
     affiliation: string;
     country: string;
+    yellowCards: number;
+    redCards: number;
     position: number;
     splitTime: string;
     totalTime: string;
@@ -42,6 +44,8 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         name: "Somchai Rakdee",
         affiliation: "ชมรมเดินทนกรุงเทพฯ",
         country: "THA",
+        yellowCards: 1,
+        redCards: 0,
         position: 1,
         splitTime: "02:14",
         totalTime: "00:46:32",
@@ -52,6 +56,8 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         name: "Jane Doe",
         affiliation: "Example Athletic Club",
         country: "USA",
+        yellowCards: 2,
+        redCards: 1,
         position: 2,
         splitTime: "02:18",
         totalTime: "00:46:45",
@@ -62,6 +68,8 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         name: "Chanida Runfast",
         affiliation: "Chiangmai Racewalk Team",
         country: "THA",
+        yellowCards: 3,
+        redCards: 1,
         position: 3,
         splitTime: "02:20",
         totalTime: "00:47:02",
@@ -72,16 +80,20 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         name: "Luis Garcia",
         affiliation: "Madrid Racewalk Club",
         country: "ESP",
+        yellowCards: 1,
+        redCards: 2,
         position: 4,
         splitTime: "02:25",
         totalTime: "00:48:10",
-        status: "OK",
+        status: "DQ",
       },
       {
         bib: "105",
         name: "Mai Tanaka",
         affiliation: "Tokyo Walkers",
         country: "JPN",
+        yellowCards: 0,
+        redCards: 0,
         position: 5,
         splitTime: "02:27",
         totalTime: "00:48:45",
@@ -185,6 +197,9 @@ export default async function EventLivePage(props: EventLivePageProps) {
                       ประเทศ
                     </th>
                     <th className="px-3 py-2 text-left">Lap ล่าสุด</th>
+                    <th className="px-3 py-2 text-left hidden md:table-cell">
+                      ใบเหลือง / ใบแดง
+                    </th>
                     <th className="px-3 py-2 text-left">เวลารวม (Total)</th>
                     <th className="px-3 py-2 text-left hidden md:table-cell">
                       สถานะ
@@ -220,25 +235,37 @@ export default async function EventLivePage(props: EventLivePageProps) {
                       <td className="px-3 py-2 font-mono text-[11px] text-slate-900">
                         {athlete.splitTime}
                       </td>
+                      <td className="hidden px-3 py-2 text-[11px] text-slate-900 md:table-cell">
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
+                            Y {athlete.yellowCards}
+                          </span>
+                          <span className="inline-flex items-center rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 ring-1 ring-red-200">
+                            R {athlete.redCards}
+                          </span>
+                        </span>
+                      </td>
                       <td className="px-3 py-2 font-mono text-[11px] text-slate-900">
                         {athlete.totalTime}
                       </td>
                       <td className="px-3 py-2 hidden md:table-cell">
-                        {athlete.status === "OK" && (
+                        {athlete.redCards >= 2 ? (
+                          <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-700 ring-1 ring-red-200">
+                            หมดสิทธิ์แข่งขัน
+                          </span>
+                        ) : athlete.status === "OK" ? (
                           <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
                             OK
                           </span>
-                        )}
-                        {athlete.status === "DQ" && (
+                        ) : athlete.status === "DQ" ? (
                           <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-700 ring-1 ring-red-200">
                             DQ
                           </span>
-                        )}
-                        {athlete.status === "DNF" && (
+                        ) : athlete.status === "DNF" ? (
                           <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
                             DNF
                           </span>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
                   ))}
