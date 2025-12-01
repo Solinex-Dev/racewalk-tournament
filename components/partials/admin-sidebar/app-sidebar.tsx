@@ -17,6 +17,7 @@ import {
   UserCog,
   Medal,
   Settings,
+  Building2,
 } from "lucide-react";
 import { Logo } from "@/components/partials/admin-sidebar/logo";
 import type { Route } from "./nav-main";
@@ -124,6 +125,24 @@ const dashboardRoutes: Route[] = [
         title: "New athlete",
         link: "/admin/athletes/new",
         icon: <Medal className="size-4" />,
+      },
+    ],
+  },
+  {
+    id: "affiliations",
+    title: "Affiliations",
+    icon: <Building2 className="size-4" />,
+    link: "/admin/affiliations",
+    subs: [
+      {
+        title: "All affiliations",
+        link: "/admin/affiliations",
+        icon: <Building2 className="size-4" />,
+      },
+      {
+        title: "New affiliation",
+        link: "/admin/affiliations/new",
+        icon: <Building2 className="size-4" />,
       },
     ],
   },
