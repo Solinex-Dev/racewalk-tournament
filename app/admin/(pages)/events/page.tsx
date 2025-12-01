@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ArrowUpRight } from "lucide-react";
 
 type AdminEvent = {
   id: string;
@@ -111,6 +112,18 @@ export default function EventsPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2">
+                        {event.isCurrent && (
+                            <Link href={`/events/${event.id}`} target="_blank">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-lg border-emerald-300 bg-emerald-500/10 text-xs font-medium text-emerald-700 hover:bg-emerald-500/20"
+                              >
+                                <span>Open event page</span>
+                                <ArrowUpRight className="ml-1 h-3 w-3" />
+                              </Button>
+                            </Link>
+                          )}
                           <Link href={`/admin/events/${event.id}`}>
                             <Button
                               variant="outline"
@@ -138,6 +151,7 @@ export default function EventsPage() {
                               Moderator
                             </Button>
                           </Link>
+                          
                         </div>
                       </td>
                     </tr>
