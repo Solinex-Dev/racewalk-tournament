@@ -1,7 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AdminForm } from "@/components/admins/admin-form";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "แก้ไข Admin – Racewalk Tournament",
+  description:
+    "หน้าแก้ไขข้อมูลผู้ดูแลระบบของ Racewalk Tournament สำหรับอัปเดตสิทธิ์และข้อมูลติดต่อของ Admin.",
+};
 
 const MOCK_ADMIN_BY_ID = {
   "adm-001": {

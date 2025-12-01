@@ -1,3 +1,11 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Admin overview – Racewalk Tournament",
+  description:
+    "หน้าแดชบอร์ดภาพรวมสำหรับผู้ดูแลระบบ Racewalk Tournament แสดงสถานะ Event, กรรมการ และนักกีฬา.",
+};
+
 export default function AdminDashboardPage() {
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -30,6 +31,12 @@ const MOCK_ATHLETES: Athlete[] = [
     note: "",
   },
 ];
+
+export const metadata: Metadata = {
+  title: "จัดการนักกีฬา (Athletes) – Racewalk Tournament",
+  description:
+    "หน้ารายชื่อนักกีฬาทั้งหมดที่ลงทะเบียนในระบบการแข่งขันเดินทน Racewalk Tournament.",
+};
 
 export default function AthletesPage() {
   return (

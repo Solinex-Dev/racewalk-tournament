@@ -1,5 +1,6 @@
 "use client";
 
+import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,12 @@ const Logo = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
     </g>
   </svg>
 );
+
+export const metadata: Metadata = {
+  title: "Admin login – Racewalk Tournament",
+  description:
+    "หน้าเข้าสู่ระบบผู้ดูแลสำหรับเข้าแดชบอร์ดจัดการการแข่งขันเดินทนบน Racewalk Tournament.",
+};
 
 export default function Login() {
   const router = useRouter();

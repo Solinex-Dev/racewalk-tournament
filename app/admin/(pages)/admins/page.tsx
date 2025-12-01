@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -34,6 +35,12 @@ const MOCK_ADMINS: Admin[] = [
     status: "inactive",
   },
 ];
+
+export const metadata: Metadata = {
+  title: "จัดการผู้ดูแลระบบ (Admins) – Racewalk Tournament",
+  description:
+    "หน้ารายการผู้ดูแลระบบทั้งหมดของ Racewalk Tournament พร้อมลิงก์ดูรายละเอียดและสร้าง Admin ใหม่.",
+};
 
 export default function AdminsPage() {
   return (

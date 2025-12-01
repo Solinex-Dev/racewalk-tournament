@@ -1,6 +1,13 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { AdminForm } from "@/components/admins/admin-form";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "สร้าง Admin ใหม่ – Racewalk Tournament",
+  description:
+    "ฟอร์มสร้างผู้ดูแลระบบใหม่สำหรับจัดการ Event, Judges และ Athletes ใน Racewalk Tournament.",
+};
 
 export default function NewAdminPage() {
   return (

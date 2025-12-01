@@ -1,7 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AthleteForm } from "@/components/athletes/athlete-form";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "แก้ไขข้อมูลนักกีฬา – Racewalk Tournament",
+  description:
+    "หน้าแก้ไขข้อมูลนักกีฬาที่ลงทะเบียนในระบบ Racewalk Tournament สำหรับอัปเดตสังกัด ประเทศ และหมายเหตุ.",
+};
 
 const MOCK_ATHLETE_BY_ID = {
   "ath-001": {

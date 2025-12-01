@@ -1,7 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AffiliationForm } from "@/components/affiliations/affiliation-form";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "แก้ไขสังกัด / สโมสร – Racewalk Tournament",
+  description:
+    "หน้าแก้ไขข้อมูลสังกัด / สโมสร เช่น ชื่อสังกัด ผู้ดูแล วันที่เข้าร่วม และหมายเหตุ สำหรับใช้ร่วมกับข้อมูลนักกีฬา.",
+};
 
 const MOCK_AFFILIATION_BY_ID = {
   "aff-001": {

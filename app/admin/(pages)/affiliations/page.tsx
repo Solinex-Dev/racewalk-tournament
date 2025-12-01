@@ -28,6 +28,11 @@ const MOCK_AFFILIATIONS: Affiliation[] = [
   },
 ];
 
+export const metadata = {
+  title: "จัดการสังกัด / สโมสร (Affiliations)",
+  description: "รายการสังกัด / สโมสรของนักกีฬา เพื่อใช้เชื่อมโยงกับข้อมูล Athlete",
+};
+
 export default function AffiliationsPage() {
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
