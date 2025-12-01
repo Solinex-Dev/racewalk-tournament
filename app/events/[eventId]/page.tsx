@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import {
+  JudgeCardMatrix,
+  MAX_YELLOW,
+  MAX_RED,
+} from "@/components/judge/card-matrix";
 
 type PublicEvent = {
   id: string;
@@ -56,7 +61,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         name: "Jane Doe",
         affiliation: "Example Athletic Club",
         country: "USA",
-        yellowCards: 2,
+        yellowCards: 3,
         redCards: 1,
         position: 2,
         splitTime: "02:18",
@@ -80,7 +85,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         name: "Luis Garcia",
         affiliation: "Madrid Racewalk Club",
         country: "ESP",
-        yellowCards: 1,
+        yellowCards: 6,
         redCards: 2,
         position: 4,
         splitTime: "02:25",
@@ -236,14 +241,22 @@ export default async function EventLivePage(props: EventLivePageProps) {
                         {athlete.splitTime}
                       </td>
                       <td className="hidden px-3 py-2 text-[11px] text-slate-900 md:table-cell">
-                        <span className="inline-flex items-center gap-1">
-                          <span className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
-                            Y {athlete.yellowCards}
+                        <div className="flex items-center gap-2">
+                          <JudgeCardMatrix
+                            yellow={athlete.yellowCards}
+                            red={athlete.redCards}
+                          />
+                          <span className="text-[10px] text-slate-500">
+                            <span className="font-medium text-amber-700">
+                              Y{" "}
+                              {Math.min(athlete.yellowCards, MAX_YELLOW)}
+                            </span>
+                            {" / "}
+                            <span className="font-medium text-red-700">
+                              R {Math.min(athlete.redCards, MAX_RED)}
+                            </span>
                           </span>
-                          <span className="inline-flex items-center rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 ring-1 ring-red-200">
-                            R {athlete.redCards}
-                          </span>
-                        </span>
+                        </div>
                       </td>
                       <td className="px-3 py-2 font-mono text-[11px] text-slate-900">
                         {athlete.totalTime}

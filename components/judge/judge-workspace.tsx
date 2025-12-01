@@ -2,6 +2,11 @@
 
 import * as React from "react";
 import Link from "next/link";
+import {
+  JudgeCardMatrix,
+  MAX_YELLOW,
+  MAX_RED,
+} from "@/components/judge/card-matrix";
 
 type JudgeWorkspaceProps = {
   eventId: string;
@@ -40,7 +45,7 @@ const INITIAL_ATHLETES: JudgeAthleteRow[] = [
     name: "Jane Doe",
     affiliation: "Example Athletic Club",
     status: "OK",
-    yellow: 2,
+    yellow: 3,
     red: 1,
   },
   {
@@ -56,7 +61,7 @@ const INITIAL_ATHLETES: JudgeAthleteRow[] = [
     name: "Luis Garcia",
     affiliation: "Madrid Racewalk Club",
     status: "DQ",
-    yellow: 1,
+    yellow: 6,
     red: 2,
   },
 ];
@@ -85,16 +90,27 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
     setRows((prev) =>
       prev.map((row) => {
         if (row.bib !== bib) return row;
+
         if (type === "Y") {
-          return { ...row, yellow: row.yellow + 1 };
+          const newYellow = Math.min(row.yellow + 1, MAX_YELLOW);
+          return { ...row, yellow: newYellow };
         }
+
         // type === "R"
-        const newRed = row.red + 1;
+        const newRed = Math.min(row.red + 1, MAX_RED);
+        // ถ้ามีใบแดงอย่างน้อย 1 ใบ ต้องมีใบเหลืองอย่างน้อย 3 ใบต่อใบแดง 1 ใบ
+        const minYellowFromRed = newRed * 3;
+        const newYellow = Math.min(
+          Math.max(row.yellow, minYellowFromRed),
+          MAX_YELLOW,
+        );
+
         let newStatus = row.status;
         if (newRed >= 2) {
           newStatus = "DQ";
         }
-        return { ...row, red: newRed, status: newStatus };
+
+        return { ...row, red: newRed, yellow: newYellow, status: newStatus };
       }),
     );
 
@@ -207,14 +223,21 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                           </span>
                         </td>
                         <td className="hidden px-3 py-2 text-[11px] text-slate-900 md:table-cell">
-                          <span className="inline-flex items-center gap-1">
-                            <span className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
-                              Y {athlete.yellow}
+                          <div className="flex items-center gap-2">
+                            <JudgeCardMatrix
+                              yellow={athlete.yellow}
+                              red={athlete.red}
+                            />
+                            <span className="text-[10px] text-slate-500">
+                              <span className="font-medium text-amber-700">
+                                Y {athlete.yellow}
+                              </span>
+                              {" / "}
+                              <span className="font-medium text-red-700">
+                                R {athlete.red}
+                              </span>
                             </span>
-                            <span className="inline-flex items-center rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 ring-1 ring-red-200">
-                              R {athlete.red}
-                            </span>
-                          </span>
+                          </div>
                         </td>
                         <td className="px-3 py-2 text-center">
                           <button
