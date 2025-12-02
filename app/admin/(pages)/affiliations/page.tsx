@@ -7,6 +7,8 @@ type Affiliation = {
   name: string;
   head_of_affiliation: string;
   join_at: string;
+  country?: string;
+  province?: string;
   note?: string;
 };
 
@@ -17,6 +19,8 @@ const MOCK_AFFILIATIONS: Affiliation[] = [
     name: "ชมรมเดินทนกรุงเทพฯ",
     head_of_affiliation: "นายสมชาย รักดี",
     join_at: "2024-01-15",
+    country: "ประเทศไทย",
+    province: "กรุงเทพมหานคร",
     note: "กลุ่มตัวอย่างสำหรับทดสอบระบบ",
   },
   {
@@ -24,6 +28,8 @@ const MOCK_AFFILIATIONS: Affiliation[] = [
     name: "Example Athletic Club",
     head_of_affiliation: "Jane Manager",
     join_at: "2024-03-01",
+    country: "Thailand",
+    province: "Chiang Mai",
     note: "",
   },
 ];
@@ -61,6 +67,8 @@ export default function AffiliationsPage() {
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs font-medium uppercase text-slate-500">
                   <tr>
                     <th className="px-4 py-3 text-left">ชื่อสังกัด / สโมสร</th>
+                    <th className="px-4 py-3 text-left">ประเทศ</th>
+                    <th className="px-4 py-3 text-left">จังหวัด</th>
                     <th className="px-4 py-3 text-left">ผู้ดูแล / หัวหน้าสังกัด</th>
                     <th className="px-4 py-3 text-left">วันที่เข้าร่วม</th>
                     <th className="px-4 py-3 text-left">หมายเหตุ</th>
@@ -72,6 +80,12 @@ export default function AffiliationsPage() {
                     <tr key={affiliation.id} className="hover:bg-slate-50/80">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
                         {affiliation.name}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        {affiliation.country || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        {affiliation.province || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {affiliation.head_of_affiliation || "-"}

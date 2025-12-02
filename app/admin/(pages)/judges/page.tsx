@@ -9,6 +9,8 @@ type Judge = {
   last_name: string;
   department: string;
   organization: string;
+  country?: string;
+  province?: string;
   status: "active" | "inactive";
   note?: string;
 };
@@ -21,6 +23,8 @@ const MOCK_JUDGES: Judge[] = [
     last_name: "Rakdee",
     department: "Technical Committee",
     organization: "สมาคมกรีฑาแห่งประเทศไทย",
+    country: "ประเทศไทย",
+    province: "กรุงเทพมหานคร",
     status: "active",
     note: "หัวหน้าทีมกรรมการหลัก",
   },
@@ -30,6 +34,8 @@ const MOCK_JUDGES: Judge[] = [
     last_name: "Smith",
     department: "Scoring",
     organization: "Example Athletic Federation",
+    country: "Thailand",
+    province: "Chiang Mai",
     status: "inactive",
     note: "",
   },
@@ -69,6 +75,8 @@ export default function JudgesPage() {
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs font-medium uppercase text-slate-500">
                   <tr>
                     <th className="px-4 py-3 text-left">ชื่อ - นามสกุล</th>
+                    <th className="px-4 py-3 text-left">ประเทศ</th>
+                    <th className="px-4 py-3 text-left">จังหวัด</th>
                     <th className="px-4 py-3 text-left">แผนก / หน่วยงาน</th>
                     <th className="px-4 py-3 text-left">องค์กร / สังกัด</th>
                     <th className="px-4 py-3 text-left">สถานะ</th>
@@ -81,6 +89,12 @@ export default function JudgesPage() {
                     <tr key={judge.id} className="hover:bg-slate-50/80">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
                         {judge.first_name} {judge.last_name}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        {judge.country || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        {judge.province || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {judge.department || "-"}
