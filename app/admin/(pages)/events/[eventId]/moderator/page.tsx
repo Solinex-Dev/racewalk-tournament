@@ -21,6 +21,8 @@ type EventModeratorPageProps = {
   }>;
 };
 
+type EventStatus = "scheduled" | "ongoing" | "finished";
+
 type AthleteSummary = {
   bib: string;
   name: string;
@@ -44,6 +46,27 @@ type ActivityLogItem = {
   role: "judge" | "moderator";
   action: string;
   targetAthlete?: string;
+};
+
+const MOCK_EVENT_STATUS: Record<
+  string,
+  {
+    name: string;
+    status: EventStatus;
+  }
+> = {
+  "evt-001": {
+    name: "Racewalk Championship 2025",
+    status: "ongoing",
+  },
+  "evt-002": {
+    name: "Bangkok City Racewalk",
+    status: "finished",
+  },
+  "evt-003": {
+    name: "Thailand National Race Walk Championship",
+    status: "scheduled",
+  },
 };
 
 // TODO: ภายหลังจะใช้ eventId ไปดึงข้อมูลจริงจากฐานข้อมูล / realtime service
@@ -149,21 +172,49 @@ export default async function EventModeratorPage(
   props: EventModeratorPageProps,
 ) {
   const { eventId } = await props.params;
+  const eventInfo = MOCK_EVENT_STATUS[eventId];
+
+  const statusLabel: Record<EventStatus, string> = {
+    scheduled: "ยังไม่เริ่ม",
+    ongoing: "กำลังแข่งขัน",
+    finished: "จบการแข่งขันแล้ว",
+  };
+
+  const statusClassName: Record<EventStatus, string> = {
+    scheduled: "bg-sky-50 text-sky-700 ring-sky-200",
+    ongoing: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    finished: "bg-slate-100 text-slate-700 ring-slate-200",
+  };
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-              Event moderator dashboard
-            </h1>
-            <p className="mt-1 text-sm text-slate-600">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+                Event moderator dashboard
+              </h1>
+              {eventInfo && (
+                <span
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusClassName[eventInfo.status]}`}
+                >
+                  ● {statusLabel[eventInfo.status]}
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-sm text-slate-600">
               ดูสถานะการแข่งขันแบบ real-time สำหรับ Event:{" "}
               <span className="font-mono text-xs text-slate-700">
                 {eventId}
               </span>
+              {eventInfo?.name ? (
+                <>
+                  {" "}
+                  – <span className="font-medium">{eventInfo.name}</span>
+                </>
+              ) : null}
             </p>
           </div>
 

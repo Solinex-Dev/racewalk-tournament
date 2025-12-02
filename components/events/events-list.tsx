@@ -12,7 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, ChevronLeft, ChevronRight, ArrowUpRight, Calendar } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ArrowUpRight, Calendar, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type AdminEvent = {
   id: string;
@@ -393,18 +399,73 @@ export function EventsList({ events }: EventsListProps) {
                         {STATUS_LABEL[event.status]}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          {/* ปุ่มสำหรับ Event ปัจจุบัน (show prominent) */}
                           {event.isCurrent && (
-                            <Link href={`/events/${event.id}`} target="_blank">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="rounded-lg border-emerald-300 bg-emerald-500/10 text-xs font-medium text-emerald-700 hover:bg-emerald-500/20"
+                            <>
+                              <Link
+                                href={`/events/${event.id}`}
+                                target="_blank"
                               >
-                                <span>เปิดหน้าอีเวนต์</span>
-                                <ArrowUpRight className="ml-1 h-3 w-3" />
-                              </Button>
-                            </Link>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-lg border-emerald-300 bg-emerald-500/5 text-xs font-medium text-emerald-700 hover:bg-emerald-500/15"
+                                >
+                                  <span>เปิดหน้าอีเวนต์</span>
+                                  <ArrowUpRight className="ml-1 h-3 w-3" />
+                                </Button>
+                              </Link>
+                              <Link
+                                href={`/judge/events/${event.id}/join`}
+                                target="_blank"
+                              >
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-lg border-indigo-200 bg-indigo-500/5 text-xs font-medium text-indigo-700 hover:bg-indigo-500/15"
+                                >
+                                  ลิงก์กรรมการ
+                                </Button>
+                              </Link>
+                            </>
+                          )}
+
+                          {/* ปุ่ม 3 จุด สำหรับดู action ย้อนหลัง / เผื่อกรณี Event ที่ไม่ใช่กิจกรรมปัจจุบัน */}
+                          {!event.isCurrent && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 rounded-full border-slate-200 p-0 text-slate-500 hover:text-slate-700"
+                                  aria-label="เมนูเพิ่มเติมของ Event นี้"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44 text-xs">
+                                <DropdownMenuItem asChild>
+                                  <Link
+                                    href={`/events/${event.id}`}
+                                    target="_blank"
+                                    className="flex w-full items-center justify-between"
+                                  >
+                                    <span>เปิดหน้าอีเวนต์</span>
+                                    <ArrowUpRight className="h-3 w-3" />
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link
+                                    href={`/judge/events/${event.id}/join`}
+                                    target="_blank"
+                                    className="flex w-full items-center"
+                                  >
+                                    <span>ลิงก์กรรมการ</span>
+                                  </Link>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           )}
                           <Link href={`/admin/events/${event.id}`}>
                             <Button

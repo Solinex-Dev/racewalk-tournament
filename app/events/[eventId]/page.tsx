@@ -79,7 +79,12 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         country: "THA",
         yellowCards: 4,
         redCards: 0,
-        yellowDetails: [{ symbol: "~" }, { symbol: "~" }, { symbol: ">" }, { symbol: ">" }],
+        yellowDetails: [
+          { symbol: "~" },
+          { symbol: "~" },
+          { symbol: ">" },
+          { symbol: ">" },
+        ],
         position: 3,
         splitTime: "02:20",
         totalTime: "00:47:02",
@@ -125,11 +130,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         country: "GER",
         yellowCards: 3,
         redCards: 1,
-        yellowDetails: [
-          { symbol: ">" },
-          { symbol: "~" },
-          { symbol: "-" },
-        ],
+        yellowDetails: [{ symbol: ">" }, { symbol: "~" }, { symbol: "-" }],
         position: 6,
         splitTime: "02:29",
         totalTime: "00:49:15",
@@ -147,6 +148,77 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         splitTime: "02:31",
         totalTime: "00:49:45",
         status: "OK",
+      },
+    ],
+  },
+  "evt-002": {
+    id: "evt-002",
+    name: "Bangkok City Racewalk",
+    date: "20 มกราคม 2025",
+    location: "Bangkok City Route",
+    distance_km: "10",
+    status: "finished",
+    heat_name: "รุ่นทั่วไป ระยะ 10 กม.",
+    lapCount: 10,
+    currentLap: 10,
+    elapsed: "00:55:10",
+    athletes: [
+      {
+        bib: "201",
+        name: "Nattapong Citywalker",
+        affiliation: "Bangkok Road Runners",
+        country: "THA",
+        yellowCards: 1,
+        redCards: 0,
+        yellowDetails: [{ symbol: ">" }],
+        position: 1,
+        splitTime: "02:30",
+        totalTime: "00:52:40",
+        status: "OK",
+      },
+      {
+        bib: "202",
+        name: "Maria Lopez",
+        affiliation: "Ciudad Deportiva",
+        country: "MEX",
+        yellowCards: 2,
+        redCards: 0,
+        yellowDetails: [{ symbol: "~" }, { symbol: "-" }],
+        position: 2,
+        splitTime: "02:33",
+        totalTime: "00:53:10",
+        status: "OK",
+      },
+      {
+        bib: "203",
+        name: "Kittiya Fastwalk",
+        affiliation: "Bangkok University Team",
+        country: "THA",
+        yellowCards: 3,
+        redCards: 1,
+        yellowDetails: [{ symbol: ">" }, { symbol: ">" }, { symbol: "-" }],
+        position: 3,
+        splitTime: "02:36",
+        totalTime: "00:54:20",
+        status: "OK",
+      },
+      {
+        bib: "204",
+        name: "John Smith",
+        affiliation: "City Athletics Club",
+        country: "GBR",
+        yellowCards: 4,
+        redCards: 2,
+        yellowDetails: [
+          { symbol: "~" },
+          { symbol: "~" },
+          { symbol: "-" },
+          { symbol: ">" },
+        ],
+        position: 15,
+        splitTime: "02:50",
+        totalTime: "00:59:40",
+        status: "DQ",
       },
     ],
   },
@@ -178,6 +250,15 @@ export default async function EventLivePage(props: EventLivePageProps) {
     scheduled: "ยังไม่เริ่ม",
     ongoing: "กำลังแข่งขัน",
     finished: "จบการแข่งขันแล้ว",
+  };
+
+  const statusClassName: Record<PublicEvent["status"], string> = {
+    scheduled:
+      "bg-sky-950 text-sky-300 ring-sky-800",
+    ongoing:
+      "bg-emerald-950 text-emerald-400 ring-emerald-800",
+    finished:
+      "bg-slate-900 text-slate-200 ring-slate-700",
   };
 
   return (
@@ -214,7 +295,9 @@ export default async function EventLivePage(props: EventLivePageProps) {
                 </span>
               </p>
             </div>
-            <span className="inline-flex items-center rounded-full bg-emerald-950 px-3 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-800">
+            <span
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusClassName[event.status]}`}
+            >
               ● {statusLabel[event.status]}
             </span>
           </div>
