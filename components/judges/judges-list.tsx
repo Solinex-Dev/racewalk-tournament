@@ -14,112 +14,108 @@ import {
 } from "@/components/ui/select";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
-type Athlete = {
+type Judge = {
   id: string;
   first_name: string;
   last_name: string;
-  affiliation: string;
-  country: string;
-  province: string;
-  club?: string;
+  department: string;
+  organization: string;
+  country?: string;
+  province?: string;
+  status: "active" | "inactive";
   note?: string;
 };
 
-type AthletesListProps = {
-  athletes: Athlete[];
+type JudgesListProps = {
+  judges: Judge[];
 };
 
 const ITEMS_PER_PAGE = 10;
 
-export function AthletesList({ athletes }: AthletesListProps) {
+export function JudgesList({ judges }: JudgesListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
-  const [affiliationFilter, setAffiliationFilter] = useState<string>("all");
-  const [clubFilter, setClubFilter] = useState<string>("all");
+  const [organizationFilter, setOrganizationFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   // Extract unique values for filters
   const countries = useMemo(() => {
     const uniqueCountries = Array.from(
-      new Set(athletes.map((a) => a.country).filter(Boolean) as string[])
+      new Set(judges.map((j) => j.country).filter(Boolean) as string[])
     ).sort();
     return uniqueCountries;
-  }, [athletes]);
+  }, [judges]);
 
   const provinces = useMemo(() => {
     const uniqueProvinces = Array.from(
-      new Set(athletes.map((a) => a.province).filter(Boolean) as string[])
+      new Set(judges.map((j) => j.province).filter(Boolean) as string[])
     ).sort();
     return uniqueProvinces;
-  }, [athletes]);
+  }, [judges]);
 
-  const affiliations = useMemo(() => {
-    const uniqueAffiliations = Array.from(
-      new Set(athletes.map((a) => a.affiliation).filter(Boolean) as string[])
+  const organizations = useMemo(() => {
+    const uniqueOrganizations = Array.from(
+      new Set(judges.map((j) => j.organization).filter(Boolean) as string[])
     ).sort();
-    return uniqueAffiliations;
-  }, [athletes]);
-
-  const clubs = useMemo(() => {
-    const uniqueClubs = Array.from(
-      new Set(athletes.map((a) => a.club).filter(Boolean) as string[])
-    ).sort();
-    return uniqueClubs;
-  }, [athletes]);
+    return uniqueOrganizations;
+  }, [judges]);
 
   // Filter and search logic
-  const filteredAthletes = useMemo(() => {
-    return athletes.filter((athlete) => {
-      // Search filter (name, affiliation, country, province, club, note)
+  const filteredJudges = useMemo(() => {
+    return judges.filter((judge) => {
+      // Search filter
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
         !searchQuery ||
-        athlete.first_name.toLowerCase().includes(searchLower) ||
-        athlete.last_name.toLowerCase().includes(searchLower) ||
-        athlete.affiliation.toLowerCase().includes(searchLower) ||
-        athlete.country.toLowerCase().includes(searchLower) ||
-        athlete.province.toLowerCase().includes(searchLower) ||
-        athlete.club?.toLowerCase().includes(searchLower) ||
-        athlete.note?.toLowerCase().includes(searchLower);
+        judge.first_name.toLowerCase().includes(searchLower) ||
+        judge.last_name.toLowerCase().includes(searchLower) ||
+        judge.department.toLowerCase().includes(searchLower) ||
+        judge.organization.toLowerCase().includes(searchLower) ||
+        judge.country?.toLowerCase().includes(searchLower) ||
+        judge.province?.toLowerCase().includes(searchLower) ||
+        judge.note?.toLowerCase().includes(searchLower);
 
       // Country filter
       const matchesCountry =
-        countryFilter === "all" || athlete.country === countryFilter;
+        countryFilter === "all" || judge.country === countryFilter;
 
       // Province filter
       const matchesProvince =
-        provinceFilter === "all" || athlete.province === provinceFilter;
+        provinceFilter === "all" || judge.province === provinceFilter;
 
-      // Affiliation filter
-      const matchesAffiliation =
-        affiliationFilter === "all" || athlete.affiliation === affiliationFilter;
+      // Organization filter
+      const matchesOrganization =
+        organizationFilter === "all" ||
+        judge.organization === organizationFilter;
 
-      // Club filter
-      const matchesClub = clubFilter === "all" || athlete.club === clubFilter;
+      // Status filter
+      const matchesStatus =
+        statusFilter === "all" || judge.status === statusFilter;
 
       return (
         matchesSearch &&
         matchesCountry &&
         matchesProvince &&
-        matchesAffiliation &&
-        matchesClub
+        matchesOrganization &&
+        matchesStatus
       );
     });
   }, [
-    athletes,
+    judges,
     searchQuery,
     countryFilter,
     provinceFilter,
-    affiliationFilter,
-    clubFilter,
+    organizationFilter,
+    statusFilter,
   ]);
 
   // Pagination
-  const totalPages = Math.ceil(filteredAthletes.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredJudges.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedAthletes = filteredAthletes.slice(startIndex, endIndex);
+  const paginatedJudges = filteredJudges.slice(startIndex, endIndex);
 
   // Reset to page 1 when filters change
   const handleFilterChange = (
@@ -141,7 +137,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 type="text"
-                placeholder="ค้นหาด้วย ชื่อ, สังกัด, ประเทศ, จังหวัด, สโมสร, หมายเหตุ..."
+                placeholder="ค้นหาด้วย ชื่อ, แผนก, องค์กร, ประเทศ, จังหวัด, หมายเหตุ..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -203,15 +199,15 @@ export function AthletesList({ athletes }: AthletesListProps) {
                 </Select>
               </div>
 
-              {/* Affiliation Filter */}
+              {/* Organization Filter */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-slate-700">
-                  สังกัด
+                  องค์กร / สังกัด
                 </label>
                 <Select
-                  value={affiliationFilter}
+                  value={organizationFilter}
                   onValueChange={(value) =>
-                    handleFilterChange(setAffiliationFilter, value)
+                    handleFilterChange(setOrganizationFilter, value)
                   }
                 >
                   <SelectTrigger>
@@ -219,24 +215,24 @@ export function AthletesList({ athletes }: AthletesListProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">ทั้งหมด</SelectItem>
-                    {affiliations.map((affiliation) => (
-                      <SelectItem key={affiliation} value={affiliation}>
-                        {affiliation}
+                    {organizations.map((organization) => (
+                      <SelectItem key={organization} value={organization}>
+                        {organization}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Club Filter */}
+              {/* Status Filter */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-slate-700">
-                  สโมสร
+                  สถานะ
                 </label>
                 <Select
-                  value={clubFilter}
+                  value={statusFilter}
                   onValueChange={(value) =>
-                    handleFilterChange(setClubFilter, value)
+                    handleFilterChange(setStatusFilter, value)
                   }
                 >
                   <SelectTrigger>
@@ -244,11 +240,8 @@ export function AthletesList({ athletes }: AthletesListProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">ทั้งหมด</SelectItem>
-                    {clubs.map((club) => (
-                      <SelectItem key={club} value={club}>
-                        {club}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="active">ใช้งานอยู่</SelectItem>
+                    <SelectItem value="inactive">ปิดการใช้งาน</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -257,16 +250,16 @@ export function AthletesList({ athletes }: AthletesListProps) {
             {/* Results count */}
             <div className="flex items-center justify-between border-t border-slate-200 pt-3">
               <p className="text-xs text-slate-600">
-                แสดง {paginatedAthletes.length} จาก {filteredAthletes.length}{" "}
+                แสดง {paginatedJudges.length} จาก {filteredJudges.length}{" "}
                 รายการ
-                {filteredAthletes.length !== athletes.length &&
-                  ` (กรองจากทั้งหมด ${athletes.length} รายการ)`}
+                {filteredJudges.length !== judges.length &&
+                  ` (กรองจากทั้งหมด ${judges.length} รายการ)`}
               </p>
               {(searchQuery ||
                 countryFilter !== "all" ||
                 provinceFilter !== "all" ||
-                affiliationFilter !== "all" ||
-                clubFilter !== "all") && (
+                organizationFilter !== "all" ||
+                statusFilter !== "all") && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -274,8 +267,8 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     setSearchQuery("");
                     setCountryFilter("all");
                     setProvinceFilter("all");
-                    setAffiliationFilter("all");
-                    setClubFilter("all");
+                    setOrganizationFilter("all");
+                    setStatusFilter("all");
                     setCurrentPage(1);
                   }}
                   className="h-7 rounded-lg text-xs"
@@ -288,7 +281,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
         </CardContent>
       </Card>
 
-      {/* Athletes Table */}
+      {/* Judges Table */}
       <Card className="overflow-hidden rounded-2xl border-slate-200">
         <CardContent className="p-0">
           <div className="min-w-full overflow-x-auto">
@@ -296,47 +289,61 @@ export function AthletesList({ athletes }: AthletesListProps) {
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-medium uppercase text-slate-500">
                 <tr>
                   <th className="px-4 py-3 text-left">ชื่อ - นามสกุล</th>
-                  <th className="px-4 py-3 text-left">สังกัด</th>
-                  <th className="px-4 py-3 text-left">สโมสร</th>
                   <th className="px-4 py-3 text-left">ประเทศ</th>
                   <th className="px-4 py-3 text-left">จังหวัด</th>
+                  <th className="px-4 py-3 text-left">แผนก / หน่วยงาน</th>
+                  <th className="px-4 py-3 text-left">องค์กร / สังกัด</th>
+                  <th className="px-4 py-3 text-left">สถานะ</th>
                   <th className="px-4 py-3 text-left">หมายเหตุ</th>
                   <th className="px-4 py-3 text-right">การจัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white">
-                {paginatedAthletes.length === 0 ? (
+                {paginatedJudges.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-4 py-8 text-center text-sm text-slate-500"
                     >
-                      ไม่พบข้อมูลนักกีฬาที่ตรงกับเงื่อนไขที่เลือก
+                      ไม่พบข้อมูลกรรมการที่ตรงกับเงื่อนไขที่เลือก
                     </td>
                   </tr>
                 ) : (
-                  paginatedAthletes.map((athlete) => (
-                    <tr key={athlete.id} className="hover:bg-slate-50/80">
+                  paginatedJudges.map((judge) => (
+                    <tr key={judge.id} className="hover:bg-slate-50/80">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                        {athlete.first_name} {athlete.last_name}
+                        {judge.first_name} {judge.last_name}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {athlete.affiliation || "-"}
+                        {judge.country || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {athlete.club || "-"}
+                        {judge.province || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {athlete.country || "-"}
+                        {judge.department || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {athlete.province || "-"}
+                        {judge.organization || "-"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+                            judge.status === "active"
+                              ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                              : "bg-slate-100 text-slate-600 ring-1 ring-slate-200"
+                          }`}
+                        >
+                          {judge.status === "active"
+                            ? "ใช้งานอยู่"
+                            : "ปิดการใช้งาน"}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {athlete.note || "-"}
+                        {judge.note || "-"}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Link href={`/admin/athletes/${athlete.id}`}>
+                        <Link href={`/admin/judges/${judge.id}`}>
                           <Button
                             variant="outline"
                             size="sm"

@@ -14,112 +14,76 @@ import {
 } from "@/components/ui/select";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
-type Athlete = {
+type Affiliation = {
   id: string;
-  first_name: string;
-  last_name: string;
-  affiliation: string;
-  country: string;
-  province: string;
-  club?: string;
+  name: string;
+  head_of_affiliation: string;
+  join_at: string;
+  country?: string;
+  province?: string;
   note?: string;
 };
 
-type AthletesListProps = {
-  athletes: Athlete[];
+type AffiliationsListProps = {
+  affiliations: Affiliation[];
 };
 
 const ITEMS_PER_PAGE = 10;
 
-export function AthletesList({ athletes }: AthletesListProps) {
+export function AffiliationsList({ affiliations }: AffiliationsListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
-  const [affiliationFilter, setAffiliationFilter] = useState<string>("all");
-  const [clubFilter, setClubFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   // Extract unique values for filters
   const countries = useMemo(() => {
     const uniqueCountries = Array.from(
-      new Set(athletes.map((a) => a.country).filter(Boolean) as string[])
+      new Set(affiliations.map((a) => a.country).filter(Boolean) as string[])
     ).sort();
     return uniqueCountries;
-  }, [athletes]);
+  }, [affiliations]);
 
   const provinces = useMemo(() => {
     const uniqueProvinces = Array.from(
-      new Set(athletes.map((a) => a.province).filter(Boolean) as string[])
+      new Set(affiliations.map((a) => a.province).filter(Boolean) as string[])
     ).sort();
     return uniqueProvinces;
-  }, [athletes]);
-
-  const affiliations = useMemo(() => {
-    const uniqueAffiliations = Array.from(
-      new Set(athletes.map((a) => a.affiliation).filter(Boolean) as string[])
-    ).sort();
-    return uniqueAffiliations;
-  }, [athletes]);
-
-  const clubs = useMemo(() => {
-    const uniqueClubs = Array.from(
-      new Set(athletes.map((a) => a.club).filter(Boolean) as string[])
-    ).sort();
-    return uniqueClubs;
-  }, [athletes]);
+  }, [affiliations]);
 
   // Filter and search logic
-  const filteredAthletes = useMemo(() => {
-    return athletes.filter((athlete) => {
-      // Search filter (name, affiliation, country, province, club, note)
+  const filteredAffiliations = useMemo(() => {
+    return affiliations.filter((affiliation) => {
+      // Search filter
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
         !searchQuery ||
-        athlete.first_name.toLowerCase().includes(searchLower) ||
-        athlete.last_name.toLowerCase().includes(searchLower) ||
-        athlete.affiliation.toLowerCase().includes(searchLower) ||
-        athlete.country.toLowerCase().includes(searchLower) ||
-        athlete.province.toLowerCase().includes(searchLower) ||
-        athlete.club?.toLowerCase().includes(searchLower) ||
-        athlete.note?.toLowerCase().includes(searchLower);
+        affiliation.name.toLowerCase().includes(searchLower) ||
+        affiliation.head_of_affiliation.toLowerCase().includes(searchLower) ||
+        affiliation.country?.toLowerCase().includes(searchLower) ||
+        affiliation.province?.toLowerCase().includes(searchLower) ||
+        affiliation.note?.toLowerCase().includes(searchLower);
 
       // Country filter
       const matchesCountry =
-        countryFilter === "all" || athlete.country === countryFilter;
+        countryFilter === "all" || affiliation.country === countryFilter;
 
       // Province filter
       const matchesProvince =
-        provinceFilter === "all" || athlete.province === provinceFilter;
+        provinceFilter === "all" || affiliation.province === provinceFilter;
 
-      // Affiliation filter
-      const matchesAffiliation =
-        affiliationFilter === "all" || athlete.affiliation === affiliationFilter;
-
-      // Club filter
-      const matchesClub = clubFilter === "all" || athlete.club === clubFilter;
-
-      return (
-        matchesSearch &&
-        matchesCountry &&
-        matchesProvince &&
-        matchesAffiliation &&
-        matchesClub
-      );
+      return matchesSearch && matchesCountry && matchesProvince;
     });
-  }, [
-    athletes,
-    searchQuery,
-    countryFilter,
-    provinceFilter,
-    affiliationFilter,
-    clubFilter,
-  ]);
+  }, [affiliations, searchQuery, countryFilter, provinceFilter]);
 
   // Pagination
-  const totalPages = Math.ceil(filteredAthletes.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredAffiliations.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedAthletes = filteredAthletes.slice(startIndex, endIndex);
+  const paginatedAffiliations = filteredAffiliations.slice(
+    startIndex,
+    endIndex
+  );
 
   // Reset to page 1 when filters change
   const handleFilterChange = (
@@ -141,7 +105,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 type="text"
-                placeholder="ค้นหาด้วย ชื่อ, สังกัด, ประเทศ, จังหวัด, สโมสร, หมายเหตุ..."
+                placeholder="ค้นหาด้วย ชื่อสังกัด, ผู้ดูแล, ประเทศ, จังหวัด, หมายเหตุ..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -152,7 +116,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
             </div>
 
             {/* Filters */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2">
               {/* Country Filter */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-slate-700">
@@ -202,71 +166,19 @@ export function AthletesList({ athletes }: AthletesListProps) {
                   </SelectContent>
                 </Select>
               </div>
-
-              {/* Affiliation Filter */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">
-                  สังกัด
-                </label>
-                <Select
-                  value={affiliationFilter}
-                  onValueChange={(value) =>
-                    handleFilterChange(setAffiliationFilter, value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="ทั้งหมด" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">ทั้งหมด</SelectItem>
-                    {affiliations.map((affiliation) => (
-                      <SelectItem key={affiliation} value={affiliation}>
-                        {affiliation}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Club Filter */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">
-                  สโมสร
-                </label>
-                <Select
-                  value={clubFilter}
-                  onValueChange={(value) =>
-                    handleFilterChange(setClubFilter, value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="ทั้งหมด" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">ทั้งหมด</SelectItem>
-                    {clubs.map((club) => (
-                      <SelectItem key={club} value={club}>
-                        {club}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             {/* Results count */}
             <div className="flex items-center justify-between border-t border-slate-200 pt-3">
               <p className="text-xs text-slate-600">
-                แสดง {paginatedAthletes.length} จาก {filteredAthletes.length}{" "}
-                รายการ
-                {filteredAthletes.length !== athletes.length &&
-                  ` (กรองจากทั้งหมด ${athletes.length} รายการ)`}
+                แสดง {paginatedAffiliations.length} จาก{" "}
+                {filteredAffiliations.length} รายการ
+                {filteredAffiliations.length !== affiliations.length &&
+                  ` (กรองจากทั้งหมด ${affiliations.length} รายการ)`}
               </p>
               {(searchQuery ||
                 countryFilter !== "all" ||
-                provinceFilter !== "all" ||
-                affiliationFilter !== "all" ||
-                clubFilter !== "all") && (
+                provinceFilter !== "all") && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -274,8 +186,6 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     setSearchQuery("");
                     setCountryFilter("all");
                     setProvinceFilter("all");
-                    setAffiliationFilter("all");
-                    setClubFilter("all");
                     setCurrentPage(1);
                   }}
                   className="h-7 rounded-lg text-xs"
@@ -288,55 +198,55 @@ export function AthletesList({ athletes }: AthletesListProps) {
         </CardContent>
       </Card>
 
-      {/* Athletes Table */}
+      {/* Affiliations Table */}
       <Card className="overflow-hidden rounded-2xl border-slate-200">
         <CardContent className="p-0">
           <div className="min-w-full overflow-x-auto">
             <table className="min-w-full border-collapse text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-medium uppercase text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 text-left">ชื่อ - นามสกุล</th>
-                  <th className="px-4 py-3 text-left">สังกัด</th>
-                  <th className="px-4 py-3 text-left">สโมสร</th>
+                  <th className="px-4 py-3 text-left">ชื่อสังกัด / สโมสร</th>
                   <th className="px-4 py-3 text-left">ประเทศ</th>
                   <th className="px-4 py-3 text-left">จังหวัด</th>
+                  <th className="px-4 py-3 text-left">ผู้ดูแล / หัวหน้าสังกัด</th>
+                  <th className="px-4 py-3 text-left">วันที่เข้าร่วม</th>
                   <th className="px-4 py-3 text-left">หมายเหตุ</th>
                   <th className="px-4 py-3 text-right">การจัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white">
-                {paginatedAthletes.length === 0 ? (
+                {paginatedAffiliations.length === 0 ? (
                   <tr>
                     <td
                       colSpan={7}
                       className="px-4 py-8 text-center text-sm text-slate-500"
                     >
-                      ไม่พบข้อมูลนักกีฬาที่ตรงกับเงื่อนไขที่เลือก
+                      ไม่พบข้อมูลสังกัดที่ตรงกับเงื่อนไขที่เลือก
                     </td>
                   </tr>
                 ) : (
-                  paginatedAthletes.map((athlete) => (
-                    <tr key={athlete.id} className="hover:bg-slate-50/80">
+                  paginatedAffiliations.map((affiliation) => (
+                    <tr key={affiliation.id} className="hover:bg-slate-50/80">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                        {athlete.first_name} {athlete.last_name}
+                        {affiliation.name}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {athlete.affiliation || "-"}
+                        {affiliation.country || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {athlete.club || "-"}
+                        {affiliation.province || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {athlete.country || "-"}
+                        {affiliation.head_of_affiliation || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {athlete.province || "-"}
+                        {affiliation.join_at || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {athlete.note || "-"}
+                        {affiliation.note || "-"}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Link href={`/admin/athletes/${athlete.id}`}>
+                        <Link href={`/admin/affiliations/${affiliation.id}`}>
                           <Button
                             variant="outline"
                             size="sm"

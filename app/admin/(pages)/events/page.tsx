@@ -1,8 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { ArrowUpRight } from "lucide-react";
+import { EventsList } from "@/components/events/events-list";
 
 type AdminEvent = {
   id: string;
@@ -33,19 +32,172 @@ const MOCK_EVENTS: AdminEvent[] = [
     distance_km: "10",
     status: "finished",
   },
+  {
+    id: "evt-003",
+    name: "Thailand National Race Walk Championship",
+    date: "2025-05-20",
+    location: "สนามกีฬาแห่งชาติ",
+    distance_km: "20",
+    status: "scheduled",
+  },
+  {
+    id: "evt-004",
+    name: "Chiang Mai Race Walk Open",
+    date: "2025-06-10",
+    location: "Chiang Mai Sports Complex",
+    distance_km: "10",
+    status: "scheduled",
+  },
+  {
+    id: "evt-005",
+    name: "Phuket Beach Race Walk",
+    date: "2025-07-15",
+    location: "Patong Beach",
+    distance_km: "5",
+    status: "scheduled",
+  },
+  {
+    id: "evt-006",
+    name: "Bangkok Marathon Race Walk",
+    date: "2024-12-10",
+    location: "Bangkok City Center",
+    distance_km: "20",
+    status: "finished",
+  },
+  {
+    id: "evt-007",
+    name: "New Year Race Walk 2025",
+    date: "2025-01-01",
+    location: "สนามหลวง",
+    distance_km: "10",
+    status: "finished",
+  },
+  {
+    id: "evt-008",
+    name: "Southeast Asian Race Walk Meet",
+    date: "2025-08-20",
+    location: "สนามกีฬาแห่งชาติ",
+    distance_km: "20",
+    status: "scheduled",
+  },
+  {
+    id: "evt-009",
+    name: "Youth Race Walk Challenge",
+    date: "2025-04-05",
+    location: "Bangkok University Stadium",
+    distance_km: "5",
+    status: "scheduled",
+  },
+  {
+    id: "evt-010",
+    name: "Loy Krathong Race Walk Festival",
+    date: "2024-11-15",
+    location: "Lumphini Park",
+    distance_km: "10",
+    status: "finished",
+  },
+  {
+    id: "evt-011",
+    name: "Asian Junior Race Walk Championship",
+    date: "2025-09-10",
+    location: "Rajamangala Stadium",
+    distance_km: "10",
+    status: "scheduled",
+  },
+  {
+    id: "evt-012",
+    name: "Charity Race Walk for Education",
+    date: "2025-10-05",
+    location: "Bangkok City Route",
+    distance_km: "5",
+    status: "scheduled",
+  },
+  {
+    id: "evt-013",
+    name: "Winter Race Walk Series - Round 1",
+    date: "2024-12-20",
+    location: "สนามกีฬาแห่งชาติ",
+    distance_km: "20",
+    status: "finished",
+  },
+  {
+    id: "evt-014",
+    name: "Spring Race Walk Open",
+    date: "2025-03-25",
+    location: "Chiang Mai",
+    distance_km: "10",
+    status: "draft",
+  },
+  {
+    id: "evt-015",
+    name: "Summer Race Walk Challenge",
+    date: "2025-07-30",
+    location: "Pattaya Beach",
+    distance_km: "10",
+    status: "scheduled",
+  },
+  {
+    id: "evt-016",
+    name: "Masters Race Walk Championship",
+    date: "2025-11-15",
+    location: "สนามกีฬาแห่งชาติ",
+    distance_km: "10",
+    status: "scheduled",
+  },
+  {
+    id: "evt-017",
+    name: "University Race Walk Cup",
+    date: "2025-02-28",
+    location: "Thammasat University",
+    distance_km: "5",
+    status: "finished",
+  },
+  {
+    id: "evt-018",
+    name: "Night Race Walk Bangkok",
+    date: "2025-12-31",
+    location: "Bangkok City Center",
+    distance_km: "10",
+    status: "scheduled",
+  },
+  {
+    id: "evt-019",
+    name: "International Race Walk Invitational",
+    date: "2025-10-20",
+    location: "สนามกีฬาแห่งชาติ",
+    distance_km: "20",
+    status: "scheduled",
+  },
+  {
+    id: "evt-020",
+    name: "Songkran Race Walk Festival",
+    date: "2025-04-13",
+    location: "Khao San Road",
+    distance_km: "5",
+    status: "scheduled",
+  },
+  {
+    id: "evt-021",
+    name: "Corporate Race Walk Challenge",
+    date: "2025-05-15",
+    location: "Lumphini Park",
+    distance_km: "5",
+    status: "scheduled",
+  },
+  {
+    id: "evt-022",
+    name: "Race Walk Training Camp Event",
+    date: "2025-06-01",
+    location: "Hua Hin Sports Center",
+    distance_km: "10",
+    status: "draft",
+  },
 ];
 
 export const metadata: Metadata = {
   title: "จัดการกิจกรรม – การแข่งขันเดินทน",
   description:
     "หน้ารายการกิจกรรมทั้งหมดในระบบจัดการการแข่งขันเดินทน",
-};
-
-const STATUS_LABEL: Record<AdminEvent["status"], string> = {
-  draft: "ร่าง",
-  scheduled: "กำหนดการ",
-  ongoing: "กำลังดำเนินการ",
-  finished: "เสร็จสิ้น",
 };
 
 export default function EventsPage() {
@@ -70,102 +222,7 @@ export default function EventsPage() {
           </Link>
         </div>
 
-        <Card className="overflow-hidden rounded-2xl border-slate-200">
-          <CardContent className="p-0">
-            <div className="min-w-full overflow-x-auto">
-              <table className="min-w-full border-collapse text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-medium uppercase text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3 text-left">ชื่อ Event</th>
-                    <th className="px-4 py-3 text-left">วันที่แข่งขัน</th>
-                    <th className="px-4 py-3 text-left">สถานที่</th>
-                    <th className="px-4 py-3 text-left">ระยะทาง (กม.)</th>
-                    <th className="px-4 py-3 text-left">สถานะ</th>
-                    <th className="px-4 py-3 text-right">การจัดการ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
-                  {MOCK_EVENTS.map((event) => (
-                    <tr key={event.id} className="hover:bg-slate-50/80">
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                        <div className="flex items-center gap-2">
-                          <span>{event.name}</span>
-                          {event.isCurrent && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              กิจกรรมปัจจุบัน
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
-                        {event.date}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
-                        {event.location || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
-                        {event.distance_km || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
-                        {STATUS_LABEL[event.status]}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
-                        {event.isCurrent && (
-                            <Link href={`/events/${event.id}`} target="_blank">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="rounded-lg border-emerald-300 bg-emerald-500/10 text-xs font-medium text-emerald-700 hover:bg-emerald-500/20"
-                              >
-                                <span>เปิดหน้าอีเวนต์</span>
-                                <ArrowUpRight className="ml-1 h-3 w-3" />
-                              </Button>
-                            </Link>
-                          )}
-                          <Link href={`/admin/events/${event.id}`}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="rounded-lg border-slate-200 text-xs"
-                            >
-                              รายละเอียด / แก้ไข
-                            </Button>
-                          </Link>
-                          <Link href={`/admin/events/${event.id}/report`}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="rounded-lg border-slate-200 text-xs"
-                            >
-                              รายงาน
-                            </Button>
-                          </Link>
-                          <Link href={`/admin/events/${event.id}/moderator`}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="rounded-lg border-emerald-200 text-xs text-emerald-700 hover:bg-emerald-50"
-                            >
-                              Moderator
-                            </Button>
-                          </Link>
-                          
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <p className="border-t border-slate-200 px-4 py-3 text-[11px] text-slate-500">
-              * ข้อมูลในตารางนี้เป็นตัวอย่างเบื้องต้น – จะเชื่อมต่อฐานข้อมูล
-              และเพิ่มระบบค้นหา/กรอง Event ภายหลัง
-            </p>
-          </CardContent>
-        </Card>
+        <EventsList events={MOCK_EVENTS} />
       </div>
     </main>
   );

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { AffiliationsList } from "@/components/affiliations/affiliations-list";
 
 type Affiliation = {
   id: string;
@@ -14,6 +14,7 @@ type Affiliation = {
 
 // TODO: เชื่อมต่อกับฐานข้อมูล / API จริงภายหลัง
 const MOCK_AFFILIATIONS: Affiliation[] = [
+  // Thailand - Bangkok
   {
     id: "aff-001",
     name: "ชมรมเดินทนกรุงเทพฯ",
@@ -25,12 +26,309 @@ const MOCK_AFFILIATIONS: Affiliation[] = [
   },
   {
     id: "aff-002",
-    name: "Example Athletic Club",
-    head_of_affiliation: "Jane Manager",
-    join_at: "2024-03-01",
-    country: "Thailand",
-    province: "Chiang Mai",
+    name: "สมาคมกรีฑาแห่งประเทศไทย",
+    head_of_affiliation: "นายประสิทธิ์ วิริยะกุล",
+    join_at: "2023-05-10",
+    country: "ประเทศไทย",
+    province: "กรุงเทพมหานคร",
+    note: "สมาคมหลัก",
+  },
+  {
+    id: "aff-003",
+    name: "Bangkok Race Walk Club",
+    head_of_affiliation: "นายอนนท์ วัฒนา",
+    join_at: "2024-02-20",
+    country: "ประเทศไทย",
+    province: "กรุงเทพมหานคร",
     note: "",
+  },
+  // Thailand - Other Provinces
+  {
+    id: "aff-004",
+    name: "สมาคมกรีฑาภาคเหนือ",
+    head_of_affiliation: "นายนัทพงษ์ สุวรรณรัตน์",
+    join_at: "2023-08-15",
+    country: "ประเทศไทย",
+    province: "เชียงใหม่",
+    note: "",
+  },
+  {
+    id: "aff-005",
+    name: "Chiang Mai Athletics",
+    head_of_affiliation: "นางวราพร แก้วมูล",
+    join_at: "2024-03-05",
+    country: "ประเทศไทย",
+    province: "เชียงใหม่",
+    note: "ชมรมนักกีฬาเชียงใหม่",
+  },
+  {
+    id: "aff-006",
+    name: "Northern Walk Club",
+    head_of_affiliation: "นายกิตติพงษ์ น้ำสิงห์",
+    join_at: "2024-01-10",
+    country: "ประเทศไทย",
+    province: "เชียงใหม่",
+    note: "",
+  },
+  {
+    id: "aff-007",
+    name: "สมาคมกรีฑาภาคใต้",
+    head_of_affiliation: "นายสมศักดิ์ ทองดี",
+    join_at: "2023-11-20",
+    country: "ประเทศไทย",
+    province: "ภูเก็ต",
+    note: "",
+  },
+  {
+    id: "aff-008",
+    name: "Phuket Race Walk",
+    head_of_affiliation: "นางวรรณี ศิริพร",
+    join_at: "2024-04-12",
+    country: "ประเทศไทย",
+    province: "ภูเก็ต",
+    note: "",
+  },
+  {
+    id: "aff-009",
+    name: "สมาคมกรีฑาภาคอีสาน",
+    head_of_affiliation: "นายปรีชา แสงสุข",
+    join_at: "2023-09-08",
+    country: "ประเทศไทย",
+    province: "ขอนแก่น",
+    note: "สมาคมภาคอีสาน",
+  },
+  {
+    id: "aff-010",
+    name: "Khon Kaen Athletics",
+    head_of_affiliation: "นางศิริพร บุญศรี",
+    join_at: "2024-02-15",
+    country: "ประเทศไทย",
+    province: "ขอนแก่น",
+    note: "",
+  },
+  // USA
+  {
+    id: "aff-011",
+    name: "USA Track & Field",
+    head_of_affiliation: "Michael Anderson",
+    join_at: "2023-01-05",
+    country: "USA",
+    province: "California",
+    note: "National governing body",
+  },
+  {
+    id: "aff-012",
+    name: "Los Angeles Race Walkers",
+    head_of_affiliation: "Jane Doe",
+    join_at: "2023-06-15",
+    country: "USA",
+    province: "California",
+    note: "",
+  },
+  {
+    id: "aff-013",
+    name: "San Francisco Athletics",
+    head_of_affiliation: "Robert Martinez",
+    join_at: "2023-09-22",
+    country: "USA",
+    province: "California",
+    note: "",
+  },
+  {
+    id: "aff-014",
+    name: "New York Race Walk",
+    head_of_affiliation: "Emily Davis",
+    join_at: "2023-07-10",
+    country: "USA",
+    province: "New York",
+    note: "Established 1985",
+  },
+  {
+    id: "aff-015",
+    name: "Brooklyn Athletics",
+    head_of_affiliation: "Sarah Williams",
+    join_at: "2024-01-20",
+    country: "USA",
+    province: "New York",
+    note: "",
+  },
+  // Japan
+  {
+    id: "aff-016",
+    name: "Japan Association of Athletics Federations",
+    head_of_affiliation: "Takeshi Yamamoto",
+    join_at: "2023-02-14",
+    country: "Japan",
+    province: "Tokyo",
+    note: "日本陸上競技連盟",
+  },
+  {
+    id: "aff-017",
+    name: "Tokyo Race Walk Club",
+    head_of_affiliation: "Yuki Tanaka",
+    join_at: "2023-10-05",
+    country: "Japan",
+    province: "Tokyo",
+    note: "",
+  },
+  {
+    id: "aff-018",
+    name: "Shibuya Athletics",
+    head_of_affiliation: "Sakura Nakamura",
+    join_at: "2024-03-18",
+    country: "Japan",
+    province: "Tokyo",
+    note: "",
+  },
+  {
+    id: "aff-019",
+    name: "Osaka Walk Club",
+    head_of_affiliation: "Kenji Watanabe",
+    join_at: "2023-12-01",
+    country: "Japan",
+    province: "Osaka",
+    note: "",
+  },
+  // China
+  {
+    id: "aff-020",
+    name: "Chinese Athletic Association",
+    head_of_affiliation: "Wei Zhang",
+    join_at: "2023-03-20",
+    country: "China",
+    province: "Beijing",
+    note: "中国田径协会",
+  },
+  {
+    id: "aff-021",
+    name: "Beijing Race Walk Team",
+    head_of_affiliation: "Li Wang",
+    join_at: "2023-08-25",
+    country: "China",
+    province: "Beijing",
+    note: "National training center",
+  },
+  {
+    id: "aff-022",
+    name: "Shanghai Walk Club",
+    head_of_affiliation: "Ming Yang",
+    join_at: "2024-01-08",
+    country: "China",
+    province: "Shanghai",
+    note: "",
+  },
+  // South Korea
+  {
+    id: "aff-023",
+    name: "Korea Association of Athletics Federations",
+    head_of_affiliation: "Sung-ho Park",
+    join_at: "2023-04-12",
+    country: "South Korea",
+    province: "Seoul",
+    note: "대한육상연맹",
+  },
+  {
+    id: "aff-024",
+    name: "Seoul Race Walk",
+    head_of_affiliation: "Min-ji Kim",
+    join_at: "2023-11-15",
+    country: "South Korea",
+    province: "Seoul",
+    note: "",
+  },
+  // Singapore & Malaysia
+  {
+    id: "aff-025",
+    name: "Singapore Athletic Association",
+    head_of_affiliation: "Wei Ling Tan",
+    join_at: "2023-05-20",
+    country: "Singapore",
+    province: "Singapore",
+    note: "",
+  },
+  {
+    id: "aff-026",
+    name: "Malaysian Athletics Federation",
+    head_of_affiliation: "Aziz Rahman",
+    join_at: "2023-06-30",
+    country: "Malaysia",
+    province: "Kuala Lumpur",
+    note: "",
+  },
+  // Vietnam & Philippines
+  {
+    id: "aff-027",
+    name: "Vietnam Athletics Federation",
+    head_of_affiliation: "Nguyen Van An",
+    join_at: "2023-07-18",
+    country: "Vietnam",
+    province: "Hanoi",
+    note: "",
+  },
+  {
+    id: "aff-028",
+    name: "Philippine Athletics Track and Field Association",
+    head_of_affiliation: "Jose Santos",
+    join_at: "2023-09-05",
+    country: "Philippines",
+    province: "Manila",
+    note: "PATAFA",
+  },
+  // Australia
+  {
+    id: "aff-029",
+    name: "Athletics Australia",
+    head_of_affiliation: "James Smith",
+    join_at: "2023-02-28",
+    country: "Australia",
+    province: "New South Wales",
+    note: "National body",
+  },
+  {
+    id: "aff-030",
+    name: "Sydney Striders",
+    head_of_affiliation: "Emma Wilson",
+    join_at: "2024-03-10",
+    country: "Australia",
+    province: "New South Wales",
+    note: "",
+  },
+  {
+    id: "aff-031",
+    name: "Melbourne Walk Club",
+    head_of_affiliation: "Oliver Taylor",
+    join_at: "2023-10-22",
+    country: "Australia",
+    province: "Victoria",
+    note: "",
+  },
+  // Europe
+  {
+    id: "aff-032",
+    name: "UK Athletics",
+    head_of_affiliation: "Tom Walker",
+    join_at: "2023-01-15",
+    country: "United Kingdom",
+    province: "London",
+    note: "",
+  },
+  {
+    id: "aff-033",
+    name: "German Athletics Association",
+    head_of_affiliation: "Hans Mueller",
+    join_at: "2023-04-20",
+    country: "Germany",
+    province: "Berlin",
+    note: "Deutscher Leichtathletik-Verband",
+  },
+  {
+    id: "aff-034",
+    name: "French Athletics Federation",
+    head_of_affiliation: "Pierre Dubois",
+    join_at: "2023-05-15",
+    country: "France",
+    province: "Île-de-France",
+    note: "Fédération française d'athlétisme",
   },
 ];
 
@@ -60,65 +358,7 @@ export default function AffiliationsPage() {
           </Link>
         </div>
 
-        <Card className="overflow-hidden rounded-2xl border-slate-200">
-          <CardContent className="p-0">
-            <div className="min-w-full overflow-x-auto">
-              <table className="min-w-full border-collapse text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-medium uppercase text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3 text-left">ชื่อสังกัด / สโมสร</th>
-                    <th className="px-4 py-3 text-left">ประเทศ</th>
-                    <th className="px-4 py-3 text-left">จังหวัด</th>
-                    <th className="px-4 py-3 text-left">ผู้ดูแล / หัวหน้าสังกัด</th>
-                    <th className="px-4 py-3 text-left">วันที่เข้าร่วม</th>
-                    <th className="px-4 py-3 text-left">หมายเหตุ</th>
-                    <th className="px-4 py-3 text-right">การจัดการ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
-                  {MOCK_AFFILIATIONS.map((affiliation) => (
-                    <tr key={affiliation.id} className="hover:bg-slate-50/80">
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                        {affiliation.name}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
-                        {affiliation.country || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
-                        {affiliation.province || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
-                        {affiliation.head_of_affiliation || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
-                        {affiliation.join_at || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
-                        {affiliation.note || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link href={`/admin/affiliations/${affiliation.id}`}>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-lg border-slate-200 text-xs"
-                          >
-                            ดู / แก้ไข
-                          </Button>
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <p className="border-t border-slate-200 px-4 py-3 text-[11px] text-slate-500">
-              * ข้อมูลในตารางนี้เป็นตัวอย่างเบื้องต้น – จะเชื่อมต่อฐานข้อมูล MySQL
-              ผ่าน Prisma ภายหลัง
-            </p>
-          </CardContent>
-        </Card>
+        <AffiliationsList affiliations={MOCK_AFFILIATIONS} />
       </div>
     </main>
   );
