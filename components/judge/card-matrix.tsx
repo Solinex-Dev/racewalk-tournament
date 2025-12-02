@@ -1,16 +1,25 @@
 export const MAX_YELLOW = 6;
 export const MAX_RED = 2;
 
+export type YellowCardSymbol = "~" | ">" | "-";
+
+export type YellowCardDetail = {
+  symbol: YellowCardSymbol;
+  // "-" หมายถึงช่องที่ถูกบล็อกเพราะได้ใบแดงทันที (3 ช่อง = 1 แดง)
+};
+
 export function JudgeCardMatrix({
   yellow,
   red,
+  yellowDetails,
 }: {
-  yellow: number;
+  yellow: number; // จำนวนใบเหลืองทั้งหมด (รวมช่องที่ถูกบล็อก)
   red: number;
+  yellowDetails?: YellowCardDetail[]; // รายละเอียดของแต่ละใบเหลือง
 }) {
   // Layout:
-  // ( Y ) ( Y ) ( Y ) ( R )
-  // ( Y ) ( Y ) ( Y ) ( R )
+  // Row 0: ( Y ) ( Y ) ( Y ) ( R )
+  // Row 1: ( Y ) ( Y ) ( Y ) ( R )
   const layout: ("Y" | "R")[][] = [
     ["Y", "Y", "Y", "R"],
     ["Y", "Y", "Y", "R"],
@@ -20,7 +29,15 @@ export function JudgeCardMatrix({
   let redIndex = 0;
 
   const safeYellow = Math.min(yellow, MAX_YELLOW);
-  const safeRed = Math.min(red, MAX_RED);
+  
+  // คำนวณจำนวนใบแดงจากใบเหลืองจริง (ไม่นับช่องที่ถูกบล็อก "-")
+  const actualYellowCards = yellowDetails?.filter(d => d.symbol !== "-").length || 0;
+  const calculatedRed = Math.floor(actualYellowCards / 3); // 3 เหลือง = 1 แดง
+  const displayRed = Math.max(red, calculatedRed); // ใช้ค่าที่มากกว่า
+  const safeRed = Math.min(displayRed, MAX_RED);
+
+  // ถ้าไม่มี yellowDetails ให้ใช้ default pattern
+  const defaultSymbols: YellowCardSymbol[] = ["~", ">", "~", ">", "~", ">"];
 
   return (
     <div className="inline-grid grid-cols-4 gap-1 rounded-full bg-slate-50 px-1.5 py-1 ring-1 ring-slate-200">
@@ -30,6 +47,9 @@ export function JudgeCardMatrix({
 
           if (cell === "Y") {
             const isFilled = yellowIndex < safeYellow;
+            const detail = yellowDetails?.[yellowIndex];
+            const symbol = detail?.symbol || defaultSymbols[yellowIndex];
+            const isBlocked = symbol === "-";
             yellowIndex += 1;
 
             return (
@@ -37,11 +57,13 @@ export function JudgeCardMatrix({
                 key={key}
                 className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold ${
                   isFilled
-                    ? "bg-amber-400 text-slate-900"
-                    : "bg-amber-50 text-amber-300 ring-1 ring-amber-100"
+                    ? isBlocked
+                      ? "bg-slate-300 text-slate-600" // ช่องที่ถูกบล็อก
+                      : "bg-amber-400 text-slate-900" // ใบเหลืองปกติ
+                    : "bg-amber-50 text-amber-300 ring-1 ring-amber-100" // ช่องว่าง
                 }`}
               >
-                Y
+                {isFilled ? symbol : ""}
               </span>
             );
           }
@@ -52,13 +74,12 @@ export function JudgeCardMatrix({
           return (
             <span
               key={key}
-              className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold ${
+              className={`flex h-4 w-4 items-center justify-center rounded-full ${
                 isFilled
-                  ? "bg-red-400 text-slate-900"
-                  : "bg-red-50 text-red-300 ring-1 ring-red-100"
+                  ? "bg-red-500"
+                  : "bg-red-50 ring-1 ring-red-100"
               }`}
             >
-              R
             </span>
           );
         }),

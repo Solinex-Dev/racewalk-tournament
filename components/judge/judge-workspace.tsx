@@ -6,6 +6,7 @@ import {
   JudgeCardMatrix,
   MAX_YELLOW,
   MAX_RED,
+  type YellowCardDetail,
 } from "@/components/judge/card-matrix";
 
 type JudgeWorkspaceProps = {
@@ -29,6 +30,7 @@ type JudgeAthleteRow = {
   status: "OK" | "DQ" | "DNF";
   yellow: number;
   red: number;
+  yellowDetails?: YellowCardDetail[]; // รายละเอียดของแต่ละใบเหลือง
 };
 
 const INITIAL_ATHLETES: JudgeAthleteRow[] = [
@@ -39,6 +41,7 @@ const INITIAL_ATHLETES: JudgeAthleteRow[] = [
     status: "OK",
     yellow: 1,
     red: 0,
+    yellowDetails: [{ symbol: "~" }],
   },
   {
     bib: "102",
@@ -47,6 +50,7 @@ const INITIAL_ATHLETES: JudgeAthleteRow[] = [
     status: "OK",
     yellow: 3,
     red: 1,
+    yellowDetails: [{ symbol: "~" }, { symbol: "-" }, { symbol: "-" }],
   },
   {
     bib: "103",
@@ -55,6 +59,7 @@ const INITIAL_ATHLETES: JudgeAthleteRow[] = [
     status: "OK",
     yellow: 0,
     red: 0,
+    yellowDetails: [],
   },
   {
     bib: "104",
@@ -63,58 +68,119 @@ const INITIAL_ATHLETES: JudgeAthleteRow[] = [
     status: "DQ",
     yellow: 6,
     red: 2,
+    yellowDetails: [
+      { symbol: ">" },
+      { symbol: "-" },
+      { symbol: "-" },
+      { symbol: "~" },
+      { symbol: "-" },
+      { symbol: "-" },
+    ],
   },
 ];
 
 type PendingAction = {
   bib: string;
   type: "Y" | "R";
+  yellowSymbol?: "~" | ">"; // เพิ่ม field สำหรับเก็บสัญลักษณ์ใบเหลือง
 } | null;
 
 export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
   const [rows, setRows] = React.useState<JudgeAthleteRow[]>(INITIAL_ATHLETES);
   const [pendingAction, setPendingAction] = React.useState<PendingAction>(null);
+  const [selectedYellowSymbol, setSelectedYellowSymbol] = React.useState<"~" | ">" | null>(null);
 
   const openConfirm = (bib: string, type: "Y" | "R") => {
     setPendingAction({ bib, type });
+    // Reset selected symbol when opening new confirmation
+    if (type === "Y") {
+      setSelectedYellowSymbol(null);
+    }
   };
 
   const closeConfirm = () => {
     setPendingAction(null);
+    setSelectedYellowSymbol(null);
   };
 
   const confirmAction = () => {
     if (!pendingAction) return;
     const { bib, type } = pendingAction;
 
+    // ถ้าเป็นใบเหลืองแต่ยังไม่ได้เลือกสัญลักษณ์ ให้ return
+    if (type === "Y" && !selectedYellowSymbol) {
+      return;
+    }
+
     setRows((prev) =>
       prev.map((row) => {
         if (row.bib !== bib) return row;
 
         if (type === "Y") {
-          const newYellow = Math.min(row.yellow + 1, MAX_YELLOW);
-          return { ...row, yellow: newYellow };
+          // เพิ่มใบเหลือง พร้อมบันทึกสัญลักษณ์
+          const newYellowDetails = [
+            ...(row.yellowDetails || []),
+            { symbol: selectedYellowSymbol! },
+          ];
+          const newYellow = Math.min(newYellowDetails.length, MAX_YELLOW);
+          
+          // คำนวณใบแดงที่ได้จากใบเหลืองครบ 3 (เฉพาะใบที่ไม่ใช่ "-")
+          const actualYellowCards = newYellowDetails.filter(d => d.symbol !== "-").length;
+          const redFromYellow = Math.floor(actualYellowCards / 3);
+          const newRed = Math.max(row.red, redFromYellow); // ใช้ค่าที่มากกว่า
+          
+          let newStatus = row.status;
+          if (newRed >= 2) {
+            newStatus = "DQ";
+          }
+          
+          return { 
+            ...row, 
+            yellow: newYellow, 
+            yellowDetails: newYellowDetails,
+            red: newRed,
+            status: newStatus
+          };
         }
 
-        // type === "R"
-        const newRed = Math.min(row.red + 1, MAX_RED);
-        // ถ้ามีใบแดงอย่างน้อย 1 ใบ ต้องมีใบเหลืองอย่างน้อย 3 ใบต่อใบแดง 1 ใบ
+        // type === "R" - ให้ใบแดงโดยตรงจากกรรมการอาวุโส
+        const currentYellowDetails = row.yellowDetails || [];
+        
+        // คำนวณใบแดงที่มีอยู่แล้ว (จากใบเหลืองครบ 3)
+        const actualYellowCards = currentYellowDetails.filter(d => d.symbol !== "-").length;
+        const redFromYellow = Math.floor(actualYellowCards / 3);
+        
+        // ใบแดงใหม่ = ใบแดงที่มีอยู่ + 1 (ใบแดงที่กรรมการให้โดยตรง)
+        const newRed = Math.min(Math.max(row.red, redFromYellow) + 1, MAX_RED);
+        
+        // คำนวณจำนวนใบเหลืองที่ต้องมี (3 ใบต่อ 1 แดง)
         const minYellowFromRed = newRed * 3;
-        const newYellow = Math.min(
-          Math.max(row.yellow, minYellowFromRed),
-          MAX_YELLOW,
-        );
+        
+        // ถ้าใบเหลืองปัจจุบันน้อยกว่าที่ต้องมี ให้เติม "-" ให้ครบ
+        const newYellowDetails = [...currentYellowDetails];
+        while (newYellowDetails.length < minYellowFromRed) {
+          newYellowDetails.push({ symbol: "-" });
+        }
+        
+        const newYellow = Math.min(newYellowDetails.length, MAX_YELLOW);
 
         let newStatus = row.status;
         if (newRed >= 2) {
           newStatus = "DQ";
         }
 
-        return { ...row, red: newRed, yellow: newYellow, status: newStatus };
+        return { 
+          ...row, 
+          red: newRed, 
+          yellow: newYellow, 
+          yellowDetails: newYellowDetails,
+          status: newStatus 
+        };
       }),
     );
 
     setPendingAction(null);
+    setSelectedYellowSymbol(null);
   };
 
   const pendingRow =
@@ -227,6 +293,7 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                             <JudgeCardMatrix
                               yellow={athlete.yellow}
                               red={athlete.red}
+                              yellowDetails={athlete.yellowDetails}
                             />
                             <span className="text-[10px] text-slate-500">
                               <span className="font-medium text-amber-700">
@@ -321,7 +388,55 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                 </p>
               </div>
 
-              <p className="mt-2 text-[11px] text-slate-600">
+              {/* เลือกสัญลักษณ์ใบเหลือง */}
+              {pendingAction.type === "Y" && (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold text-slate-900">
+                    คุณเห็นการฝ่าฝืนข้อใด?
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-600">
+                    เลือกสัญลักษณ์ที่ตรงกับการฝ่าฝืนที่คุณเห็น
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedYellowSymbol("~")}
+                      className={`flex flex-col items-center justify-center rounded-xl border-2 p-4 transition-all ${
+                        selectedYellowSymbol === "~"
+                          ? "border-amber-500 bg-amber-50 ring-2 ring-amber-200"
+                          : "border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/50"
+                      }`}
+                    >
+                      <span className="text-3xl font-bold text-amber-600">~</span>
+                      <span className="mt-2 text-[11px] font-semibold text-slate-900">
+                        Loss of Contact
+                      </span>
+                      <span className="mt-0.5 text-[10px] text-slate-600">
+                        เท้าไม่ติดพื้น
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedYellowSymbol(">")}
+                      className={`flex flex-col items-center justify-center rounded-xl border-2 p-4 transition-all ${
+                        selectedYellowSymbol === ">"
+                          ? "border-amber-500 bg-amber-50 ring-2 ring-amber-200"
+                          : "border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/50"
+                      }`}
+                    >
+                      <span className="text-3xl font-bold text-amber-600">&gt;</span>
+                      <span className="mt-2 text-[11px] font-semibold text-slate-900">
+                        Bent Knee
+                      </span>
+                      <span className="mt-0.5 text-[10px] text-slate-600">
+                        เข่างอ
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <p className="mt-4 text-[11px] text-slate-600">
                 หมายเหตุ: ตามกติกา 3 เหลือง = 1 แดง และ ใบแดงครบ 2 ใบ
                 นักกีฬาจะหมดสิทธิ์แข่งขัน (logic จริงจะไปคำนวณที่ backend อีกที)
               </p>
@@ -337,7 +452,12 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                 <button
                   type="button"
                   onClick={confirmAction}
-                  className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-slate-50 hover:bg-slate-800"
+                  disabled={pendingAction.type === "Y" && !selectedYellowSymbol}
+                  className={`inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[11px] font-medium text-slate-50 ${
+                    pendingAction.type === "Y" && !selectedYellowSymbol
+                      ? "cursor-not-allowed bg-slate-400"
+                      : "bg-slate-900 hover:bg-slate-800"
+                  }`}
                 >
                   ยืนยันการให้ใบ
                 </button>

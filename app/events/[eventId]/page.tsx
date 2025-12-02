@@ -4,6 +4,7 @@ import {
   JudgeCardMatrix,
   MAX_YELLOW,
   MAX_RED,
+  type YellowCardDetail,
 } from "@/components/judge/card-matrix";
 
 type PublicEvent = {
@@ -24,6 +25,7 @@ type PublicEvent = {
     country: string;
     yellowCards: number;
     redCards: number;
+    yellowDetails?: YellowCardDetail[];
     position: number;
     splitTime: string;
     totalTime: string;
@@ -49,8 +51,9 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         name: "Somchai Rakdee",
         affiliation: "ชมรมเดินทนกรุงเทพฯ",
         country: "THA",
-        yellowCards: 1,
+        yellowCards: 2,
         redCards: 0,
+        yellowDetails: [{ symbol: "~" }, { symbol: ">" }],
         position: 1,
         splitTime: "02:14",
         totalTime: "00:46:32",
@@ -63,6 +66,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         country: "USA",
         yellowCards: 3,
         redCards: 1,
+        yellowDetails: [{ symbol: ">" }, { symbol: "-" }, { symbol: "-" }],
         position: 2,
         splitTime: "02:18",
         totalTime: "00:46:45",
@@ -73,8 +77,9 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         name: "Chanida Runfast",
         affiliation: "Chiangmai Racewalk Team",
         country: "THA",
-        yellowCards: 3,
-        redCards: 1,
+        yellowCards: 4,
+        redCards: 0,
+        yellowDetails: [{ symbol: "~" }, { symbol: "~" }, { symbol: ">" }, { symbol: ">" }],
         position: 3,
         splitTime: "02:20",
         totalTime: "00:47:02",
@@ -87,6 +92,14 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         country: "ESP",
         yellowCards: 6,
         redCards: 2,
+        yellowDetails: [
+          { symbol: "~" },
+          { symbol: "-" },
+          { symbol: "-" },
+          { symbol: ">" },
+          { symbol: "-" },
+          { symbol: "-" },
+        ],
         position: 4,
         splitTime: "02:25",
         totalTime: "00:48:10",
@@ -99,9 +112,40 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         country: "JPN",
         yellowCards: 0,
         redCards: 0,
+        yellowDetails: [],
         position: 5,
         splitTime: "02:27",
         totalTime: "00:48:45",
+        status: "OK",
+      },
+      {
+        bib: "106",
+        name: "Peter Schmidt",
+        affiliation: "Berlin Walkers",
+        country: "GER",
+        yellowCards: 3,
+        redCards: 1,
+        yellowDetails: [
+          { symbol: ">" },
+          { symbol: "~" },
+          { symbol: "-" },
+        ],
+        position: 6,
+        splitTime: "02:29",
+        totalTime: "00:49:15",
+        status: "OK",
+      },
+      {
+        bib: "107",
+        name: "Anna Kowalski",
+        affiliation: "Warsaw Track Club",
+        country: "POL",
+        yellowCards: 1,
+        redCards: 0,
+        yellowDetails: [{ symbol: "~" }],
+        position: 7,
+        splitTime: "02:31",
+        totalTime: "00:49:45",
         status: "OK",
       },
     ],
@@ -245,6 +289,7 @@ export default async function EventLivePage(props: EventLivePageProps) {
                           <JudgeCardMatrix
                             yellow={athlete.yellowCards}
                             red={athlete.redCards}
+                            yellowDetails={athlete.yellowDetails}
                           />
                           <span className="text-[10px] text-slate-500">
                             <span className="font-medium text-amber-700">

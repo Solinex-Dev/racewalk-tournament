@@ -6,6 +6,7 @@ import {
   JudgeCardMatrix,
   MAX_YELLOW,
   MAX_RED,
+  type YellowCardDetail,
 } from "@/components/judge/card-matrix";
 
 export const metadata: Metadata = {
@@ -26,6 +27,7 @@ type AthleteSummary = {
   affiliation: string;
   yellowCards: number;
   redCards: number;
+  yellowDetails?: YellowCardDetail[];
 };
 
 type JudgeSummary = {
@@ -50,8 +52,9 @@ const MOCK_ATHLETES: AthleteSummary[] = [
     bib: "101",
     name: "สมชาย ใจดี",
     affiliation: "Bangkok RC",
-    yellowCards: 1,
+    yellowCards: 2,
     redCards: 0,
+    yellowDetails: [{ symbol: "~" }, { symbol: ">" }],
   },
   {
     bib: "102",
@@ -59,13 +62,38 @@ const MOCK_ATHLETES: AthleteSummary[] = [
     affiliation: "Chiang Mai Walkers",
     yellowCards: 0,
     redCards: 0,
+    yellowDetails: [],
   },
   {
     bib: "103",
     name: "John Runner",
     affiliation: "Phuket Club",
-    yellowCards: 2,
+    yellowCards: 3,
     redCards: 1,
+    yellowDetails: [{ symbol: ">" }, { symbol: "-" }, { symbol: "-" }],
+  },
+  {
+    bib: "104",
+    name: "Sarah Williams",
+    affiliation: "London Athletics",
+    yellowCards: 6,
+    redCards: 2,
+    yellowDetails: [
+      { symbol: "~" },
+      { symbol: ">" },
+      { symbol: "-" },
+      { symbol: "~" },
+      { symbol: "-" },
+      { symbol: "-" },
+    ],
+  },
+  {
+    bib: "105",
+    name: "ณัฐพล วิ่งเร็ว",
+    affiliation: "Pattaya Speed Club",
+    yellowCards: 4,
+    redCards: 0,
+    yellowDetails: [{ symbol: ">" }, { symbol: ">" }, { symbol: "~" }, { symbol: ">" }],
   },
 ];
 
@@ -192,6 +220,7 @@ export default async function EventModeratorPage(
                             <JudgeCardMatrix
                               yellow={athlete.yellowCards}
                               red={athlete.redCards}
+                              yellowDetails={athlete.yellowDetails}
                             />
                             <span className="text-[10px] text-slate-500">
                               <span className="font-medium text-amber-700">
