@@ -8,6 +8,7 @@ export type AthleteFormValues = {
   affiliation: string;
   country: string;
   province: string;
+  club: string;
   note: string;
 };
 
@@ -132,6 +133,22 @@ export function AthleteForm({ mode, defaultValues }: AthleteFormProps) {
               name="province"
               defaultValue={defaultValues?.province}
               placeholder="เช่น กรุงเทพมหานคร"
+              className="rounded-xl text-sm"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label
+              htmlFor="club"
+              className="block text-xs font-medium text-slate-800"
+            >
+              สโมสร (Club)
+            </label>
+            <Input
+              id="club"
+              name="club"
+              defaultValue={defaultValues?.club}
+              placeholder="เช่น ชมรมเดินทนกรุงเทพฯ"
               className="rounded-xl text-sm"
             />
           </div>
