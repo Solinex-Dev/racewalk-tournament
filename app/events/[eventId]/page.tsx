@@ -333,37 +333,9 @@ export default async function EventLivePage(props: EventLivePageProps) {
           </div>
 
           <aside className="space-y-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                ข้อมูลกิจกรรม
-              </p>
-              <dl className="mt-3 space-y-2 text-xs text-slate-200">
-                <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-400">รหัสกิจกรรม</dt>
-                  <dd className="font-mono text-[11px] text-slate-200">
-                    {event.id}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-400">ประเภท/รุ่น</dt>
-                  <dd className="text-right">{event.heat_name}</dd>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-400">ระยะทาง</dt>
-                  <dd className="text-right">{event.distance_km} กม.</dd>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-400">จำนวน Lap ทั้งหมด</dt>
-                  <dd className="text-right">{event.lapCount}</dd>
-                </div>
-              </dl>
-              <p className="mt-3 text-[10px] text-slate-500">
-                * ข้อมูลในหน้านี้เป็นตัวอย่าง UI – ภายหลังจะเชื่อมต่อกับข้อมูล
-                real-time จากกรรมการในสนาม
-              </p>
-            </div>
+            
 
-            <div className="space-y-2 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-4">
+            <div className="space-y-2 rounded-2xl border border-slate-800 from-slate-900 to-slate-950 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 สำหรับกรรมการ
               </p>

@@ -2,9 +2,14 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 type JudgeJoinFormProps = {
   eventId: string;
@@ -36,59 +41,65 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <Card className="w-full max-w-md rounded-3xl px-6 py-8 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+      <Card className="w-full max-w-md rounded-3xl border-slate-800 bg-slate-900 px-6 py-8 shadow-lg">
         <CardContent className="space-y-6">
           <div className="space-y-2 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
               การแข่งขันเดินทน – กรรมการ
             </p>
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className="text-2xl font-semibold text-slate-100">
               เข้าร่วมเป็นกรรมการใน Event
             </h1>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm">
             {event ? (
               <>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
                   Event กำลังดำเนินการอยู่
                 </p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">
+                <p className="mt-1 text-sm font-semibold text-slate-100">
                   {event.name}
                 </p>
-                <p className="text-xs text-slate-600">{event.heat_name}</p>
-                <p className="mt-1 text-[11px] text-emerald-700">
+                <p className="text-xs text-slate-300">{event.heat_name}</p>
+                <p className="mt-1 text-[11px] text-emerald-400">
                   สถานะ: {event.statusLabel}
                 </p>
               </>
             ) : (
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-300">
                 ไม่พบข้อมูล Event จากรหัสที่ระบุใน URL
               </p>
             )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label
-                htmlFor="judge-code"
-                className="block text-sm font-medium text-slate-800"
-              >
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-slate-200">
                 รหัสลับของกรรมการใน Event นี้
               </label>
-              <Input
-                id="judge-code"
-                type="text"
-                inputMode="text"
-                autoComplete="off"
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="เช่น AB12CD"
-                maxLength={6}
-                className="w-full rounded-xl font-mono tracking-[0.25em] uppercase"
-              />
-              <p className="text-[11px] text-slate-500">
+
+              <div className="flex justify-center">
+                <InputOTP
+                  maxLength={6}
+                  pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
+                  value={code}
+                  onChange={(value) => setCode(value.toUpperCase())}
+                  containerClassName="justify-center"
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+
+              <p className="text-center text-[11px] text-slate-400">
                 ใช้รหัสลับ 6 ตัวที่ได้รับจากผู้จัด / Admin ของ Event
                 (ไม่ใช่โค้ด join รวมของ Event)
               </p>
@@ -97,13 +108,13 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
             <Button
               type="submit"
               disabled={submitting || code.trim().length !== 6 || !event}
-              className="w-full rounded-xl text-sm font-medium"
+              className="w-full rounded-xl bg-slate-100 text-sm font-medium text-slate-900 hover:bg-slate-200 disabled:bg-slate-800 disabled:text-slate-500"
             >
               {submitting ? "กำลังตรวจสอบรหัส..." : "เข้าร่วม Event ในฐานะกรรมการ"}
             </Button>
           </form>
 
-          <p className="text-center text-[11px] text-slate-500">
+          <p className="text-center text-[11px] text-slate-400">
             ถ้าไม่ทราบรหัส ให้ติดต่อผู้ประสานงานสนามแข่งหรือ Admin ของ Event
           </p>
         </CardContent>

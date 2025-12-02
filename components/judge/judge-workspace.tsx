@@ -89,6 +89,8 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
   const [rows, setRows] = React.useState<JudgeAthleteRow[]>(INITIAL_ATHLETES);
   const [pendingAction, setPendingAction] = React.useState<PendingAction>(null);
   const [selectedYellowSymbol, setSelectedYellowSymbol] = React.useState<"~" | ">" | null>(null);
+  // TODO: ภายหลังให้ดึงชื่อกรรมการจาก session / backend ตามโค้ดที่ใช้ join
+  const judgeName = "กรรมการตัวอย่าง (Mock)";
 
   const openConfirm = (bib: string, type: "Y" | "R") => {
     setPendingAction({ bib, type });
@@ -190,26 +192,26 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
       : null;
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
+    <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-6 lg:py-8">
-        <header className="flex flex-col gap-3 border-b border-slate-200 pb-4 md:flex-row md:items-end md:justify-between">
+        <header className="flex flex-col gap-3 border-b border-slate-800 pb-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
               การแข่งขันเดินทน – หน้าทำงานกรรมการ
             </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100">
               หน้าทำงานของกรรมการ
             </h1>
             {event ? (
               <>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-sm text-slate-300">
                   กิจกรรม:{" "}
-                  <span className="font-semibold text-slate-900">
+                  <span className="font-semibold text-slate-100">
                     {event.name}
                   </span>{" "}
                   – {event.heat_name}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-400">
                   รหัสกิจกรรม:{" "}
                   <span className="font-mono text-[11px]">{event.id}</span> •
                   ระยะ {event.distance_km} กม. • Lap {event.currentLap} /{" "}
@@ -217,16 +219,20 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                 </p>
               </>
             ) : (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm text-red-400">
                 ไม่พบข้อมูล Event จาก URL ที่ระบุ
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-3 text-xs">
+            <div className="hidden items-center gap-2 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-[11px] text-slate-200 sm:flex">
+              <span className="text-slate-400">กรรมการ</span>
+              <span className="font-medium text-slate-100">{judgeName}</span>
+            </div>
             <Link
               href={`/events/${eventId}`}
-              className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+              className="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-slate-800"
             >
               เปิดหน้า Live / Public
             </Link>
@@ -235,9 +241,9 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
 
         <section className="grid gap-4 lg:grid-cols-[2fr,1.1fr]">
           <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
+              <div className="border-b border-slate-800 bg-slate-900/50 px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                   รายชื่อนักกีฬาประจำโต๊ะ / จุดของกรรมการ
                 </p>
                 <p className="text-[11px] text-slate-500">
@@ -248,7 +254,7 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
 
               <div className="max-h-[520px] overflow-auto">
                 <table className="min-w-full border-collapse text-xs">
-                  <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
+                  <thead className="border-b border-slate-800 bg-slate-900/95 text-[11px] font-medium uppercase text-slate-400">
                     <tr>
                       <th className="px-3 py-2 text-left">BIB</th>
                       <th className="px-3 py-2 text-left">นักกีฬา</th>
@@ -263,44 +269,44 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                       <th className="px-3 py-2 text-center">+R</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-800">
                     {rows.map((athlete) => (
                       <tr
                         key={athlete.bib}
-                        className="transition-colors hover:bg-slate-50"
+                        className="transition-colors hover:bg-slate-800/50"
                       >
-                        <td className="px-3 py-2 font-mono text-sm text-amber-700">
+                        <td className="px-3 py-2 font-mono text-sm text-amber-400">
                           {athlete.bib}
                         </td>
                         <td className="px-3 py-2">
-                          <p className="text-xs font-medium text-slate-900">
+                          <p className="text-xs font-medium text-slate-100">
                             {athlete.name}
                           </p>
-                          <p className="text-[10px] text-slate-500 sm:hidden">
+                          <p className="text-[10px] text-slate-400 sm:hidden">
                             {athlete.affiliation}
                           </p>
                         </td>
-                        <td className="hidden px-3 py-2 text-[11px] text-slate-700 sm:table-cell">
+                        <td className="hidden px-3 py-2 text-[11px] text-slate-300 sm:table-cell">
                           {athlete.affiliation}
                         </td>
                         <td className="px-3 py-2">
-                          <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+                          <span className="inline-flex rounded-full bg-emerald-950 px-2 py-0.5 text-[10px] font-medium text-emerald-400 ring-1 ring-emerald-800">
                             {athlete.status}
                           </span>
                         </td>
-                        <td className="hidden px-3 py-2 text-[11px] text-slate-900 md:table-cell">
+                        <td className="hidden px-3 py-2 text-[11px] text-slate-100 md:table-cell">
                           <div className="flex items-center gap-2">
                             <JudgeCardMatrix
                               yellow={athlete.yellow}
                               red={athlete.red}
                               yellowDetails={athlete.yellowDetails}
                             />
-                            <span className="text-[10px] text-slate-500">
-                              <span className="font-medium text-amber-700">
+                            <span className="text-[10px] text-slate-400">
+                              <span className="font-medium text-amber-400">
                                 Y {athlete.yellow}
                               </span>
                               {" / "}
-                              <span className="font-medium text-red-700">
+                              <span className="font-medium text-red-400">
                                 R {athlete.red}
                               </span>
                             </span>
@@ -309,7 +315,7 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                         <td className="px-3 py-2 text-center">
                           <button
                             type="button"
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-[11px] font-semibold text-amber-700 hover:bg-amber-100"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-amber-700 bg-amber-950 text-[11px] font-semibold text-amber-400 hover:bg-amber-900"
                             onClick={() => openConfirm(athlete.bib, "Y")}
                           >
                             +Y
@@ -318,7 +324,7 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                         <td className="px-3 py-2 text-center">
                           <button
                             type="button"
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-200 bg-red-50 text-[11px] font-semibold text-red-700 hover:bg-red-100"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-700 bg-red-950 text-[11px] font-semibold text-red-400 hover:bg-red-900"
                             onClick={() => openConfirm(athlete.bib, "R")}
                           >
                             +R
@@ -331,58 +337,39 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
               </div>
             </div>
           </div>
-
-          <aside className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                สรุปสำหรับกรรมการ
-              </p>
-              <p className="mt-2 text-xs text-slate-600">
-                หน้านี้เป็น mock สำหรับ workspace ของกรรมการ – ในเวอร์ชันจริงจะมี
-                การ sync แบบ real-time กับระบบกลาง
-                และรวมจำนวนใบเหลือง/แดงจากกรรมการทุกโต๊ะ
-              </p>
-              <ul className="mt-2 list-inside list-disc text-[11px] text-slate-600">
-                <li>ปุ่ม +Y / +R ใช้บันทึกใบเหลือง/ใบแดง ให้กับนักกีฬา</li>
-                <li>
-                  สามารถดู scoreboard สาธารณะได้จากลิงก์ “เปิดหน้า Live” ด้านบน
-                </li>
-              </ul>
-            </div>
-          </aside>
         </section>
 
         {pendingAction && pendingRow && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
-              <h2 className="text-sm font-semibold text-slate-900">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4">
+            <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
+              <h2 className="text-sm font-semibold text-slate-100">
                 ยืนยันการให้ใบ{" "}
                 {pendingAction.type === "Y" ? "เหลือง (Yellow card)" : "แดง (Red card)"}
               </h2>
-              <p className="mt-2 text-xs text-slate-600">
+              <p className="mt-2 text-xs text-slate-300">
                 คุณกำลังจะให้ใบ{" "}
                 <span className="font-semibold">
                   {pendingAction.type === "Y" ? "เหลือง" : "แดง"}
                 </span>{" "}
                 กับนักกีฬา:
               </p>
-              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
-                <p className="font-medium text-slate-900">
+              <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs">
+                <p className="font-medium text-slate-100">
                   {pendingRow.name}{" "}
-                  <span className="font-mono text-[11px] text-amber-700">
+                  <span className="font-mono text-[11px] text-amber-400">
                     (BIB {pendingRow.bib})
                   </span>
                 </p>
-                <p className="text-[11px] text-slate-600">
+                <p className="text-[11px] text-slate-300">
                   {pendingRow.affiliation}
                 </p>
-                <p className="mt-1 text-[11px] text-slate-600">
+                <p className="mt-1 text-[11px] text-slate-300">
                   ใบเหลืองปัจจุบัน:{" "}
-                  <span className="font-semibold text-amber-700">
+                  <span className="font-semibold text-amber-400">
                     {pendingRow.yellow}
                   </span>{" "}
                   | ใบแดงปัจจุบัน:{" "}
-                  <span className="font-semibold text-red-700">
+                  <span className="font-semibold text-red-400">
                     {pendingRow.red}
                   </span>
                 </p>
@@ -391,10 +378,10 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
               {/* เลือกสัญลักษณ์ใบเหลือง */}
               {pendingAction.type === "Y" && (
                 <div className="mt-4">
-                  <p className="text-xs font-semibold text-slate-900">
+                  <p className="text-xs font-semibold text-slate-100">
                     คุณเห็นการฝ่าฝืนข้อใด?
                   </p>
-                  <p className="mt-1 text-[11px] text-slate-600">
+                  <p className="mt-1 text-[11px] text-slate-300">
                     เลือกสัญลักษณ์ที่ตรงกับการฝ่าฝืนที่คุณเห็น
                   </p>
                   <div className="mt-3 grid grid-cols-2 gap-3">
@@ -403,15 +390,15 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                       onClick={() => setSelectedYellowSymbol("~")}
                       className={`flex flex-col items-center justify-center rounded-xl border-2 p-4 transition-all ${
                         selectedYellowSymbol === "~"
-                          ? "border-amber-500 bg-amber-50 ring-2 ring-amber-200"
-                          : "border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/50"
+                          ? "border-amber-500 bg-amber-950 ring-2 ring-amber-700"
+                          : "border-slate-700 bg-slate-800 hover:border-amber-500 hover:bg-amber-950/50"
                       }`}
                     >
-                      <span className="text-3xl font-bold text-amber-600">~</span>
-                      <span className="mt-2 text-[11px] font-semibold text-slate-900">
+                      <span className="text-3xl font-bold text-amber-400">~</span>
+                      <span className="mt-2 text-[11px] font-semibold text-slate-100">
                         Loss of Contact
                       </span>
-                      <span className="mt-0.5 text-[10px] text-slate-600">
+                      <span className="mt-0.5 text-[10px] text-slate-300">
                         เท้าไม่ติดพื้น
                       </span>
                     </button>
@@ -420,15 +407,15 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                       onClick={() => setSelectedYellowSymbol(">")}
                       className={`flex flex-col items-center justify-center rounded-xl border-2 p-4 transition-all ${
                         selectedYellowSymbol === ">"
-                          ? "border-amber-500 bg-amber-50 ring-2 ring-amber-200"
-                          : "border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/50"
+                          ? "border-amber-500 bg-amber-950 ring-2 ring-amber-700"
+                          : "border-slate-700 bg-slate-800 hover:border-amber-500 hover:bg-amber-950/50"
                       }`}
                     >
-                      <span className="text-3xl font-bold text-amber-600">&gt;</span>
-                      <span className="mt-2 text-[11px] font-semibold text-slate-900">
+                      <span className="text-3xl font-bold text-amber-400">&gt;</span>
+                      <span className="mt-2 text-[11px] font-semibold text-slate-100">
                         Bent Knee
                       </span>
-                      <span className="mt-0.5 text-[10px] text-slate-600">
+                      <span className="mt-0.5 text-[10px] text-slate-300">
                         เข่างอ
                       </span>
                     </button>
@@ -436,7 +423,7 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                 </div>
               )}
 
-              <p className="mt-4 text-[11px] text-slate-600">
+              <p className="mt-4 text-[11px] text-slate-400">
                 หมายเหตุ: ตามกติกา 3 เหลือง = 1 แดง และ ใบแดงครบ 2 ใบ
                 นักกีฬาจะหมดสิทธิ์แข่งขัน (logic จริงจะไปคำนวณที่ backend อีกที)
               </p>
@@ -445,7 +432,7 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                 <button
                   type="button"
                   onClick={closeConfirm}
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-slate-800"
                 >
                   ยกเลิก
                 </button>
@@ -455,8 +442,8 @@ export function JudgeWorkspace({ eventId, event }: JudgeWorkspaceProps) {
                   disabled={pendingAction.type === "Y" && !selectedYellowSymbol}
                   className={`inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[11px] font-medium text-slate-50 ${
                     pendingAction.type === "Y" && !selectedYellowSymbol
-                      ? "cursor-not-allowed bg-slate-400"
-                      : "bg-slate-900 hover:bg-slate-800"
+                      ? "cursor-not-allowed bg-slate-700"
+                      : "bg-slate-100 text-slate-900 hover:bg-slate-200"
                   }`}
                 >
                   ยืนยันการให้ใบ
