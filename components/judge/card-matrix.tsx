@@ -40,7 +40,7 @@ export function JudgeCardMatrix({
   const defaultSymbols: YellowCardSymbol[] = ["~", ">", "~", ">", "~", ">"];
 
   return (
-    <div className="inline-grid grid-cols-4 gap-1 rounded-full bg-slate-50 px-1.5 py-1 ring-1 ring-slate-200">
+    <div className="inline-grid grid-cols-4 gap-1 rounded-full px-1.5 py-1">
       {layout.map((row, rowIdx) =>
         row.map((cell, colIdx) => {
           const key = `${rowIdx}-${colIdx}-${cell}`;
@@ -60,7 +60,7 @@ export function JudgeCardMatrix({
                     ? isBlocked
                       ? "bg-slate-300 text-slate-600" // ช่องที่ถูกบล็อก
                       : "bg-amber-400 text-slate-900" // ใบเหลืองปกติ
-                    : "bg-amber-50 text-amber-300 ring-1 ring-amber-100" // ช่องว่าง
+                    : " text-amber-300 ring-1 ring-amber-100" // ช่องว่าง
                 }`}
               >
                 {isFilled ? symbol : ""}
@@ -77,7 +77,7 @@ export function JudgeCardMatrix({
               className={`flex h-4 w-4 items-center justify-center rounded-full ${
                 isFilled
                   ? "bg-red-500"
-                  : "bg-red-50 ring-1 ring-red-100"
+                  : "ring-1 ring-red-100"
               }`}
             >
             </span>

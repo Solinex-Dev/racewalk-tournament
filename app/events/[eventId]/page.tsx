@@ -181,49 +181,49 @@ export default async function EventLivePage(props: EventLivePageProps) {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
+    <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-6 lg:py-10">
-        <header className="flex flex-col gap-3 border-b border-slate-200 pb-4 md:flex-row md:items-end md:justify-between">
+        <header className="flex flex-col gap-3 border-b border-slate-800 pb-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
               การแข่งขันเดินทน – สด
             </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100 md:text-3xl">
               {event.name}
             </h1>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-slate-300">
               {event.heat_name} • ระยะ {event.distance_km} กม. •{" "}
               {event.location}
             </p>
-            <p className="text-xs text-slate-500">แข่งขันวันที่ {event.date}</p>
+            <p className="text-xs text-slate-400">แข่งขันวันที่ {event.date}</p>
           </div>
 
           <div className="flex items-end gap-4">
             <div className="text-right text-xs">
-              <p className="text-slate-500">
+              <p className="text-slate-400">
                 Lap ปัจจุบัน{" "}
-                <span className="font-semibold text-slate-900">
+                <span className="font-semibold text-slate-100">
                   {event.currentLap}
                 </span>{" "}
                 / {event.lapCount}
               </p>
-              <p className="text-slate-500">
+              <p className="text-slate-400">
                 เวลาแข่งขัน{" "}
-                <span className="font-mono text-sm font-semibold text-emerald-600">
+                <span className="font-mono text-sm font-semibold text-emerald-400">
                   {event.elapsed}
                 </span>
               </p>
             </div>
-            <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+            <span className="inline-flex items-center rounded-full bg-emerald-950 px-3 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-800">
               ● {statusLabel[event.status]}
             </span>
           </div>
         </header>
 
         <section className="grid gap-4 lg:grid-cols-[2fr,1.1fr]">
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
+            <div className="border-b border-slate-800 bg-slate-900/50 px-4 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                 กระดานคะแนนสด
               </p>
               <p className="text-[11px] text-slate-500">
@@ -234,7 +234,7 @@ export default async function EventLivePage(props: EventLivePageProps) {
 
             <div className="max-h-[520px] overflow-auto">
               <table className="min-w-full border-collapse text-xs">
-                <thead className="sticky top-0 border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500 backdrop-blur">
+                <thead className="sticky top-0 border-b border-slate-800 bg-slate-900/95 text-[11px] font-medium uppercase text-slate-400 backdrop-blur">
                   <tr>
                     <th className="px-3 py-2 text-left">อันดับ</th>
                     <th className="px-3 py-2 text-left">BIB</th>
@@ -255,72 +255,72 @@ export default async function EventLivePage(props: EventLivePageProps) {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-800">
                   {event.athletes.map((athlete) => (
                     <tr
                       key={athlete.bib}
-                      className="transition-colors hover:bg-slate-50"
+                      className="transition-colors hover:bg-slate-800/50"
                     >
-                      <td className="px-3 py-2 text-sm font-semibold text-slate-900">
+                      <td className="px-3 py-2 text-sm font-semibold text-slate-100">
                         {athlete.position}
                       </td>
-                      <td className="px-3 py-2 font-mono text-sm text-amber-600">
+                      <td className="px-3 py-2 font-mono text-sm text-amber-400">
                         {athlete.bib}
                       </td>
                       <td className="px-3 py-2">
-                        <p className="text-xs font-medium text-slate-900">
+                        <p className="text-xs font-medium text-slate-100">
                           {athlete.name}
                         </p>
-                        <p className="text-[10px] text-slate-500 sm:hidden">
+                        <p className="text-[10px] text-slate-400 sm:hidden">
                           {athlete.affiliation}
                         </p>
                       </td>
-                      <td className="hidden px-3 py-2 text-[11px] text-slate-700 sm:table-cell">
+                      <td className="hidden px-3 py-2 text-[11px] text-slate-300 sm:table-cell">
                         {athlete.affiliation}
                       </td>
-                      <td className="hidden px-3 py-2 text-[11px] text-slate-700 md:table-cell">
+                      <td className="hidden px-3 py-2 text-[11px] text-slate-300 md:table-cell">
                         {athlete.country}
                       </td>
-                      <td className="px-3 py-2 font-mono text-[11px] text-slate-900">
+                      <td className="px-3 py-2 font-mono text-[11px] text-slate-100">
                         {athlete.splitTime}
                       </td>
-                      <td className="hidden px-3 py-2 text-[11px] text-slate-900 md:table-cell">
+                      <td className="hidden px-3 py-2 text-[11px] text-slate-100 md:table-cell">
                         <div className="flex items-center gap-2">
                           <JudgeCardMatrix
                             yellow={athlete.yellowCards}
                             red={athlete.redCards}
                             yellowDetails={athlete.yellowDetails}
                           />
-                          <span className="text-[10px] text-slate-500">
-                            <span className="font-medium text-amber-700">
+                          <span className="text-[10px] text-slate-400">
+                            <span className="font-medium text-amber-400">
                               Y{" "}
                               {Math.min(athlete.yellowCards, MAX_YELLOW)}
                             </span>
                             {" / "}
-                            <span className="font-medium text-red-700">
+                            <span className="font-medium text-red-400">
                               R {Math.min(athlete.redCards, MAX_RED)}
                             </span>
                           </span>
                         </div>
                       </td>
-                      <td className="px-3 py-2 font-mono text-[11px] text-slate-900">
+                      <td className="px-3 py-2 font-mono text-[11px] text-slate-100">
                         {athlete.totalTime}
                       </td>
                       <td className="px-3 py-2 hidden md:table-cell">
                         {athlete.redCards >= 2 ? (
-                          <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-700 ring-1 ring-red-200">
+                          <span className="inline-flex rounded-full bg-red-950 px-2 py-0.5 text-[10px] font-medium text-red-400 ring-1 ring-red-800">
                             หมดสิทธิ์แข่งขัน
                           </span>
                         ) : athlete.status === "OK" ? (
-                          <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+                          <span className="inline-flex rounded-full bg-emerald-950 px-2 py-0.5 text-[10px] font-medium text-emerald-400 ring-1 ring-emerald-800">
                             OK
                           </span>
                         ) : athlete.status === "DQ" ? (
-                          <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-700 ring-1 ring-red-200">
+                          <span className="inline-flex rounded-full bg-red-950 px-2 py-0.5 text-[10px] font-medium text-red-400 ring-1 ring-red-800">
                             DQ
                           </span>
                         ) : athlete.status === "DNF" ? (
-                          <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
+                          <span className="inline-flex rounded-full bg-amber-950 px-2 py-0.5 text-[10px] font-medium text-amber-400 ring-1 ring-amber-800">
                             DNF
                           </span>
                         ) : null}
@@ -333,27 +333,27 @@ export default async function EventLivePage(props: EventLivePageProps) {
           </div>
 
           <aside className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 ข้อมูลกิจกรรม
               </p>
-              <dl className="mt-3 space-y-2 text-xs text-slate-800">
+              <dl className="mt-3 space-y-2 text-xs text-slate-200">
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-500">รหัสกิจกรรม</dt>
-                  <dd className="font-mono text-[11px] text-slate-800">
+                  <dt className="text-slate-400">รหัสกิจกรรม</dt>
+                  <dd className="font-mono text-[11px] text-slate-200">
                     {event.id}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-500">ประเภท/รุ่น</dt>
+                  <dt className="text-slate-400">ประเภท/รุ่น</dt>
                   <dd className="text-right">{event.heat_name}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-500">ระยะทาง</dt>
+                  <dt className="text-slate-400">ระยะทาง</dt>
                   <dd className="text-right">{event.distance_km} กม.</dd>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-500">จำนวน Lap ทั้งหมด</dt>
+                  <dt className="text-slate-400">จำนวน Lap ทั้งหมด</dt>
                   <dd className="text-right">{event.lapCount}</dd>
                 </div>
               </dl>
@@ -363,24 +363,24 @@ export default async function EventLivePage(props: EventLivePageProps) {
               </p>
             </div>
 
-            <div className="space-y-2 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="space-y-2 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 สำหรับกรรมการ
               </p>
-              <p className="text-[11px] text-slate-600">
+              <p className="text-[11px] text-slate-300">
                 ถ้าคุณเป็นกรรมการของ Event นี้ ให้เข้าไปยังหน้าสำหรับกรรมการ
                 เพื่อใช้บันทึกผลการแข่งขัน
               </p>
               <div className="mt-2 flex flex-col gap-2 text-xs">
                 <a
                   href={`/judge/events/${event.id}/join`}
-                  className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-slate-50 hover:bg-slate-800"
+                  className="inline-flex items-center justify-center rounded-lg bg-slate-100 px-3 py-1.5 text-[11px] font-medium text-slate-900 hover:bg-slate-200"
                 >
                   ไปหน้ากรอกรหัสกรรมการ (Join event)
                 </a>
                 <a
                   href={`/judge/events/${event.id}`}
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-1.5 text-[11px] font-medium text-slate-800 hover:bg-slate-100"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-slate-800"
                 >
                   ไปหน้าใช้งานสำหรับกรรมการ (Judge workspace)
                 </a>
