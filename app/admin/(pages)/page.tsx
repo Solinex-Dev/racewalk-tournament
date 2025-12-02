@@ -88,33 +88,7 @@ export default function AdminDashboardPage() {
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[2fr,1.3fr]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">
-              ลิงก์ด่วน
-            </h2>
-            <p className="mt-1 text-xs text-slate-500">
-              ลิงก์ไปยังหน้าจัดการหลักของ Admin (จะเชื่อม route จริงภายหลัง)
-            </p>
-            <div className="mt-4 grid gap-2 text-sm text-slate-700">
-              <button className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left hover:bg-slate-100">
-                <span>สร้าง Event ใหม่</span>
-                <span className="text-[11px] text-slate-500">/admin/events/new</span>
-              </button>
-              <button className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left hover:bg-slate-100">
-                <span>จัดการ Events ทั้งหมด</span>
-                <span className="text-[11px] text-slate-500">/admin/events</span>
-              </button>
-              <button className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left hover:bg-slate-100">
-                <span>จัดการ Judges</span>
-                <span className="text-[11px] text-slate-500">/admin/judges</span>
-              </button>
-              <button className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left hover:bg-slate-100">
-                <span>จัดการ Athletes</span>
-                <span className="text-[11px] text-slate-500">/admin/athletes</span>
-              </button>
-            </div>
-          </div>
-
+          
           <div className="space-y-4">
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
@@ -171,24 +145,6 @@ export default function AdminDashboardPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-slate-900">
-                หมายเหตุการใช้งาน
-              </h2>
-              <ul className="mt-2 space-y-1.5 text-xs text-slate-600">
-                <li>
-                  • เมนูด้านซ้ายและลิงก์ในหน้านี้จะเชื่อม route จริงของ Racewalk
-                  Tournament ภายหลัง
-                </li>
-                <li>
-                  • การแสดงตัวเลขสถิติต่าง ๆ จะเชื่อมกับฐานข้อมูล MySQL ผ่าน
-                  Prisma
-                </li>
-                <li>
-                  • โทนสี/โลโก้สามารถปรับให้ตรงกับแบรนด์สนามแข่งขันได้
-                </li>
-              </ul>
-            </div>
           </div>
         </section>
       </div>

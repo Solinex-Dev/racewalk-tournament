@@ -205,9 +205,9 @@ export function DashboardSidebar() {
           </div>
           {!isCollapsed && (
             <div className="flex flex-col">
-              <span className="truncate font-semibold">ระบบจัดการแข่งขัน</span>
+              <span className="truncate font-semibold">Mattrawoot Miadmo</span>
               <span className="truncate text-xs text-muted-foreground">
-                เวอร์ชันฟรี
+                Event Admin
               </span>
             </div>
           )}

@@ -16,6 +16,7 @@ const MOCK_ATHLETE_BY_ID = {
     last_name: "Rakdee",
     affiliation: "ชมรมเดินทนกรุงเทพฯ",
     country: "Thailand",
+    province: "กรุงเทพมหานคร",
     note: "นักกีฬาทีมชาติ",
   },
   "ath-002": {
@@ -23,6 +24,7 @@ const MOCK_ATHLETE_BY_ID = {
     last_name: "Doe",
     affiliation: "Example Athletic Club",
     country: "USA",
+    province: "California",
     note: "",
   },
 };

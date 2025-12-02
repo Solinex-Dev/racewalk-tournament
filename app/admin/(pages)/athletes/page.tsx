@@ -9,6 +9,7 @@ type Athlete = {
   last_name: string;
   affiliation: string;
   country: string;
+  province: string;
   note?: string;
 };
 
@@ -20,6 +21,7 @@ const MOCK_ATHLETES: Athlete[] = [
     last_name: "Rakdee",
     affiliation: "ชมรมเดินทนกรุงเทพฯ",
     country: "Thailand",
+    province: "กรุงเทพมหานคร",
     note: "นักกีฬาทีมชาติ",
   },
   {
@@ -28,6 +30,7 @@ const MOCK_ATHLETES: Athlete[] = [
     last_name: "Doe",
     affiliation: "Example Athletic Club",
     country: "USA",
+    province: "California",
     note: "",
   },
 ];
@@ -68,6 +71,7 @@ export default function AthletesPage() {
                     <th className="px-4 py-3 text-left">ชื่อ - นามสกุล</th>
                     <th className="px-4 py-3 text-left">สังกัด / สโมสร</th>
                     <th className="px-4 py-3 text-left">ประเทศ</th>
+                    <th className="px-4 py-3 text-left">จังหวัด</th>
                     <th className="px-4 py-3 text-left">หมายเหตุ</th>
                     <th className="px-4 py-3 text-right">การจัดการ</th>
                   </tr>
@@ -83,6 +87,9 @@ export default function AthletesPage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {athlete.country || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        {athlete.province || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {athlete.note || "-"}
