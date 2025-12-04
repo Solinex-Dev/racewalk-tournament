@@ -16,6 +16,16 @@ type JudgeEntry = {
   event_secret_code: string;
 };
 
+export type RoundEntry = {
+  id: string;
+  name: string;
+  scheduled_time?: string;
+  expected_end_time?: string;
+  status: "scheduled" | "ongoing" | "finished";
+  distance_km?: string;
+  note?: string;
+};
+
 type EventFormProps = {
   mode: "create" | "edit";
   defaultValues?: Partial<EventFormValues>;
@@ -33,6 +43,7 @@ export type EventFormValues = {
   max_judges: string;
   athletes: AthleteEntry[];
   judges: JudgeEntry[];
+  rounds: RoundEntry[];
 };
 
 const EMPTY_VALUES: EventFormValues = {
@@ -47,6 +58,7 @@ const EMPTY_VALUES: EventFormValues = {
   max_judges: "",
   athletes: [],
   judges: [],
+  rounds: [],
 };
 
 // TODO: ภายหลังให้ดึงรายการนักกีฬา / กรรมการจากฐานข้อมูลจริง
@@ -81,6 +93,7 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
       ...defaultValues,
       athletes: defaultValues?.athletes ?? EMPTY_VALUES.athletes,
       judges: (defaultValues?.judges as any) ?? EMPTY_VALUES.judges,
+      rounds: defaultValues?.rounds ?? EMPTY_VALUES.rounds,
     };
 
     const judgesWithCode: JudgeEntry[] = (merged.judges ?? []).map(
@@ -279,6 +292,39 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
               event_secret_code: generateEventSecretCode(),
             }
           : j,
+      ),
+    }));
+  };
+
+  const handleAddRound = () => {
+    const newRound: RoundEntry = {
+      id: `round-${Date.now()}`,
+      name: `รอบที่ ${form.rounds.length + 1}`,
+      status: "scheduled",
+      distance_km: form.distance_km || "",
+    };
+    setForm((prev) => ({
+      ...prev,
+      rounds: [...prev.rounds, newRound],
+    }));
+  };
+
+  const handleRemoveRound = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      rounds: prev.rounds.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleRoundChange = (
+    index: number,
+    field: keyof RoundEntry,
+    value: string,
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      rounds: prev.rounds.map((round, i) =>
+        i === index ? { ...round, [field]: value } : round,
       ),
     }));
   };
@@ -697,6 +743,175 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">
+                จัดการรอบการแข่งขัน (Rounds)
+              </h2>
+              <p className="mt-1 text-[11px] text-slate-600">
+                เพิ่มรอบการแข่งขันสำหรับ Event นี้ แต่ละรอบสามารถมีระยะทางและเวลาที่กำหนดเองได้
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] text-slate-600">
+                  รอบการแข่งขัน – ปัจจุบันมี {form.rounds.length} รอบ
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7 rounded-lg px-3 text-xs"
+                  onClick={handleAddRound}
+                >
+                  + เพิ่มรอบ
+                </Button>
+              </div>
+
+              {form.rounds.length === 0 && (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center">
+                  <p className="text-[11px] text-slate-500">
+                    ยังไม่มีรอบการแข่งขัน – กดปุ่ม &quot;เพิ่มรอบ&quot; เพื่อเริ่มเพิ่มรอบ
+                  </p>
+                </div>
+              )}
+
+              {form.rounds.length > 0 && (
+                <div className="space-y-2">
+                  {form.rounds.map((round, index) => (
+                    <div
+                      key={round.id}
+                      className="rounded-xl border border-slate-200 bg-white p-3"
+                    >
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-slate-800">
+                            ชื่อรอบ
+                          </label>
+                          <Input
+                            className="h-7 px-2 py-1 text-xs"
+                            value={round.name}
+                            onChange={(e) =>
+                              handleRoundChange(index, "name", e.target.value)
+                            }
+                            placeholder="เช่น รอบที่ 1, รอบคัดเลือก"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-slate-800">
+                            สถานะ
+                          </label>
+                          <select
+                            className="h-7 w-full rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5"
+                            value={round.status}
+                            onChange={(e) =>
+                              handleRoundChange(
+                                index,
+                                "status",
+                                e.target.value,
+                              )
+                            }
+                          >
+                            <option value="scheduled">กำหนดการ</option>
+                            <option value="ongoing">กำลังแข่งขัน</option>
+                            <option value="finished">เสร็จสิ้น</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-slate-800">
+                            ระยะทาง (กม.)
+                          </label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.1"
+                            className="h-7 px-2 py-1 text-xs"
+                            value={round.distance_km || ""}
+                            onChange={(e) =>
+                              handleRoundChange(
+                                index,
+                                "distance_km",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="เช่น 10, 20"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-slate-800">
+                            เวลาที่กำหนดเริ่ม (ไม่บังคับ)
+                          </label>
+                          <Input
+                            type="datetime-local"
+                            className="h-7 px-2 py-1 text-xs"
+                            value={round.scheduled_time || ""}
+                            onChange={(e) =>
+                              handleRoundChange(
+                                index,
+                                "scheduled_time",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-slate-800">
+                            เวลาที่คาดว่าจะสิ้นสุด (ไม่บังคับ)
+                          </label>
+                          <Input
+                            type="datetime-local"
+                            className="h-7 px-2 py-1 text-xs"
+                            value={round.expected_end_time || ""}
+                            onChange={(e) =>
+                              handleRoundChange(
+                                index,
+                                "expected_end_time",
+                                e.target.value,
+                              )
+                            }
+                          />
+                          <p className="text-[10px] text-slate-500">
+                            เวลาที่คาดว่าจะสิ้นสุดการแข่งขันรอบนี้ (สำหรับแสดงเป็นข้อมูล)
+                          </p>
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1.5">
+                          <label className="text-xs font-medium text-slate-800">
+                            หมายเหตุ (ไม่บังคับ)
+                          </label>
+                          <Input
+                            className="h-7 px-2 py-1 text-xs"
+                            value={round.note || ""}
+                            onChange={(e) =>
+                              handleRoundChange(index, "note", e.target.value)
+                            }
+                            placeholder="หมายเหตุเพิ่มเติมสำหรับรอบนี้"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 rounded-lg border-slate-200 px-2 text-[11px]"
+                          onClick={() => handleRemoveRound(index)}
+                        >
+                          ลบรอบ
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
