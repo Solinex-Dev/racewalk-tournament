@@ -8,6 +8,10 @@ export type RedCardDetail = {
   isFromThisJudge?: boolean; // ใบแดงนี้เป็นของกรรมการคนนี้หรือไม่
 };
 
+export type YellowCardDetail = {
+  symbol?: string; // สัญลักษณ์ของใบเหลือง (ถ้ามี)
+};
+
 export function JudgeCardMatrix({
   yellow,
   red,

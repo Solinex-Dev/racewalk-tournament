@@ -398,7 +398,6 @@ export default function EventModeratorPage(
                             <JudgeCardMatrix
                               yellow={athlete.yellowCards}
                               red={athlete.redCards}
-                              yellowDetails={athlete.yellowDetails}
                             />
                             <span className="text-[10px] text-slate-500">
                               <span className="font-medium text-amber-700">
