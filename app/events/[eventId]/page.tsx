@@ -6,6 +6,20 @@ import {
   MAX_RED,
 } from "@/components/judge/card-matrix";
 
+type PublicRound = {
+  id: string;
+  name: string;
+  status: "scheduled" | "ongoing" | "finished";
+  distance_km?: string;
+  scheduled_time?: string;
+  expected_end_time?: string;
+  note?: string;
+  heat_name?: string;
+  lapCount?: number;
+  currentLap?: number;
+  elapsed?: string;
+};
+
 type PublicEvent = {
   id: string;
   name: string;
@@ -13,6 +27,8 @@ type PublicEvent = {
   location: string;
   distance_km: string;
   status: "scheduled" | "ongoing" | "finished";
+  rounds: PublicRound[];
+  currentRoundId?: string;
   heat_name: string;
   lapCount: number;
   currentLap: number;
@@ -39,6 +55,30 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
     location: "สนามกีฬาแห่งชาติ",
     distance_km: "20",
     status: "ongoing",
+    rounds: [
+      {
+        id: "round-1",
+        name: "รอบคัดเลือก",
+        status: "finished",
+        distance_km: "10",
+        scheduled_time: "2025-03-15T08:00",
+        note: "รอบแรกสำหรับคัดเลือก",
+      },
+      {
+        id: "round-2",
+        name: "รอบชิงชนะเลิศ",
+        status: "ongoing",
+        distance_km: "20",
+        scheduled_time: "2025-03-15T14:00",
+        expected_end_time: "2025-03-15T17:00",
+        note: "รอบสุดท้าย",
+        heat_name: "รุ่นทั่วไป ระยะ 20 กม.",
+        lapCount: 20,
+        currentLap: 7,
+        elapsed: "00:46:32",
+      },
+    ],
+    currentRoundId: "round-2",
     heat_name: "รุ่นทั่วไป ระยะ 20 กม.",
     lapCount: 20,
     currentLap: 7,
@@ -137,6 +177,20 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
     location: "Bangkok City Route",
     distance_km: "10",
     status: "finished",
+    rounds: [
+      {
+        id: "round-1",
+        name: "รอบเดียว",
+        status: "finished",
+        distance_km: "10",
+        note: "การแข่งขันรอบเดียว",
+        heat_name: "รุ่นทั่วไป ระยะ 10 กม.",
+        lapCount: 10,
+        currentLap: 10,
+        elapsed: "00:55:10",
+      },
+    ],
+    currentRoundId: "round-1",
     heat_name: "รุ่นทั่วไป ระยะ 10 กม.",
     lapCount: 10,
     currentLap: 10,
@@ -216,6 +270,11 @@ export default async function EventLivePage(props: EventLivePageProps) {
     notFound();
   }
 
+  const currentRound = event.currentRoundId
+    ? event.rounds.find((r) => r.id === event.currentRoundId)
+    : event.rounds.find((r) => r.status === "ongoing") ||
+      event.rounds[event.rounds.length - 1];
+
   const statusLabel: Record<PublicEvent["status"], string> = {
     scheduled: "ยังไม่เริ่ม",
     ongoing: "กำลังแข่งขัน",
@@ -231,6 +290,15 @@ export default async function EventLivePage(props: EventLivePageProps) {
       "bg-slate-900 text-slate-200 ring-slate-700",
   };
 
+  const roundStatusLabel: Record<
+    "scheduled" | "ongoing" | "finished",
+    string
+  > = {
+    scheduled: "ยังไม่เริ่ม",
+    ongoing: "กำลังแข่งขัน",
+    finished: "เสร็จสิ้น",
+  };
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-6 lg:py-10">
@@ -243,10 +311,29 @@ export default async function EventLivePage(props: EventLivePageProps) {
               {event.name}
             </h1>
             <p className="mt-1 text-sm text-slate-300">
-              {event.heat_name} • ระยะ {event.distance_km} กม. •{" "}
+              {currentRound?.heat_name || event.heat_name} • ระยะ{" "}
+              {currentRound?.distance_km || event.distance_km} กม. •{" "}
               {event.location}
             </p>
             <p className="text-xs text-slate-400">แข่งขันวันที่ {event.date}</p>
+            {event.rounds.length > 1 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {event.rounds.map((round) => (
+                  <span
+                    key={round.id}
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${
+                      round.id === currentRound?.id
+                        ? "bg-emerald-950 text-emerald-400 ring-emerald-800"
+                        : round.status === "finished"
+                          ? "bg-slate-800 text-slate-400 ring-slate-700"
+                          : "bg-sky-950 text-sky-300 ring-sky-800"
+                    }`}
+                  >
+                    {round.name} • {roundStatusLabel[round.status]}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex items-end gap-4">

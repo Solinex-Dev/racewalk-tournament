@@ -1,4 +1,6 @@
-import type { Metadata } from "next";
+"use client";
+
+import { use } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,12 +11,6 @@ import {
   type YellowCardDetail,
 } from "@/components/judge/card-matrix";
 
-export const metadata: Metadata = {
-  title: "แดชบอร์ดผู้ควบคุมกิจกรรม – การแข่งขันเดินทน",
-  description:
-    "หน้าสำหรับ Moderator ดูสถานะนักกีฬา ใบเหลือง/ใบแดง กรรมการ และ log กิจกรรมของ Event.",
-};
-
 type EventModeratorPageProps = {
   params: Promise<{
     eventId: string;
@@ -22,6 +18,15 @@ type EventModeratorPageProps = {
 };
 
 type EventStatus = "scheduled" | "ongoing" | "finished";
+
+type RoundInfo = {
+  id: string;
+  name: string;
+  status: "scheduled" | "ongoing" | "finished";
+  distance_km?: string;
+  scheduled_time?: string;
+  expected_end_time?: string;
+};
 
 type AthleteSummary = {
   bib: string;
@@ -46,6 +51,7 @@ type ActivityLogItem = {
   role: "judge" | "moderator";
   action: string;
   targetAthlete?: string;
+  roundId?: string;
 };
 
 const MOCK_EVENT_STATUS: Record<
@@ -53,19 +59,61 @@ const MOCK_EVENT_STATUS: Record<
   {
     name: string;
     status: EventStatus;
+    rounds?: RoundInfo[];
+    currentRoundId?: string;
   }
 > = {
   "evt-001": {
     name: "Racewalk Championship 2025",
     status: "ongoing",
+    rounds: [
+      {
+        id: "round-1",
+        name: "รอบคัดเลือก",
+        status: "finished",
+        distance_km: "10",
+        scheduled_time: "2025-03-15T08:00",
+        expected_end_time: "2025-03-15T10:30",
+      },
+      {
+        id: "round-2",
+        name: "รอบชิงชนะเลิศ",
+        status: "ongoing",
+        distance_km: "20",
+        scheduled_time: "2025-03-15T14:00",
+        expected_end_time: "2025-03-15T17:00",
+      },
+    ],
+    currentRoundId: "round-2",
   },
   "evt-002": {
     name: "Bangkok City Racewalk",
     status: "finished",
+    rounds: [
+      {
+        id: "round-1",
+        name: "รอบเดียว",
+        status: "finished",
+        distance_km: "10",
+        scheduled_time: "2025-01-20T08:00",
+        expected_end_time: "2025-01-20T10:00",
+      },
+    ],
+    currentRoundId: "round-1",
   },
   "evt-003": {
     name: "Thailand National Race Walk Championship",
     status: "scheduled",
+    rounds: [
+      {
+        id: "round-1",
+        name: "รอบคัดเลือก",
+        status: "scheduled",
+        distance_km: "10",
+        scheduled_time: "2025-05-20T08:00",
+        expected_end_time: "2025-05-20T10:30",
+      },
+    ],
   },
 };
 
@@ -168,10 +216,10 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
   },
 ];
 
-export default async function EventModeratorPage(
+export default function EventModeratorPage(
   props: EventModeratorPageProps,
 ) {
-  const { eventId } = await props.params;
+  const { eventId } = use(props.params);
   const eventInfo = MOCK_EVENT_STATUS[eventId];
 
   const statusLabel: Record<EventStatus, string> = {
@@ -185,6 +233,21 @@ export default async function EventModeratorPage(
     ongoing: "bg-emerald-50 text-emerald-700 ring-emerald-200",
     finished: "bg-slate-100 text-slate-700 ring-slate-200",
   };
+
+  const roundStatusLabel: Record<
+    "scheduled" | "ongoing" | "finished",
+    string
+  > = {
+    scheduled: "ยังไม่เริ่ม",
+    ongoing: "กำลังแข่งขัน",
+    finished: "เสร็จสิ้น",
+  };
+
+  const currentRound = eventInfo?.rounds?.find(
+    (r) => r.id === eventInfo.currentRoundId,
+  ) ||
+    eventInfo?.rounds?.find((r) => r.status === "ongoing") ||
+    eventInfo?.rounds?.[eventInfo.rounds.length - 1];
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -216,17 +279,81 @@ export default async function EventModeratorPage(
                 </>
               ) : null}
             </p>
+            {eventInfo?.rounds && eventInfo.rounds.length > 1 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {eventInfo.rounds.map((round) => (
+                  <span
+                    key={round.id}
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${
+                      round.id === currentRound?.id
+                        ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                        : round.status === "finished"
+                          ? "bg-slate-100 text-slate-600 ring-slate-200"
+                          : "bg-sky-50 text-sky-700 ring-sky-200"
+                    }`}
+                  >
+                    {round.name} • {roundStatusLabel[round.status]}
+                    {round.distance_km && ` • ${round.distance_km} กม.`}
+                  </span>
+                ))}
+              </div>
+            )}
+            {currentRound && (
+              <div className="mt-1 space-y-1">
+                <p className="text-xs text-slate-500">
+                  รอบปัจจุบัน: <span className="font-medium">{currentRound.name}</span>
+                  {currentRound.distance_km && ` (${currentRound.distance_km} กม.)`}
+                </p>
+                {currentRound.expected_end_time && (
+                  <p className="text-xs text-slate-500">
+                    เวลาที่คาดว่าจะสิ้นสุด:{" "}
+                    <span className="font-medium text-slate-700">
+                      {new Date(currentRound.expected_end_time).toLocaleString("th-TH", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
-          <Link href={`/admin/events/${eventId}`}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg border-slate-200 text-xs"
-            >
-              กลับไปหน้า Event
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            {currentRound && currentRound.status === "ongoing" && (
+              <Button
+                variant="default"
+                size="sm"
+                className="rounded-lg bg-red-600 text-xs text-white hover:bg-red-700"
+                onClick={() => {
+                  // TODO: เชื่อมต่อกับ API เพื่อจบรอบการแข่งขัน
+                  if (
+                    confirm(
+                      `คุณแน่ใจหรือไม่ว่าต้องการจบรอบ "${currentRound.name}"?`,
+                    )
+                  ) {
+                    alert(
+                      "จบรอบการแข่งขัน (mock) – รอเชื่อมต่อ API จริง",
+                    );
+                  }
+                }}
+              >
+                จบรอบการแข่งขัน
+              </Button>
+            )}
+            <Link href={`/admin/events/${eventId}`}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-lg border-slate-200 text-xs"
+              >
+                กลับไปหน้า Event
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Athletes & judges overview */}
