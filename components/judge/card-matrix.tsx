@@ -1,89 +1,91 @@
-export const MAX_YELLOW = 6;
-export const MAX_RED = 2;
+export const MAX_YELLOW = 2;
+export const MAX_RED = 4;
 
-export type YellowCardSymbol = "~" | ">" | "-";
+export type RedCardSymbol = "~" | ">";
 
-export type YellowCardDetail = {
-  symbol: YellowCardSymbol;
-  // "-" หมายถึงช่องที่ถูกบล็อกเพราะได้ใบแดงทันที (3 ช่อง = 1 แดง)
+export type RedCardDetail = {
+  symbol: RedCardSymbol; // งอเข่า (>) หรือยกเท้า (~)
+  isFromThisJudge?: boolean; // ใบแดงนี้เป็นของกรรมการคนนี้หรือไม่
 };
 
 export function JudgeCardMatrix({
   yellow,
   red,
-  yellowDetails,
+  redDetails,
+  hideYellow = false,
 }: {
-  yellow: number; // จำนวนใบเหลืองทั้งหมด (รวมช่องที่ถูกบล็อก)
+  yellow: number; // จำนวนใบเหลืองทั้งหมด (note, สูงสุด 2 ใบ, ไม่มีสัญลักษณ์)
   red: number;
-  yellowDetails?: YellowCardDetail[]; // รายละเอียดของแต่ละใบเหลือง
+  redDetails?: RedCardDetail[]; // รายละเอียดของแต่ละใบแดง (มีสัญลักษณ์)
+  hideYellow?: boolean; // ซ่อนใบเหลือง (แสดงแค่ใบแดง)
 }) {
   // Layout:
-  // Row 0: ( Y ) ( Y ) ( Y ) ( R )
-  // Row 1: ( Y ) ( Y ) ( Y ) ( R )
-  const layout: ("Y" | "R")[][] = [
-    ["Y", "Y", "Y", "R"],
-    ["Y", "Y", "Y", "R"],
+  // Row 0: ( Y ) ( Y ) ( R ) ( R )
+  // Row 1: (   ) (   ) ( R ) ( R )
+  const layout: ("Y" | "R" | null)[][] = [
+    ["Y", "Y", "R", "R"],
+    [null, null, "R", "R"],
   ];
 
   let yellowIndex = 0;
   let redIndex = 0;
 
   const safeYellow = Math.min(yellow, MAX_YELLOW);
-  
-  // คำนวณจำนวนใบแดงจากใบเหลืองจริง (ไม่นับช่องที่ถูกบล็อก "-")
-  const actualYellowCards = yellowDetails?.filter(d => d.symbol !== "-").length || 0;
-  const calculatedRed = Math.floor(actualYellowCards / 3); // 3 เหลือง = 1 แดง
-  const displayRed = Math.max(red, calculatedRed); // ใช้ค่าที่มากกว่า
-  const safeRed = Math.min(displayRed, MAX_RED);
+  // ใบเหลืองเป็น note ไม่ได้คำนวณเป็นใบแดง
+  const safeRed = Math.min(red, MAX_RED);
 
-  // ถ้าไม่มี yellowDetails ให้ใช้ default pattern
-  const defaultSymbols: YellowCardSymbol[] = ["~", ">", "~", ">", "~", ">"];
+  // สร้าง array สำหรับใบเหลือง (column - เรียงจากบนลงล่าง)
+  const yellowCards = [];
+  for (let i = 0; i < MAX_YELLOW; i++) {
+    yellowCards.push(i < safeYellow);
+  }
+
+  // สร้าง array สำหรับใบแดง (row - เรียงจากซ้ายไปขวา)
+  const redCards = [];
+  for (let i = 0; i < MAX_RED; i++) {
+    redCards.push({
+      isFilled: i < safeRed,
+      symbol: redDetails?.[i]?.symbol,
+      isFromThisJudge: redDetails?.[i]?.isFromThisJudge || false,
+    });
+  }
 
   return (
-    <div className="inline-grid grid-cols-4 gap-1 rounded-full px-1.5 py-1">
-      {layout.map((row, rowIdx) =>
-        row.map((cell, colIdx) => {
-          const key = `${rowIdx}-${colIdx}-${cell}`;
-
-          if (cell === "Y") {
-            const isFilled = yellowIndex < safeYellow;
-            const detail = yellowDetails?.[yellowIndex];
-            const symbol = detail?.symbol || defaultSymbols[yellowIndex];
-            const isBlocked = symbol === "-";
-            yellowIndex += 1;
-
-            return (
-              <span
-                key={key}
-                className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold ${
-                  isFilled
-                    ? isBlocked
-                      ? "bg-slate-300 text-slate-600" // ช่องที่ถูกบล็อก
-                      : "bg-amber-400 text-slate-900" // ใบเหลืองปกติ
-                    : " text-amber-300 ring-1 ring-amber-100" // ช่องว่าง
-                }`}
-              >
-                {isFilled ? symbol : ""}
-              </span>
-            );
-          }
-
-          const isFilled = redIndex < safeRed;
-          redIndex += 1;
-
-          return (
+    <div className="inline-flex items-center gap-2 rounded-full px-1.5 py-1">
+      {/* ใบเหลือง - column (เรียงจากบนลงล่าง) */}
+      {!hideYellow && (
+        <div className="flex flex-col gap-1">
+          {yellowCards.map((isFilled, index) => (
             <span
-              key={key}
-              className={`flex h-4 w-4 items-center justify-center rounded-full ${
+              key={`yellow-${index}`}
+              className={`flex h-5 w-5 items-center justify-center rounded-full ${
                 isFilled
-                  ? "bg-red-500"
-                  : "ring-1 ring-red-100"
+                  ? "bg-amber-400" // ใบเหลืองปกติ (ไม่มีสัญลักษณ์)
+                  : "ring-1 ring-amber-100" // ช่องว่าง
               }`}
             >
             </span>
-          );
-        }),
+          ))}
+        </div>
       )}
+
+      {/* ใบแดง - grid 2x2 (2 แถว 2 คอลัมน์) */}
+      <div className="grid grid-cols-2 gap-1 shrink-0 w-12">
+        {redCards.map((redCard, index) => (
+          <span
+            key={`red-${index}`}
+            className={`flex h-5 w-5 items-center justify-center rounded-full text-[16px] text-white font-semibold ${
+              redCard.isFilled
+                ? redCard.isFromThisJudge
+                  ? "bg-red-500 text-slate-900 ring-1 ring-yellow-400"
+                  : "bg-red-500 text-slate-900 "
+                : "ring-1 ring-red-100"
+            }`}
+          >
+            {redCard.isFilled && redCard.symbol ? redCard.symbol : ""}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

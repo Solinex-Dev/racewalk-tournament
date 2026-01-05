@@ -4,7 +4,6 @@ import {
   JudgeCardMatrix,
   MAX_YELLOW,
   MAX_RED,
-  type YellowCardDetail,
 } from "@/components/judge/card-matrix";
 
 type PublicEvent = {
@@ -25,7 +24,6 @@ type PublicEvent = {
     country: string;
     yellowCards: number;
     redCards: number;
-    yellowDetails?: YellowCardDetail[];
     position: number;
     splitTime: string;
     totalTime: string;
@@ -47,103 +45,84 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
     elapsed: "00:46:32",
     athletes: [
       {
-        bib: "101",
+        bib: "01",
         name: "Somchai Rakdee",
         affiliation: "ชมรมเดินทนกรุงเทพฯ",
         country: "THA",
         yellowCards: 2,
         redCards: 0,
-        yellowDetails: [{ symbol: "~" }, { symbol: ">" }],
         position: 1,
         splitTime: "02:14",
         totalTime: "00:46:32",
         status: "OK",
       },
       {
-        bib: "102",
+        bib: "02",
         name: "Jane Doe",
         affiliation: "Example Athletic Club",
         country: "USA",
         yellowCards: 3,
         redCards: 1,
-        yellowDetails: [{ symbol: ">" }, { symbol: "-" }, { symbol: "-" }],
         position: 2,
         splitTime: "02:18",
         totalTime: "00:46:45",
         status: "OK",
       },
       {
-        bib: "103",
+        bib: "03",
         name: "Chanida Runfast",
         affiliation: "Chiangmai Racewalk Team",
         country: "THA",
         yellowCards: 4,
         redCards: 0,
-        yellowDetails: [
-          { symbol: "~" },
-          { symbol: "~" },
-          { symbol: ">" },
-          { symbol: ">" },
-        ],
         position: 3,
         splitTime: "02:20",
         totalTime: "00:47:02",
         status: "OK",
       },
       {
-        bib: "104",
+        bib: "04",
         name: "Luis Garcia",
         affiliation: "Madrid Racewalk Club",
         country: "ESP",
         yellowCards: 6,
         redCards: 2,
-        yellowDetails: [
-          { symbol: "~" },
-          { symbol: "-" },
-          { symbol: "-" },
-          { symbol: ">" },
-          { symbol: "-" },
-          { symbol: "-" },
-        ],
         position: 4,
         splitTime: "02:25",
         totalTime: "00:48:10",
         status: "DQ",
       },
       {
-        bib: "105",
+        bib: "05",
         name: "Mai Tanaka",
         affiliation: "Tokyo Walkers",
         country: "JPN",
         yellowCards: 0,
         redCards: 0,
-        yellowDetails: [],
         position: 5,
         splitTime: "02:27",
         totalTime: "00:48:45",
         status: "OK",
       },
       {
-        bib: "106",
+        bib: "06",
         name: "Peter Schmidt",
         affiliation: "Berlin Walkers",
         country: "GER",
         yellowCards: 3,
         redCards: 1,
-        yellowDetails: [{ symbol: ">" }, { symbol: "~" }, { symbol: "-" }],
         position: 6,
         splitTime: "02:29",
         totalTime: "00:49:15",
         status: "OK",
       },
       {
-        bib: "107",
+        bib: "07",
         name: "Anna Kowalski",
         affiliation: "Warsaw Track Club",
         country: "POL",
         yellowCards: 1,
         redCards: 0,
-        yellowDetails: [{ symbol: "~" }],
         position: 7,
         splitTime: "02:31",
         totalTime: "00:49:45",
@@ -164,57 +143,48 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
     elapsed: "00:55:10",
     athletes: [
       {
-        bib: "201",
+        bib: "01",
         name: "Nattapong Citywalker",
         affiliation: "Bangkok Road Runners",
         country: "THA",
         yellowCards: 1,
         redCards: 0,
-        yellowDetails: [{ symbol: ">" }],
         position: 1,
         splitTime: "02:30",
         totalTime: "00:52:40",
         status: "OK",
       },
       {
-        bib: "202",
+        bib: "02",
         name: "Maria Lopez",
         affiliation: "Ciudad Deportiva",
         country: "MEX",
         yellowCards: 2,
         redCards: 0,
-        yellowDetails: [{ symbol: "~" }, { symbol: "-" }],
         position: 2,
         splitTime: "02:33",
         totalTime: "00:53:10",
         status: "OK",
       },
       {
-        bib: "203",
+        bib: "03",
         name: "Kittiya Fastwalk",
         affiliation: "Bangkok University Team",
         country: "THA",
         yellowCards: 3,
         redCards: 1,
-        yellowDetails: [{ symbol: ">" }, { symbol: ">" }, { symbol: "-" }],
         position: 3,
         splitTime: "02:36",
         totalTime: "00:54:20",
         status: "OK",
       },
       {
-        bib: "204",
+        bib: "04",
         name: "John Smith",
         affiliation: "City Athletics Club",
         country: "GBR",
         yellowCards: 4,
         redCards: 2,
-        yellowDetails: [
-          { symbol: "~" },
-          { symbol: "~" },
-          { symbol: "-" },
-          { symbol: ">" },
-        ],
         position: 15,
         splitTime: "02:50",
         totalTime: "00:59:40",
@@ -266,8 +236,8 @@ export default async function EventLivePage(props: EventLivePageProps) {
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-6 lg:py-10">
         <header className="flex flex-col gap-3 border-b border-slate-800 pb-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-              การแข่งขันเดินทน – สด
+            <p className="text-lg font-semibold uppercase tracking-[0.2em] text-slate-400">
+              การแข่งขันเดินทน – <span className="text-red-400">สด (Live)</span>
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100 md:text-3xl">
               {event.name}
@@ -280,7 +250,7 @@ export default async function EventLivePage(props: EventLivePageProps) {
           </div>
 
           <div className="flex items-end gap-4">
-            <div className="text-right text-xs">
+            <div className="text-right text-lg">
               <p className="text-slate-400">
                 Lap ปัจจุบัน{" "}
                 <span className="font-semibold text-slate-100">
@@ -290,7 +260,7 @@ export default async function EventLivePage(props: EventLivePageProps) {
               </p>
               <p className="text-slate-400">
                 เวลาแข่งขัน{" "}
-                <span className="font-mono text-sm font-semibold text-emerald-400">
+                <span className="font-mono font-semibold text-emerald-400">
                   {event.elapsed}
                 </span>
               </p>
@@ -306,110 +276,105 @@ export default async function EventLivePage(props: EventLivePageProps) {
         <section className="grid gap-4 lg:grid-cols-[2fr,1.1fr]">
           <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
             <div className="border-b border-slate-800 bg-slate-900/50 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              <p className="text font-bold uppercase tracking-wide text-slate-400">
                 กระดานคะแนนสด
-              </p>
-              <p className="text-[11px] text-slate-500">
-                อันดับเรียงตามเวลารวม (Total time) – ข้อมูลนี้เป็น mock
-                สำหรับดีไซน์ UI
               </p>
             </div>
 
             <div className="max-h-[520px] overflow-auto">
-              <table className="min-w-full border-collapse text-xs">
-                <thead className="sticky top-0 border-b border-slate-800 bg-slate-900/95 text-[11px] font-medium uppercase text-slate-400 backdrop-blur">
+              <table className="min-w-full border-collapse text-sm">
+                <thead className="sticky top-0 border-b border-slate-800 bg-slate-900/95 text-[14px] font-medium uppercase text-slate-400 backdrop-blur">
                   <tr>
-                    <th className="px-3 py-2 text-left">อันดับ</th>
-                    <th className="px-3 py-2 text-left">BIB</th>
-                    <th className="px-3 py-2 text-left">นักกีฬา</th>
-                    <th className="px-3 py-2 text-left hidden sm:table-cell">
+                    <th className="px-1 py-1 text-center text-sm text-nowrap">อันดับ</th>
+                    <th className="px-1 py-1 text-center text-sm text-nowrap">BIB</th>
+                    <th className="px-1 py-1 text-center text-sm text-nowrap">นักกีฬา</th>
+                    <th className="px-1 py-1 text-center text-sm text-nowrap hidden sm:table-cell">
                       สังกัด / สโมสร
                     </th>
-                    <th className="px-3 py-2 text-left hidden md:table-cell">
+                    <th className="px-1 py-1 text-center text-sm text-nowrap hidden md:table-cell">
                       ประเทศ
                     </th>
-                    <th className="px-3 py-2 text-left">Lap ล่าสุด</th>
-                    <th className="px-3 py-2 text-left hidden md:table-cell">
+                    <th className="px-1 py-1 text-center text-sm text-nowrap hidden md:table-cell">
                       ใบเหลือง / ใบแดง
                     </th>
-                    <th className="px-3 py-2 text-left">เวลารวม (Total)</th>
-                    <th className="px-3 py-2 text-left hidden md:table-cell">
+                    <th className="px-1 py-1 text-center text-sm text-nowrap">เวลารวม (Total)</th>
+                    <th className="px-1 py-1 text-center text-sm text-nowrap hidden md:table-cell">
                       สถานะ
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                  {event.athletes.map((athlete) => (
+                  {event.athletes.map((athlete) => {
+                    const isDQ = athlete.status === "DQ";
+                    return (
                     <tr
                       key={athlete.bib}
-                      className="transition-colors hover:bg-slate-800/50"
+                      className={`transition-colors text-center ${
+                        isDQ
+                          ? "bg-slate-800/30 opacity-60"
+                          : "hover:bg-slate-800/50"
+                      }`}
                     >
-                      <td className="px-3 py-2 text-sm font-semibold text-slate-100">
+                      <td className={`px-1 py-1 text-sm font-semibold ${
+                        isDQ ? "text-slate-500" : "text-slate-100"
+                      }`}>
                         {athlete.position}
                       </td>
-                      <td className="px-3 py-2 font-mono text-sm text-amber-400">
+                      <td className={`px-1 py-1 font-mono text-lg ${
+                        isDQ ? "text-slate-500" : "text-amber-400"
+                      }`}>
                         {athlete.bib}
                       </td>
-                      <td className="px-3 py-2">
-                        <p className="text-xs font-medium text-slate-100">
+                      <td className="px-1 py-1">
+                        <p className={`text-sm font-bold ${
+                          isDQ ? "text-slate-500" : "text-slate-100"
+                        }`}>
                           {athlete.name}
                         </p>
-                        <p className="text-[10px] text-slate-400 sm:hidden">
+                        <p className="text-[14px] text-slate-400 sm:hidden">
                           {athlete.affiliation}
                         </p>
                       </td>
-                      <td className="hidden px-3 py-2 text-[11px] text-slate-300 sm:table-cell">
+                      <td className={`hidden px-1 py-1 text-[14px] sm:table-cell ${
+                        isDQ ? "text-slate-500" : "text-slate-300"
+                      }`}>
                         {athlete.affiliation}
                       </td>
-                      <td className="hidden px-3 py-2 text-[11px] text-slate-300 md:table-cell">
+                      <td className={`hidden px-1 py-1 text-[14px] md:table-cell ${
+                        isDQ ? "text-slate-500" : "text-slate-300"
+                      }`}>
                         {athlete.country}
                       </td>
-                      <td className="px-3 py-2 font-mono text-[11px] text-slate-100">
-                        {athlete.splitTime}
-                      </td>
-                      <td className="hidden px-3 py-2 text-[11px] text-slate-100 md:table-cell">
-                        <div className="flex items-center gap-2">
+                      <td className={`hidden px-1 py-1 text-[14px] md:table-cell ${
+                        isDQ ? "text-slate-500" : "text-slate-100"
+                      }`}>
+                        <div className="flex items-center justify-center gap-2">
                           <JudgeCardMatrix
                             yellow={athlete.yellowCards}
                             red={athlete.redCards}
-                            yellowDetails={athlete.yellowDetails}
+                            hideYellow={true}
                           />
-                          <span className="text-[10px] text-slate-400">
-                            <span className="font-medium text-amber-400">
-                              Y{" "}
-                              {Math.min(athlete.yellowCards, MAX_YELLOW)}
-                            </span>
-                            {" / "}
-                            <span className="font-medium text-red-400">
-                              R {Math.min(athlete.redCards, MAX_RED)}
-                            </span>
-                          </span>
                         </div>
                       </td>
-                      <td className="px-3 py-2 font-mono text-[11px] text-slate-100">
+                      <td className={`px-1 py-1 font-mono text-[14px] ${
+                        isDQ ? "text-slate-500" : "text-slate-100"
+                      }`}>
                         {athlete.totalTime}
                       </td>
-                      <td className="px-3 py-2 hidden md:table-cell">
-                        {athlete.redCards >= 2 ? (
-                          <span className="inline-flex rounded-full bg-red-950 px-2 py-0.5 text-[10px] font-medium text-red-400 ring-1 ring-red-800">
-                            หมดสิทธิ์แข่งขัน
-                          </span>
-                        ) : athlete.status === "OK" ? (
-                          <span className="inline-flex rounded-full bg-emerald-950 px-2 py-0.5 text-[10px] font-medium text-emerald-400 ring-1 ring-emerald-800">
-                            OK
-                          </span>
-                        ) : athlete.status === "DQ" ? (
-                          <span className="inline-flex rounded-full bg-red-950 px-2 py-0.5 text-[10px] font-medium text-red-400 ring-1 ring-red-800">
-                            DQ
-                          </span>
-                        ) : athlete.status === "DNF" ? (
-                          <span className="inline-flex rounded-full bg-amber-950 px-2 py-0.5 text-[10px] font-medium text-amber-400 ring-1 ring-amber-800">
-                            DNF
-                          </span>
-                        ) : null}
+                      <td className="px-1 py-1 hidden md:table-cell">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text font-medium ring-1 ${
+                          athlete.status === "DQ"
+                            ? "bg-red-950 text-red-400 ring-red-800"
+                            : athlete.status === "DNF"
+                            ? "bg-amber-950 text-amber-400 ring-amber-800"
+                            : "bg-emerald-950 text-emerald-400 ring-emerald-800"
+                        }`}>
+                          {athlete.status === "DQ" ? "DQ" : athlete.status === "DNF" ? "DNF" : "OK"}
+                        </span>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -422,20 +387,20 @@ export default async function EventLivePage(props: EventLivePageProps) {
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 สำหรับกรรมการ
               </p>
-              <p className="text-[11px] text-slate-300">
+              <p className="text-[14px] text-slate-300">
                 ถ้าคุณเป็นกรรมการของ Event นี้ ให้เข้าไปยังหน้าสำหรับกรรมการ
                 เพื่อใช้บันทึกผลการแข่งขัน
               </p>
               <div className="mt-2 flex flex-col gap-2 text-xs">
                 <a
                   href={`/judge/events/${event.id}/join`}
-                  className="inline-flex items-center justify-center rounded-lg bg-slate-100 px-3 py-1.5 text-[11px] font-medium text-slate-900 hover:bg-slate-200"
+                  className="inline-flex items-center justify-center rounded-lg bg-slate-100 px-3 py-1.5 text-[14px] font-medium text-slate-900 hover:bg-slate-200"
                 >
                   ไปหน้ากรอกรหัสกรรมการ (Join event)
                 </a>
                 <a
                   href={`/judge/events/${event.id}`}
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-slate-800"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-1.5 text-[14px] font-medium text-slate-200 hover:bg-slate-800"
                 >
                   ไปหน้าใช้งานสำหรับกรรมการ (Judge workspace)
                 </a>
