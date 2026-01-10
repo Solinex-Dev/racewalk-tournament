@@ -30,6 +30,10 @@ export type RoundFormValues = {
   max_judges: string;
   athletes: AthleteEntry[];
   judges: JudgeEntry[];
+  head_judge_id?: string;
+  head_judge_secret_code?: string;
+  event_logger_id?: string;
+  event_logger_secret_code?: string;
 };
 
 const EMPTY_VALUES: RoundFormValues = {
@@ -40,6 +44,10 @@ const EMPTY_VALUES: RoundFormValues = {
   max_judges: "",
   athletes: [],
   judges: [],
+  head_judge_id: "",
+  head_judge_secret_code: "",
+  event_logger_id: "",
+  event_logger_secret_code: "",
 };
 
 // TODO: ภายหลังให้ดึงรายการนักกีฬา / กรรมการจากฐานข้อมูลจริง
@@ -94,6 +102,8 @@ export function RoundForm({ mode, eventId, defaultValues }: RoundFormProps) {
     return {
       ...merged,
       judges: judgesWithCode,
+      head_judge_secret_code: merged.head_judge_secret_code || (merged.head_judge_id ? generateRoundSecretCode() : ""),
+      event_logger_secret_code: merged.event_logger_secret_code || (merged.event_logger_id ? generateRoundSecretCode() : ""),
     };
   });
 
@@ -635,6 +645,119 @@ export function RoundForm({ mode, eventId, defaultValues }: RoundFormProps) {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Head Judge and Event Logger Selection */}
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">
+                หัวหน้ากรรมการ (Head Judge) และ คนเก็บ Lap Time (Event Logger)
+              </h2>
+              <p className="mt-1 text-[11px] text-slate-600">
+                เลือกหัวหน้ากรรมการและคนเก็บ Lap Time จากรายชื่อกรรมการ
+                และกำหนดรหัสลับสำหรับแต่ละคน
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Head Judge */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-slate-800">
+                  หัวหน้ากรรมการ (Head Judge)
+                </label>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="h-8 flex-1 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5"
+                    value={form.head_judge_id || ""}
+                    onChange={(e) => {
+                      const judgeId = e.target.value;
+                      setForm((prev) => ({
+                        ...prev,
+                        head_judge_id: judgeId,
+                        head_judge_secret_code: judgeId ? (prev.head_judge_secret_code || generateRoundSecretCode()) : "",
+                      }));
+                    }}
+                  >
+                    <option value="">-- เลือกหัวหน้ากรรมการ --</option>
+                    {MOCK_JUDGE_OPTIONS.map((judge) => (
+                      <option key={judge.id} value={judge.id}>
+                        {judge.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {form.head_judge_id && (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-800">
+                      {form.head_judge_secret_code || "------"}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 rounded-lg border-slate-200 px-2 text-[11px]"
+                      onClick={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          head_judge_secret_code: generateRoundSecretCode(),
+                        }));
+                      }}
+                    >
+                      รีเซ็ตโค้ด
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Event Logger */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-slate-800">
+                  คนเก็บ Lap Time (Event Logger)
+                </label>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="h-8 flex-1 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5"
+                    value={form.event_logger_id || ""}
+                    onChange={(e) => {
+                      const loggerId = e.target.value;
+                      setForm((prev) => ({
+                        ...prev,
+                        event_logger_id: loggerId,
+                        event_logger_secret_code: loggerId ? (prev.event_logger_secret_code || generateRoundSecretCode()) : "",
+                      }));
+                    }}
+                  >
+                    <option value="">-- เลือกคนเก็บ Lap Time --</option>
+                    {MOCK_JUDGE_OPTIONS.map((judge) => (
+                      <option key={judge.id} value={judge.id}>
+                        {judge.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {form.event_logger_id && (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-800">
+                      {form.event_logger_secret_code || "------"}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 rounded-lg border-slate-200 px-2 text-[11px]"
+                      onClick={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          event_logger_secret_code: generateRoundSecretCode(),
+                        }));
+                      }}
+                    >
+                      รีเซ็ตโค้ด
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
