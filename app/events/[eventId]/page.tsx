@@ -44,6 +44,7 @@ type PublicEvent = {
     splitTime: string;
     totalTime: string;
     status: "OK" | "DQ" | "DNF";
+    currentLap?: number;
   }[];
 };
 
@@ -95,6 +96,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         splitTime: "02:14",
         totalTime: "00:46:32",
         status: "OK",
+        currentLap: 8,
       },
       {
         bib: "02",
@@ -107,6 +109,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         splitTime: "02:18",
         totalTime: "00:46:45",
         status: "OK",
+        currentLap: 7,
       },
       {
         bib: "03",
@@ -119,6 +122,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         splitTime: "02:20",
         totalTime: "00:47:02",
         status: "OK",
+        currentLap: 7,
       },
       {
         bib: "04",
@@ -131,6 +135,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         splitTime: "02:25",
         totalTime: "00:48:10",
         status: "DQ",
+        currentLap: 6,
       },
       {
         bib: "05",
@@ -143,6 +148,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         splitTime: "02:27",
         totalTime: "00:48:45",
         status: "OK",
+        currentLap: 7,
       },
       {
         bib: "06",
@@ -155,6 +161,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         splitTime: "02:29",
         totalTime: "00:49:15",
         status: "OK",
+        currentLap: 6,
       },
       {
         bib: "07",
@@ -167,6 +174,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         splitTime: "02:31",
         totalTime: "00:49:45",
         status: "OK",
+        currentLap: 5,
       },
     ],
   },
@@ -207,6 +215,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         splitTime: "02:30",
         totalTime: "00:52:40",
         status: "OK",
+        currentLap: 10,
       },
       {
         bib: "02",
@@ -219,6 +228,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         splitTime: "02:33",
         totalTime: "00:53:10",
         status: "OK",
+        currentLap: 10,
       },
       {
         bib: "03",
@@ -231,6 +241,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         splitTime: "02:36",
         totalTime: "00:54:20",
         status: "OK",
+        currentLap: 10,
       },
       {
         bib: "04",
@@ -243,6 +254,7 @@ const MOCK_PUBLIC_EVENT: Record<string, PublicEvent> = {
         splitTime: "02:50",
         totalTime: "00:59:40",
         status: "DQ",
+        currentLap: 10,
       },
     ],
   },
@@ -341,7 +353,7 @@ export default async function EventLivePage(props: EventLivePageProps) {
               <p className="text-slate-400">
                 Lap ปัจจุบัน{" "}
                 <span className="font-semibold text-slate-100">
-                  {event.currentLap}
+                  {event.athletes[0]?.currentLap ?? event.currentLap}
                 </span>{" "}
                 / {event.lapCount}
               </p>
@@ -362,7 +374,7 @@ export default async function EventLivePage(props: EventLivePageProps) {
 
         <section className="grid gap-4 lg:grid-cols-[2fr,1.1fr]">
           <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
-            <div className="border-b border-slate-800 bg-slate-900/50 px-4 py-3">
+            <div className="border-b border-slate-800 bg-slate-900/50 px-5 py-4">
               <p className="text font-bold uppercase tracking-wide text-slate-400">
                 กระดานคะแนนสด
               </p>
@@ -372,20 +384,21 @@ export default async function EventLivePage(props: EventLivePageProps) {
               <table className="min-w-full border-collapse text-sm">
                 <thead className="sticky top-0 border-b border-slate-800 bg-slate-900/95 text-[14px] font-medium uppercase text-slate-400 backdrop-blur">
                   <tr>
-                    <th className="px-1 py-1 text-center text-sm text-nowrap">อันดับ</th>
-                    <th className="px-1 py-1 text-center text-sm text-nowrap">BIB</th>
-                    <th className="px-1 py-1 text-center text-sm text-nowrap">นักกีฬา</th>
-                    <th className="px-1 py-1 text-center text-sm text-nowrap hidden sm:table-cell">
+                    <th className="px-5 py-4 text-center text-sm text-nowrap">อันดับ</th>
+                    <th className="px-5 py-4 text-center text-sm text-nowrap">BIB</th>
+                    <th className="px-5 py-4 text-center text-sm text-nowrap">นักกีฬา</th>
+                    <th className="px-5 py-4 text-center text-sm text-nowrap hidden sm:table-cell">
                       สังกัด / สโมสร
                     </th>
-                    <th className="px-1 py-1 text-center text-sm text-nowrap hidden md:table-cell">
+                    <th className="px-5 py-4 text-center text-sm text-nowrap hidden md:table-cell">
                       ประเทศ
                     </th>
-                    <th className="px-1 py-1 text-center text-sm text-nowrap hidden md:table-cell">
-                      ใบเหลือง / ใบแดง
+                    <th className="px-5 py-4 text-center text-sm text-nowrap hidden md:table-cell">
+                      ใบแดง
                     </th>
-                    <th className="px-1 py-1 text-center text-sm text-nowrap">เวลารวม (Total)</th>
-                    <th className="px-1 py-1 text-center text-sm text-nowrap hidden md:table-cell">
+                    <th className="px-5 py-4 text-center text-sm text-nowrap">รอบ</th>
+                    <th className="px-5 py-4 text-center text-sm text-nowrap">เวลารวม (Total)</th>
+                    <th className="px-5 py-4 text-center text-sm text-nowrap hidden md:table-cell">
                       สถานะ
                     </th>
                   </tr>
@@ -402,17 +415,17 @@ export default async function EventLivePage(props: EventLivePageProps) {
                           : "hover:bg-slate-800/50"
                       }`}
                     >
-                      <td className={`px-1 py-1 text-sm font-semibold ${
+                      <td className={`px-5 py-4 text-sm font-semibold ${
                         isDQ ? "text-slate-500" : "text-slate-100"
                       }`}>
                         {athlete.position}
                       </td>
-                      <td className={`px-1 py-1 font-mono text-lg ${
+                      <td className={`px-5 py-4 font-mono text-lg ${
                         isDQ ? "text-slate-500" : "text-amber-400"
                       }`}>
                         {athlete.bib}
                       </td>
-                      <td className="px-1 py-1">
+                      <td className="px-5 py-4">
                         <p className={`text-sm font-bold ${
                           isDQ ? "text-slate-500" : "text-slate-100"
                         }`}>
@@ -422,17 +435,17 @@ export default async function EventLivePage(props: EventLivePageProps) {
                           {athlete.affiliation}
                         </p>
                       </td>
-                      <td className={`hidden px-1 py-1 text-[14px] sm:table-cell ${
+                      <td className={`hidden px-5 py-4 text-[14px] sm:table-cell ${
                         isDQ ? "text-slate-500" : "text-slate-300"
                       }`}>
                         {athlete.affiliation}
                       </td>
-                      <td className={`hidden px-1 py-1 text-[14px] md:table-cell ${
+                      <td className={`hidden px-5 py-4 text-[14px] md:table-cell ${
                         isDQ ? "text-slate-500" : "text-slate-300"
                       }`}>
                         {athlete.country}
                       </td>
-                      <td className={`hidden px-1 py-1 text-[14px] md:table-cell ${
+                      <td className={`hidden px-5 py-4 text-[14px] md:table-cell ${
                         isDQ ? "text-slate-500" : "text-slate-100"
                       }`}>
                         <div className="flex items-center justify-center gap-2">
@@ -440,15 +453,28 @@ export default async function EventLivePage(props: EventLivePageProps) {
                             yellow={athlete.yellowCards}
                             red={athlete.redCards}
                             hideYellow={true}
+                            maxRed={6}
                           />
                         </div>
                       </td>
-                      <td className={`px-1 py-1 font-mono text-[14px] ${
+                      <td className="px-5 py-4 text-center">
+                        {athlete.currentLap != null ? (
+                          <span className={`font-mono text-sm font-semibold ${isDQ ? "text-slate-500" : "text-slate-100"}`}>
+                            {athlete.currentLap}
+                            <span className={`text-xs font-normal ${isDQ ? "text-slate-600" : "text-slate-400"}`}>
+                              /{currentRound?.lapCount ?? event.lapCount}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-600">—</span>
+                        )}
+                      </td>
+                      <td className={`px-5 py-4 font-mono text-[14px] ${
                         isDQ ? "text-slate-500" : "text-slate-100"
                       }`}>
                         {athlete.totalTime}
                       </td>
-                      <td className="px-1 py-1 hidden md:table-cell">
+                      <td className="px-5 py-4 hidden md:table-cell">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text font-medium ring-1 ${
                           athlete.status === "DQ"
                             ? "bg-red-950 text-red-400 ring-red-800"
