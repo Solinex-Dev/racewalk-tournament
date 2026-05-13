@@ -552,13 +552,63 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
   },
 ];
 
+type PendingRedCard = {
+  id: string;
+  judgeId: string;
+  judgeName: string;
+  judgeZone: string;
+  targetBib: string;
+  targetAthlete: string;
+  symbol: "~" | ">";
+  time: string;
+};
+
+const MOCK_PENDING: PendingRedCard[] = [
+  {
+    id: "pending-001",
+    judgeId: "J-01",
+    judgeName: "Coach A",
+    judgeZone: "Zone A",
+    targetBib: "04",
+    targetAthlete: "Luis Garcia",
+    symbol: "~",
+    time: "14:58:30",
+  },
+  {
+    id: "pending-002",
+    judgeId: "J-02",
+    judgeName: "Coach B",
+    judgeZone: "Zone B",
+    targetBib: "02",
+    targetAthlete: "Jane Doe",
+    symbol: ">",
+    time: "15:01:15",
+  },
+];
+
 export default function EventModeratorPage(
   props: EventModeratorPageProps,
 ) {
   const { eventId } = use(props.params);
   const eventInfo = MOCK_EVENT_STATUS[eventId];
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
-  const [expandedAthleteBibs, setExpandedAthleteBibs] = useState<Set<string>>(new Set());
+  const [expandedJudgeIds, setExpandedJudgeIds] = useState<Set<string>>(
+    new Set(MOCK_PENDING.map((p) => p.judgeId))
+  );
+  const [pendingRedCards, setPendingRedCards] = useState<PendingRedCard[]>(MOCK_PENDING);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [selectedExportRound, setSelectedExportRound] = useState<string | null>(null);
+  const [selectedExportAthlete, setSelectedExportAthlete] = useState<string>("all");
+
+  const handleConfirmRedCard = (id: string) => {
+    setPendingRedCards((prev) => prev.filter((c) => c.id !== id));
+    // TODO: ส่ง API ยืนยันใบแดง
+  };
+
+  const handleRejectRedCard = (id: string) => {
+    setPendingRedCards((prev) => prev.filter((c) => c.id !== id));
+    // TODO: ส่ง API ปฏิเสธใบแดง
+  };
 
   const statusLabel: Record<EventStatus, string> = {
     scheduled: "ยังไม่เริ่ม",
@@ -616,29 +666,23 @@ export default function EventModeratorPage(
     return acc;
   }, {} as Record<string, ActivityLogItem[]>);
 
-  // Get card details for a specific athlete
-  const getAthleteCardDetails = (bib: string) => {
-    const athleteLogs = roundLogs.filter(
-      (log) =>
-        log.targetBib === bib &&
-        (log.actionType === "yellow_card" ||
-          log.actionType === "red_card" ||
-          log.actionType === "red_card_confirm")
-    );
-    
-    const yellowCards = athleteLogs.filter((log) => log.actionType === "yellow_card");
-    const redCards = athleteLogs.filter(
-      (log) => log.actionType === "red_card" || log.actionType === "red_card_confirm"
-    );
-
+  const getJudgeLogs = (judgeId: string) => {
+    const logs = roundLogs
+      .filter((log) => log.actorId === judgeId)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     return {
-      yellowCards: yellowCards.sort(
-        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      ),
-      redCards: redCards.sort(
-        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      ),
+      yellowCards: logs.filter((log) => log.actionType === "yellow_card"),
+      redCards: logs.filter((log) => log.actionType === "red_card"),
     };
+  };
+
+  const toggleJudge = (judgeId: string) => {
+    setExpandedJudgeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(judgeId)) next.delete(judgeId);
+      else next.add(judgeId);
+      return next;
+    });
   };
 
   if (!eventInfo) {
@@ -657,7 +701,7 @@ export default function EventModeratorPage(
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-8">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
@@ -681,6 +725,16 @@ export default function EventModeratorPage(
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedExportRound(displayRoundId);
+                setIsExportModalOpen(true);
+              }}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100"
+            >
+              ส่งออกข้อมูล
+            </button>
             <Link href={`/admin/events/${eventId}`}>
               <Button
                 variant="outline"
@@ -705,7 +759,7 @@ export default function EventModeratorPage(
         {/* Round Selector */}
         {eventInfo.rounds && eventInfo.rounds.length > 0 && (
           <Card className="rounded-2xl border-slate-200">
-            <CardContent className="p-4">
+            <CardContent className="p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold text-slate-700">เลือกรอบ:</span>
                 {eventInfo.rounds.map((round) => (
@@ -736,7 +790,7 @@ export default function EventModeratorPage(
           <>
             {/* Round Info */}
             <Card className="rounded-2xl border-slate-200">
-              <CardContent className="p-4">
+              <CardContent className="p-6">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900">
@@ -794,415 +848,309 @@ export default function EventModeratorPage(
               </CardContent>
             </Card>
 
-            {/* Athletes & Judges Overview */}
-            <div className="grid gap-4 lg:grid-cols-3">
-              {/* Athletes summary */}
-              <Card className="lg:col-span-2 rounded-2xl border-slate-200">
-                <CardContent className="p-0">
-                  <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-                    <div>
-                      <h2 className="text-sm font-semibold text-slate-900">
-                        นักกีฬาในรอบนี้
-                      </h2>
-                      <p className="text-xs text-slate-500">
-                        ดูจำนวนใบเหลือง/ใบแดงที่แต่ละคนได้รับ
-                      </p>
-                      {roundJudges.length > 0 && (
-                        <p className="mt-0.5 text-[10px] text-slate-400">
-                          กรรมการ {roundJudges.length} คน → ใบเหลืองสูงสุด {maxYellowCards} ใบ, ใบแดงสูงสุด {maxRedCards} ใบ
-                        </p>
-                      )}
-                    </div>
+            {/* Judges Overview */}
+            <Card className="rounded-2xl border-slate-200">
+              <CardContent className="p-0">
+                <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                  <div>
+                    <h2 className="text-sm font-semibold text-slate-900">กรรมการในรอบนี้</h2>
+                    <p className="text-xs text-slate-500">กดที่ชื่อกรรมการเพื่อดูใบที่ให้</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {pendingRedCards.length > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-300">
+                        ● {pendingRedCards.length} ใบแดงรอยืนยัน
+                      </span>
+                    )}
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                      {roundAthletes.length} คน
+                      {roundJudges.length} คน
                     </span>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse text-xs">
-                      <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
-                        <tr>
-                          <th className="px-3 py-2 text-left"></th>
-                          <th className="px-3 py-2 text-left">Bib</th>
-                          <th className="px-3 py-2 text-left">ชื่อ</th>
-                          <th className="px-3 py-2 text-left">สังกัด</th>
-                          <th className="px-3 py-2 text-center">ใบเหลือง / ใบแดง</th>
-                          <th className="px-3 py-2 text-center">สถานะ</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 bg-white">
-                        {roundAthletes.length > 0 ? (
-                          roundAthletes.map((athlete) => {
-                            const isExpanded = expandedAthleteBibs.has(athlete.bib);
-                            const cardDetails = getAthleteCardDetails(athlete.bib);
-                            
-                            const toggleExpand = () => {
-                              setExpandedAthleteBibs((prev) => {
-                                const newSet = new Set(prev);
-                                if (newSet.has(athlete.bib)) {
-                                  newSet.delete(athlete.bib);
-                                } else {
-                                  newSet.add(athlete.bib);
-                                }
-                                return newSet;
-                              });
-                            };
-                            
-                            return (
-                              <Fragment key={athlete.bib}>
-                                <tr
-                                  className={`hover:bg-slate-50/70 cursor-pointer transition-colors ${
-                                    isExpanded ? "bg-slate-50" : ""
-                                  }`}
-                                  onClick={toggleExpand}
-                                >
-                              <td className="px-3 py-2 text-center w-8">
-                                <span className={`inline-flex items-center justify-center w-5 h-5 transition-transform ${
-                                  isExpanded ? "rotate-90" : ""
-                                }`}>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse text-xs">
+                    <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
+                      <tr>
+                        <th className="w-10 px-4 py-4" />
+                        <th className="px-4 py-4 text-left">ชื่อกรรมการ</th>
+                        <th className="px-4 py-4 text-left">ตำแหน่ง</th>
+                        <th className="px-4 py-4 text-center text-amber-600">ใบเหลือง</th>
+                        <th className="px-4 py-4 text-center text-red-600">ใบแดง</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 bg-white">
+                      {roundJudges.length > 0 ? (
+                        roundJudges.map((judge) => {
+                          const isExpanded = expandedJudgeIds.has(judge.id);
+                          const { yellowCards, redCards } = getJudgeLogs(judge.id);
+                          const maxY = roundAthletes.length * 2;
+                          const maxR = roundAthletes.length;
+                          const judgePending = pendingRedCards.filter((p) => p.judgeId === judge.id);
+                          const hasPending = judgePending.length > 0;
+                          return (
+                            <Fragment key={judge.id}>
+                              <tr
+                                className={`cursor-pointer transition-colors ${
+                                  hasPending
+                                    ? "bg-red-50 hover:bg-red-100/70"
+                                    : isExpanded
+                                    ? "bg-slate-50 hover:bg-slate-50/70"
+                                    : "hover:bg-slate-50/70"
+                                }`}
+                                onClick={() => toggleJudge(judge.id)}
+                              >
+                                <td className="w-10 px-4 py-4 text-center">
                                   <svg
-                                    className="w-4 h-4 text-slate-400"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
+                                    className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                   >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M9 5l7 7-7 7"
-                                    />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                   </svg>
-                                </span>
-                              </td>
-                              <td className="px-3 py-2 font-semibold text-slate-900">
-                                {athlete.bib}
-                              </td>
-                              <td className="px-3 py-2 text-slate-800">
-                                {athlete.name}
-                              </td>
-                              <td className="px-3 py-2 text-slate-600">
-                                {athlete.affiliation}
-                              </td>
-                              <td className="px-3 py-2">
-                                <div className="flex flex-col gap-2.5 min-w-[160px]">
-                                  {/* Yellow Cards */}
-                                  <div className="space-y-1.5">
+                                </td>
+                                <td className="px-4 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-slate-900">{judge.name}</span>
+                                    {hasPending && (
+                                      <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                        {judgePending.length} รอยืนยัน
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-4 text-slate-600">{judge.position}</td>
+
+                                {/* ใบเหลือง — dots + progress bar */}
+                                <td className="px-4 py-4">
+                                  <div className="min-w-[140px] space-y-2">
                                     <div className="flex items-center justify-between gap-2">
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-1.5">
                                         <span className="text-xs font-bold text-amber-700">
-                                          Y {athlete.yellowCards}
+                                          Y {yellowCards.length}
                                         </span>
-                                        {maxYellowCards > 0 && (
-                                          <>
-                                            <span className="text-[10px] text-slate-400">/</span>
-                                            <span className="text-[10px] text-slate-500">
-                                              {maxYellowCards}
-                                            </span>
-                                          </>
+                                        {maxY > 0 && (
+                                          <span className="text-[10px] text-slate-400">/ {maxY}</span>
                                         )}
                                       </div>
-                                      {athlete.yellowCards > 0 && (
+                                      {yellowCards.length > 0 && (
                                         <div className="flex gap-0.5">
-                                          {Array.from({ length: Math.min(athlete.yellowCards, 8) }).map((_, i) => (
-                                            <span
-                                              key={i}
-                                              className="h-2.5 w-2.5 rounded-full bg-amber-400"
-                                              title={`ใบเหลือง ${i + 1}`}
-                                            />
+                                          {Array.from({ length: Math.min(yellowCards.length, 8) }).map((_, i) => (
+                                            <span key={i} className="h-2.5 w-2.5 rounded-full bg-amber-400" />
                                           ))}
-                                          {athlete.yellowCards > 8 && (
-                                            <span className="text-[8px] text-amber-600 font-medium leading-none">
-                                              +{athlete.yellowCards - 8}
+                                          {yellowCards.length > 8 && (
+                                            <span className="text-[8px] font-medium leading-none text-amber-600">
+                                              +{yellowCards.length - 8}
                                             </span>
                                           )}
                                         </div>
                                       )}
                                     </div>
-                                    {maxYellowCards > 0 && (
-                                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                    {maxY > 0 && (
+                                      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                                         <div
                                           className="h-full bg-amber-400 transition-all"
-                                          style={{
-                                            width: `${Math.min((athlete.yellowCards / maxYellowCards) * 100, 100)}%`,
-                                          }}
-                                          title={`${athlete.yellowCards} / ${maxYellowCards} ใบเหลือง`}
+                                          style={{ width: `${Math.min((yellowCards.length / maxY) * 100, 100)}%` }}
                                         />
                                       </div>
                                     )}
                                   </div>
+                                </td>
 
-                                  {/* Red Cards */}
-                                  <div className="space-y-1.5">
+                                {/* ใบแดง — dots + progress bar */}
+                                <td className="px-4 py-4">
+                                  <div className="min-w-[140px] space-y-2">
                                     <div className="flex items-center justify-between gap-2">
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-1.5">
                                         <span className="text-xs font-bold text-red-700">
-                                          R {athlete.redCards}
+                                          R {redCards.length}
                                         </span>
-                                        {maxRedCards > 0 && (
-                                          <>
-                                            <span className="text-[10px] text-slate-400">/</span>
-                                            <span className="text-[10px] text-slate-500">
-                                              {maxRedCards}
-                                            </span>
-                                          </>
+                                        {maxR > 0 && (
+                                          <span className="text-[10px] text-slate-400">/ {maxR}</span>
                                         )}
                                       </div>
-                                      {athlete.redCards > 0 && (
+                                      {redCards.length > 0 && (
                                         <div className="flex gap-0.5">
-                                          {Array.from({ length: Math.min(athlete.redCards, 8) }).map((_, i) => (
-                                            <span
-                                              key={i}
-                                              className="h-2.5 w-2.5 rounded-full bg-red-500"
-                                              title={`ใบแดง ${i + 1}`}
-                                            />
+                                          {Array.from({ length: Math.min(redCards.length, 8) }).map((_, i) => (
+                                            <span key={i} className="h-2.5 w-2.5 rounded-full bg-red-500" />
                                           ))}
-                                          {athlete.redCards > 8 && (
-                                            <span className="text-[8px] text-red-600 font-medium leading-none">
-                                              +{athlete.redCards - 8}
+                                          {redCards.length > 8 && (
+                                            <span className="text-[8px] font-medium leading-none text-red-600">
+                                              +{redCards.length - 8}
                                             </span>
                                           )}
                                         </div>
                                       )}
                                     </div>
-                                    {maxRedCards > 0 && (
-                                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                    {maxR > 0 && (
+                                      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                                         <div
                                           className="h-full bg-red-500 transition-all"
-                                          style={{
-                                            width: `${Math.min((athlete.redCards / maxRedCards) * 100, 100)}%`,
-                                          }}
-                                          title={`${athlete.redCards} / ${maxRedCards} ใบแดง`}
+                                          style={{ width: `${Math.min((redCards.length / maxR) * 100, 100)}%` }}
                                         />
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-3 py-2 text-center">
-                                {athlete.status && (
-                                  <span
-                                    className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                      athlete.status === "DQ"
-                                        ? "bg-red-50 text-red-700"
-                                        : athlete.status === "DNF"
-                                          ? "bg-amber-50 text-amber-700"
-                                          : "bg-emerald-50 text-emerald-700"
-                                    }`}
-                                  >
-                                    {athlete.status}
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                            {isExpanded && (
-                              <tr>
-                                <td colSpan={6} className="px-3 py-4 bg-slate-50/50">
-                                  <div className="space-y-4">
-                                    {/* Yellow Cards Details */}
-                                    {cardDetails.yellowCards.length > 0 ? (
-                                      <div className="space-y-2">
-                                        <h4 className="text-xs font-semibold text-amber-700 flex items-center gap-2">
-                                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold">
-                                            {cardDetails.yellowCards.length}
-                                          </span>
-                                          ใบเหลืองที่ได้รับ
-                                        </h4>
-                                        <div className="space-y-1.5 pl-7">
-                                          {cardDetails.yellowCards.map((log, index) => {
-                                            const judge = roundJudges.find(
-                                              (j) => j.id === log.actorId
-                                            );
-                                            return (
-                                              <div
-                                                key={log.id}
-                                                className="flex items-start gap-2 text-[11px] text-slate-700 bg-white rounded-lg border border-amber-200 px-3 py-2"
-                                              >
-                                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-400 shrink-0 mt-0.5" />
-                                                <div className="flex-1 min-w-0">
-                                                  <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className="font-medium text-slate-900">
-                                                      ใบเหลือง #{index + 1}
-                                                    </span>
-                                                    <span className="text-slate-400">•</span>
-                                                    <span className="font-mono text-[10px] text-slate-500">
-                                                      {log.time}
-                                                    </span>
-                                                  </div>
-                                                  <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
-                                                    <span className="text-slate-600">
-                                                      จาก: <span className="font-medium">{log.actor}</span>
-                                                    </span>
-                                                    {judge && (
-                                                      <>
-                                                        <span className="text-slate-400">•</span>
-                                                        <span className="text-slate-500 text-[10px]">
-                                                          {judge.position} ({judge.zone})
-                                                        </span>
-                                                      </>
-                                                    )}
-                                                  </div>
-                                                  {log.details && (
-                                                    <p className="mt-1 text-[10px] text-slate-500">
-                                                      {log.details}
-                                                    </p>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="text-xs text-slate-400 pl-7">
-                                        ยังไม่ได้รับใบเหลือง
-                                      </div>
-                                    )}
-
-                                    {/* Red Cards Details */}
-                                    {cardDetails.redCards.length > 0 ? (
-                                      <div className="space-y-2">
-                                        <h4 className="text-xs font-semibold text-red-700 flex items-center gap-2">
-                                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
-                                            {cardDetails.redCards.length}
-                                          </span>
-                                          ใบแดงที่ได้รับ
-                                        </h4>
-                                        <div className="space-y-1.5 pl-7">
-                                          {cardDetails.redCards.map((log, index) => {
-                                            const judge = roundJudges.find(
-                                              (j) => j.id === log.actorId
-                                            );
-                                            const isConfirmed = log.actionType === "red_card_confirm";
-                                            return (
-                                              <div
-                                                key={log.id}
-                                                className={`flex items-start gap-2 text-[11px] text-slate-700 bg-white rounded-lg border px-3 py-2 ${
-                                                  isConfirmed
-                                                    ? "border-emerald-300 bg-emerald-50/30"
-                                                    : "border-red-200"
-                                                }`}
-                                              >
-                                                <span
-                                                  className={`inline-flex items-center justify-center w-4 h-4 rounded-full shrink-0 mt-0.5 ${
-                                                    isConfirmed
-                                                      ? "bg-emerald-500"
-                                                      : "bg-red-500"
-                                                  }`}
-                                                />
-                                                <div className="flex-1 min-w-0">
-                                                  <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className="font-medium text-slate-900">
-                                                      ใบแดง #{index + 1}
-                                                      {isConfirmed && (
-                                                        <span className="ml-1 text-[10px] text-emerald-700">
-                                                          (ยืนยันแล้ว)
-                                                        </span>
-                                                      )}
-                                                    </span>
-                                                    <span className="text-slate-400">•</span>
-                                                    <span className="font-mono text-[10px] text-slate-500">
-                                                      {log.time}
-                                                    </span>
-                                                  </div>
-                                                  <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
-                                                    <span className="text-slate-600">
-                                                      {isConfirmed ? "ยืนยันโดย" : "จาก"}:{" "}
-                                                      <span className="font-medium">{log.actor}</span>
-                                                    </span>
-                                                    {judge && (
-                                                      <>
-                                                        <span className="text-slate-400">•</span>
-                                                        <span className="text-slate-500 text-[10px]">
-                                                          {judge.position} ({judge.zone})
-                                                        </span>
-                                                      </>
-                                                    )}
-                                                  </div>
-                                                  {log.details && (
-                                                    <p className="mt-1 text-[10px] text-slate-500">
-                                                      {log.details}
-                                                    </p>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="text-xs text-slate-400 pl-7">
-                                        ยังไม่ได้รับใบแดง
                                       </div>
                                     )}
                                   </div>
                                 </td>
                               </tr>
-                            )}
-                              </Fragment>
-                            );
-                          })
-                        ) : (
-                          <tr>
-                            <td colSpan={6} className="px-3 py-4 text-center text-xs text-slate-500">
-                              ยังไม่มีข้อมูลนักกีฬาในรอบนี้
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
+                              {isExpanded && (
+                                <tr>
+                                  <td colSpan={6} className="bg-slate-50/60 px-8 py-6">
+                                    <div className="space-y-7">
+                                      {/* ใบแดงรอยืนยัน */}
+                                      {judgePending.length > 0 && (
+                                        <div className="space-y-2">
+                                          <h4 className="flex items-center gap-2 text-xs font-semibold text-red-700">
+                                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                                              {judgePending.length}
+                                            </span>
+                                            ใบแดงรอยืนยัน
+                                          </h4>
+                                          <div className="space-y-3">
+                                            {judgePending.map((pending) => (
+                                              <div
+                                                key={pending.id}
+                                                className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-4"
+                                              >
+                                                <div className="flex items-center gap-3">
+                                                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white">
+                                                    {pending.symbol}
+                                                  </span>
+                                                  <div>
+                                                    <p className="text-xs font-semibold text-slate-900">
+                                                      Bib {pending.targetBib} – {pending.targetAthlete}
+                                                    </p>
+                                                    <p className="text-[10px] text-slate-500">
+                                                      {pending.symbol === ">" ? "งอเข่า" : "ยกเท้า"} • {pending.time}
+                                                    </p>
+                                                  </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); handleRejectRedCard(pending.id); }}
+                                                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 active:bg-slate-100"
+                                                  >
+                                                    ปฏิเสธ
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); handleConfirmRedCard(pending.id); }}
+                                                    className="rounded-lg border border-red-500 bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 active:bg-red-700"
+                                                  >
+                                                    ยืนยัน
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
 
-              {/* Judges summary */}
-              <Card className="rounded-2xl border-slate-200">
-                <CardContent className="space-y-3 p-4 text-xs text-slate-700">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-sm font-semibold text-slate-900">
-                        กรรมการในรอบนี้
-                      </h2>
-                      <p className="text-xs text-slate-500">
-                        ใครนั่งอยู่ตรงไหน / โซนใดในสนาม
-                      </p>
-                      {roundJudges.length > 0 && (
-                        <p className="mt-0.5 text-[10px] text-slate-400">
-                          กรรมการแต่ละคนให้ใบเหลืองได้ 2 ใบ/นักกีฬา, ใบแดงได้ 1 ใบ/นักกีฬา
-                        </p>
+                                      {/* ใบเหลือง */}
+                                      <div className="space-y-3">
+                                        <h4 className="flex items-center gap-2 text-xs font-semibold text-amber-700">
+                                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-700">
+                                            {yellowCards.length}
+                                          </span>
+                                          ใบเหลืองที่ให้
+                                        </h4>
+                                        {yellowCards.length > 0 ? (
+                                          <div className="overflow-hidden rounded-lg border border-amber-200">
+                                            <table className="min-w-full text-[11px]">
+                                              <thead className="bg-amber-50 text-[10px] font-medium uppercase text-amber-700">
+                                                <tr>
+                                                  <th className="px-4 py-3 text-left">Bib</th>
+                                                  <th className="px-4 py-3 text-left">นักกีฬา</th>
+                                                  <th className="px-4 py-3 text-left">เวลา</th>
+                                                  <th className="px-4 py-3 text-left">รายละเอียด</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody className="divide-y divide-amber-100 bg-white">
+                                                {yellowCards.map((log) => (
+                                                  <tr key={log.id} className="hover:bg-amber-50/40">
+                                                    <td className="px-4 py-3 font-mono font-semibold text-slate-900">
+                                                      {log.targetBib ?? "-"}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-800">
+                                                      {log.targetAthlete ?? "-"}
+                                                    </td>
+                                                    <td className="px-4 py-3 font-mono text-slate-500">
+                                                      {log.time}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-500">
+                                                      {log.details ?? "-"}
+                                                    </td>
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        ) : (
+                                          <p className="text-xs text-slate-400">ยังไม่ได้ให้ใบเหลือง</p>
+                                        )}
+                                      </div>
+
+                                      {/* ใบแดง */}
+                                      <div className="space-y-3">
+                                        <h4 className="flex items-center gap-2 text-xs font-semibold text-red-700">
+                                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-100 text-[10px] font-bold text-red-700">
+                                            {redCards.length}
+                                          </span>
+                                          ใบแดงที่ให้
+                                        </h4>
+                                        {redCards.length > 0 ? (
+                                          <div className="overflow-hidden rounded-lg border border-red-200">
+                                            <table className="min-w-full text-[11px]">
+                                              <thead className="bg-red-50 text-[10px] font-medium uppercase text-red-700">
+                                                <tr>
+                                                  <th className="px-4 py-3 text-left">Bib</th>
+                                                  <th className="px-4 py-3 text-left">นักกีฬา</th>
+                                                  <th className="px-4 py-3 text-left">เวลา</th>
+                                                  <th className="px-4 py-3 text-left">รายละเอียด</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody className="divide-y divide-red-100 bg-white">
+                                                {redCards.map((log) => (
+                                                  <tr key={log.id} className="hover:bg-red-50/40">
+                                                    <td className="px-4 py-3 font-mono font-semibold text-slate-900">
+                                                      {log.targetBib ?? "-"}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-800">
+                                                      {log.targetAthlete ?? "-"}
+                                                    </td>
+                                                    <td className="px-4 py-3 font-mono text-slate-500">
+                                                      {log.time}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-500">
+                                                      {log.details ?? "-"}
+                                                    </td>
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        ) : (
+                                          <p className="text-xs text-slate-400">ยังไม่ได้ให้ใบแดง</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </Fragment>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="px-3 py-4 text-center text-xs text-slate-500">
+                            ยังไม่มีข้อมูลกรรมการในรอบนี้
+                          </td>
+                        </tr>
                       )}
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                      {roundJudges.length} คน
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    {roundJudges.length > 0 ? (
-                      roundJudges.map((judge) => (
-                        <div
-                          key={judge.id}
-                          className="flex items-start justify-between rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2"
-                        >
-                          <div>
-                            <p className="text-xs font-semibold text-slate-900">
-                              {judge.name}
-                            </p>
-                            <p className="text-[11px] text-slate-600">
-                              {judge.position}
-                            </p>
-                          </div>
-                          <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
-                            {judge.zone}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-slate-500">ยังไม่มีข้อมูลกรรมการในรอบนี้</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
           </>
         )}
 
@@ -1210,7 +1158,7 @@ export default function EventModeratorPage(
         {displayRound && (
           <Card className="rounded-2xl border-slate-200">
             <CardContent className="p-0">
-              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-900">
                     Activity Log - {displayRound.name}
@@ -1228,12 +1176,12 @@ export default function EventModeratorPage(
                 {roundLogs.length > 0 ? (
                   Object.entries(logsByDate).map(([date, logs]) => (
                     <div key={date} className="border-b border-slate-200 last:border-b-0">
-                      <div className="sticky top-0 z-10 bg-slate-50 px-4 py-2">
+                      <div className="sticky top-0 z-10 bg-slate-50 px-6 py-3.5">
                         <p className="text-xs font-semibold text-slate-700">{date}</p>
                       </div>
                       <ul className="divide-y divide-slate-200 bg-white text-xs text-slate-700">
                         {logs.map((log) => (
-                          <li key={log.id} className="flex gap-3 px-4 py-3 hover:bg-slate-50/50">
+                          <li key={log.id} className="flex gap-4 px-6 py-5 hover:bg-slate-50/50">
                             <div className="mt-0.5 w-20 shrink-0">
                               <div className="text-[11px] font-mono font-semibold text-slate-900">
                                 {log.time}
@@ -1314,7 +1262,7 @@ export default function EventModeratorPage(
                 )}
               </div>
 
-              <p className="border-t border-slate-200 px-4 py-2.5 text-[11px] text-slate-500">
+              <p className="border-t border-slate-200 px-6 py-3 text-[11px] text-slate-500">
                 * ข้อมูล activity log ตอนนี้เป็นตัวอย่างจำลอง – ในอนาคตจะดึงจาก
                 ระบบบันทึกเหตุการณ์จริง (real-time event stream) ของกรรมการและ
                 moderator
@@ -1323,6 +1271,97 @@ export default function EventModeratorPage(
           </Card>
         )}
       </div>
+
+      {/* Export Modal */}
+      {isExportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">ส่งออกข้อมูล</h2>
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <p className="text-xs text-slate-600">
+                ส่งออกผลการแข่งขัน ใบเตือน ใบแดง และข้อมูลกรรมการ
+              </p>
+
+              {/* Round Selector */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-700">เลือกรอบการแข่งขัน</label>
+                <select
+                  value={selectedExportRound || ""}
+                  onChange={(e) => setSelectedExportRound(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 hover:border-slate-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                >
+                  {eventInfo?.rounds?.map((round) => (
+                    <option key={round.id} value={round.id}>
+                      {round.name}
+                      {round.distance_km && ` (${round.distance_km} กม.)`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Athlete Selector */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-700">เลือกข้อมูล</label>
+                <select
+                  value={selectedExportAthlete}
+                  onChange={(e) => setSelectedExportAthlete(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 hover:border-slate-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                >
+                  <option value="all">
+                    นักกีฬาทั้งหมด (
+                    {selectedExportRound
+                      ? MOCK_ATHLETES_BY_ROUND[selectedExportRound]?.length || 0
+                      : roundAthletes.length}{" "}
+                    คน)
+                  </option>
+                  <optgroup label="นักกีฬาเฉพาะตัว">
+                    {(selectedExportRound
+                      ? MOCK_ATHLETES_BY_ROUND[selectedExportRound] || []
+                      : roundAthletes
+                    ).map((athlete) => (
+                      <option key={athlete.bib} value={athlete.bib}>
+                        {athlete.bib} – {athlete.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* Export Buttons */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled
+                  className="flex-1 rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100 active:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  📄 PDF
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="flex-1 rounded-lg border border-green-300 bg-green-50 px-3 py-2.5 text-sm font-semibold text-green-700 hover:bg-green-100 active:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  📊 Excel
+                </button>
+              </div>
+
+              <p className="text-[10px] text-slate-500">
+                รวมข้อมูล: BIB / ชื่อ / สถานะ / ใบเหลือง / ใบแดง / กรรมการที่ให้ / ตำแหน่ง
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
