@@ -11,7 +11,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 
-type JudgeJoinFormProps = {
+type TimekeeperJoinFormProps = {
   eventId: string;
   event:
     | {
@@ -23,31 +23,19 @@ type JudgeJoinFormProps = {
     | null;
 };
 
-// TODO: ภายหลังดึงจาก API — mock code → role mapping
-const MOCK_CODE_DESTINATIONS: Record<string, string> = {
-  "111111": "/timekeeper/events/{eventId}",
-};
-
-function getDestination(code: string, eventId: string): string {
-  const template = MOCK_CODE_DESTINATIONS[code];
-  if (template) return template.replace("{eventId}", eventId);
-  // default: judge workspace
-  return `/judge/events/${eventId}`;
-}
-
-export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
+export function TimekeeperJoinForm({ eventId, event }: TimekeeperJoinFormProps) {
   const router = useRouter();
   const [code, setCode] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: ภายหลังเชื่อมต่อ API verify รหัส แล้วดึง role จาก response
+    // TODO: ภายหลังเชื่อมต่อ API ตรวจสอบ secret_code ของคนนับรอบ
     setSubmitting(true);
     setTimeout(() => {
       setSubmitting(false);
       if (!eventId) return;
-      router.push(getDestination(code, eventId));
+      router.push(`/timekeeper/events/${eventId}`);
     }, 400);
   };
 
@@ -57,10 +45,10 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
         <CardContent className="space-y-6">
           <div className="space-y-2 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-              การแข่งขันเดินทน – กรรมการ
+              การแข่งขันเดินทน – คนนับรอบ
             </p>
             <h1 className="text-2xl font-semibold text-slate-100">
-              เข้าร่วมเป็นกรรมการใน Event
+              เข้าร่วมเป็นคนนับรอบใน Event
             </h1>
           </div>
 
@@ -88,7 +76,7 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-3">
               <label className="block text-sm font-medium text-slate-200">
-                รหัสลับของกรรมการใน Event นี้
+                รหัสลับของคนนับรอบใน Event นี้
               </label>
 
               <div className="flex justify-center">
@@ -112,7 +100,6 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
 
               <p className="text-center text-[11px] text-slate-400">
                 ใช้รหัสลับ 6 ตัวที่ได้รับจากผู้จัด / Admin ของ Event
-                (ไม่ใช่โค้ด join รวมของ Event)
               </p>
             </div>
 
@@ -121,7 +108,7 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
               disabled={submitting || code.trim().length !== 6 || !event}
               className="w-full rounded-xl bg-slate-100 text-sm font-medium text-slate-900 hover:bg-slate-200 disabled:bg-slate-800 disabled:text-slate-500"
             >
-              {submitting ? "กำลังตรวจสอบรหัส..." : "เข้าร่วม Event ในฐานะกรรมการ"}
+              {submitting ? "กำลังตรวจสอบรหัส..." : "เข้าร่วม Event ในฐานะคนนับรอบ"}
             </Button>
           </form>
 
@@ -136,5 +123,3 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
     </div>
   );
 }
-
-
