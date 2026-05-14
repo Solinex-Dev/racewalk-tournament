@@ -384,19 +384,12 @@ export default async function EventLivePage(props: EventLivePageProps) {
               <table className="min-w-full border-collapse text-sm">
                 <thead className="sticky top-0 border-b border-slate-800 bg-slate-900/95 text-[14px] font-medium uppercase text-slate-400 backdrop-blur">
                   <tr>
-                    <th className="px-5 py-4 text-center text-sm text-nowrap">อันดับ</th>
+                    <th className="px-5 py-4 text-center text-sm text-nowrap">รอบ</th>
                     <th className="px-5 py-4 text-center text-sm text-nowrap">BIB</th>
                     <th className="px-5 py-4 text-center text-sm text-nowrap">นักกีฬา</th>
-                    <th className="px-5 py-4 text-center text-sm text-nowrap hidden sm:table-cell">
-                      สังกัด / สโมสร
-                    </th>
-                    <th className="px-5 py-4 text-center text-sm text-nowrap hidden md:table-cell">
-                      ประเทศ
-                    </th>
                     <th className="px-5 py-4 text-center text-sm text-nowrap hidden md:table-cell">
                       ใบแดง
                     </th>
-                    <th className="px-5 py-4 text-center text-sm text-nowrap">รอบ</th>
                     <th className="px-5 py-4 text-center text-sm text-nowrap">เวลารวม (Total)</th>
                     <th className="px-5 py-4 text-center text-sm text-nowrap hidden md:table-cell">
                       สถานะ
@@ -415,10 +408,17 @@ export default async function EventLivePage(props: EventLivePageProps) {
                           : "hover:bg-slate-800/50"
                       }`}
                     >
-                      <td className={`px-5 py-4 text-sm font-semibold ${
-                        isDQ ? "text-slate-500" : "text-slate-100"
-                      }`}>
-                        {athlete.position}
+                      <td className="px-5 py-4 text-center">
+                        {athlete.currentLap != null ? (
+                          <span className={`font-mono text-sm font-semibold ${isDQ ? "text-slate-500" : "text-slate-100"}`}>
+                            {athlete.currentLap}
+                            <span className={`text-xs font-normal ${isDQ ? "text-slate-600" : "text-slate-400"}`}>
+                              /{currentRound?.lapCount ?? event.lapCount}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-600">—</span>
+                        )}
                       </td>
                       <td className={`px-5 py-4 font-mono text-lg ${
                         isDQ ? "text-slate-500" : "text-amber-400"
@@ -435,16 +435,6 @@ export default async function EventLivePage(props: EventLivePageProps) {
                           {athlete.affiliation}
                         </p>
                       </td>
-                      <td className={`hidden px-5 py-4 text-[14px] sm:table-cell ${
-                        isDQ ? "text-slate-500" : "text-slate-300"
-                      }`}>
-                        {athlete.affiliation}
-                      </td>
-                      <td className={`hidden px-5 py-4 text-[14px] md:table-cell ${
-                        isDQ ? "text-slate-500" : "text-slate-300"
-                      }`}>
-                        {athlete.country}
-                      </td>
                       <td className={`hidden px-5 py-4 text-[14px] md:table-cell ${
                         isDQ ? "text-slate-500" : "text-slate-100"
                       }`}>
@@ -453,21 +443,10 @@ export default async function EventLivePage(props: EventLivePageProps) {
                             yellow={athlete.yellowCards}
                             red={athlete.redCards}
                             hideYellow={true}
-                            maxRed={6}
+                            maxRed={4}
+                            horizontal={true}
                           />
                         </div>
-                      </td>
-                      <td className="px-5 py-4 text-center">
-                        {athlete.currentLap != null ? (
-                          <span className={`font-mono text-sm font-semibold ${isDQ ? "text-slate-500" : "text-slate-100"}`}>
-                            {athlete.currentLap}
-                            <span className={`text-xs font-normal ${isDQ ? "text-slate-600" : "text-slate-400"}`}>
-                              /{currentRound?.lapCount ?? event.lapCount}
-                            </span>
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-600">—</span>
-                        )}
                       </td>
                       <td className={`px-5 py-4 font-mono text-[14px] ${
                         isDQ ? "text-slate-500" : "text-slate-100"

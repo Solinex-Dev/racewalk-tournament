@@ -18,12 +18,14 @@ export function JudgeCardMatrix({
   redDetails,
   hideYellow = false,
   maxRed: maxRedProp,
+  horizontal = false,
 }: {
   yellow: number;
   red: number;
   redDetails?: RedCardDetail[];
   hideYellow?: boolean;
   maxRed?: number;
+  horizontal?: boolean;
 }) {
   const effectiveMaxRed = maxRedProp ?? MAX_RED;
 
@@ -45,7 +47,7 @@ export function JudgeCardMatrix({
   }
 
   const redGridClass =
-    effectiveMaxRed > 4
+    horizontal || effectiveMaxRed > 4
       ? "flex flex-row gap-1 shrink-0"
       : "grid grid-cols-2 gap-1 shrink-0 w-12";
 
