@@ -37,7 +37,7 @@ export default function AdminDashboardPage() {
           </p>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium uppercase text-slate-500">
               กิจกรรม
@@ -46,7 +46,7 @@ export default function AdminDashboardPage() {
               {stats.eventsTotal}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              จำนวน Event ทั้งหมดในระบบ (เชื่อมต่อฐานข้อมูลภายหลัง)
+              จำนวน Event ทั้งหมดในระบบ
             </p>
           </div>
 
@@ -71,18 +71,6 @@ export default function AdminDashboardPage() {
             </p>
             <p className="mt-1 text-xs text-slate-500">
               จำนวนรายชื่อนักกีฬาทั้งหมด
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium uppercase text-slate-500">
-              ระบบ
-            </p>
-            <p className="mt-2 text-sm font-semibold text-slate-900">
-              พร้อมสำหรับการตั้งค่า
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              ตั้งค่า Event, Judges, Athletes และการรายงานผลจากเมนูด้านซ้าย
             </p>
           </div>
         </section>

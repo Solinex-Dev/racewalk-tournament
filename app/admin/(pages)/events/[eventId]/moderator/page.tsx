@@ -2,6 +2,7 @@
 
 import { use, useState, Fragment } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -67,6 +68,7 @@ type ActivityLogItem = {
   targetBib?: string;
   roundId: string;
   details?: string;
+  symbol?: "~" | ">";
 };
 
 type EventInfo = {
@@ -166,8 +168,8 @@ const MOCK_ATHLETES_BY_ROUND: Record<string, AthleteSummary[]> = {
       name: "Somchai Rakdee",
       affiliation: "ชมรมเดินทนกรุงเทพฯ",
       country: "THA",
-      yellowCards: 1,
-      redCards: 0,
+      yellowCards: 3,
+      redCards: 1,
       status: "OK",
       position: 1,
     },
@@ -176,7 +178,7 @@ const MOCK_ATHLETES_BY_ROUND: Record<string, AthleteSummary[]> = {
       name: "Jane Doe",
       affiliation: "Example Athletic Club",
       country: "USA",
-      yellowCards: 2,
+      yellowCards: 3,
       redCards: 0,
       status: "OK",
       position: 2,
@@ -186,8 +188,8 @@ const MOCK_ATHLETES_BY_ROUND: Record<string, AthleteSummary[]> = {
       name: "Chanida Runfast",
       affiliation: "Chiangmai Racewalk Team",
       country: "THA",
-      yellowCards: 0,
-      redCards: 0,
+      yellowCards: 2,
+      redCards: 1,
       status: "OK",
       position: 3,
     },
@@ -269,6 +271,13 @@ const MOCK_JUDGES_BY_ROUND: Record<string, JudgeSummary[]> = {
       zone: "Finish",
       roundId: "round-1",
     },
+    {
+      id: "J-04",
+      name: "Coach D",
+      position: "โค้งที่ 2",
+      zone: "Zone C",
+      roundId: "round-1",
+    },
   ],
   "round-2": [
     {
@@ -317,7 +326,8 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     targetAthlete: "Somchai Rakdee",
     targetBib: "01",
     roundId: "round-1",
-    details: "Zone A - โค้งที่ 1",
+    details: "เข่างอ",
+    symbol: ">",
   },
   {
     id: "log-002",
@@ -332,7 +342,136 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     targetAthlete: "Jane Doe",
     targetBib: "02",
     roundId: "round-1",
-    details: "Zone B - ทางตรงฝั่งสแตนด์",
+    details: "เท้าลอย",
+    symbol: "~",
+  },
+  {
+    id: "log-018",
+    timestamp: "2025-03-15T08:30:20",
+    time: "08:30:20",
+    date: "15 มี.ค. 2025",
+    actor: "Coach A",
+    actorId: "J-01",
+    role: "judge",
+    action: "ให้ใบเหลือง",
+    actionType: "yellow_card",
+    targetAthlete: "Jane Doe",
+    targetBib: "02",
+    roundId: "round-1",
+    details: "เข่างอ",
+    symbol: ">",
+  },
+  {
+    id: "log-019",
+    timestamp: "2025-03-15T08:35:45",
+    time: "08:35:45",
+    date: "15 มี.ค. 2025",
+    actor: "Coach B",
+    actorId: "J-02",
+    role: "judge",
+    action: "ให้ใบเหลือง",
+    actionType: "yellow_card",
+    targetAthlete: "Somchai Rakdee",
+    targetBib: "01",
+    roundId: "round-1",
+    details: "เท้าลอย",
+    symbol: "~",
+  },
+  {
+    id: "log-020",
+    timestamp: "2025-03-15T08:45:10",
+    time: "08:45:10",
+    date: "15 มี.ค. 2025",
+    actor: "Coach D",
+    actorId: "J-04",
+    role: "judge",
+    action: "ให้ใบเหลือง",
+    actionType: "yellow_card",
+    targetAthlete: "Chanida Runfast",
+    targetBib: "03",
+    roundId: "round-1",
+    details: "เข่างอ",
+    symbol: ">",
+  },
+  {
+    id: "log-021",
+    timestamp: "2025-03-15T08:50:30",
+    time: "08:50:30",
+    date: "15 มี.ค. 2025",
+    actor: "Coach C",
+    actorId: "J-03",
+    role: "judge",
+    action: "ให้ใบเหลือง",
+    actionType: "yellow_card",
+    targetAthlete: "Somchai Rakdee",
+    targetBib: "01",
+    roundId: "round-1",
+    details: "เข่างอ",
+    symbol: ">",
+  },
+  {
+    id: "log-022",
+    timestamp: "2025-03-15T09:05:15",
+    time: "09:05:15",
+    date: "15 มี.ค. 2025",
+    actor: "Coach D",
+    actorId: "J-04",
+    role: "judge",
+    action: "ให้ใบเหลือง",
+    actionType: "yellow_card",
+    targetAthlete: "Jane Doe",
+    targetBib: "02",
+    roundId: "round-1",
+    details: "เท้าลอย",
+    symbol: "~",
+  },
+  {
+    id: "log-023",
+    timestamp: "2025-03-15T09:15:20",
+    time: "09:15:20",
+    date: "15 มี.ค. 2025",
+    actor: "Coach A",
+    actorId: "J-01",
+    role: "judge",
+    action: "ให้ใบเหลือง",
+    actionType: "yellow_card",
+    targetAthlete: "Chanida Runfast",
+    targetBib: "03",
+    roundId: "round-1",
+    details: "เท้าลอย",
+    symbol: "~",
+  },
+  {
+    id: "log-024",
+    timestamp: "2025-03-15T09:25:40",
+    time: "09:25:40",
+    date: "15 มี.ค. 2025",
+    actor: "Coach B",
+    actorId: "J-02",
+    role: "judge",
+    action: "ให้ใบแดง",
+    actionType: "red_card",
+    targetAthlete: "Chanida Runfast",
+    targetBib: "03",
+    roundId: "round-1",
+    details: "เท้าลอย",
+    symbol: "~",
+  },
+  {
+    id: "log-025",
+    timestamp: "2025-03-15T09:35:10",
+    time: "09:35:10",
+    date: "15 มี.ค. 2025",
+    actor: "Coach D",
+    actorId: "J-04",
+    role: "judge",
+    action: "ให้ใบแดง",
+    actionType: "red_card",
+    targetAthlete: "Somchai Rakdee",
+    targetBib: "01",
+    roundId: "round-1",
+    details: "เข่างอ",
+    symbol: ">",
   },
   {
     id: "log-003",
@@ -384,7 +523,8 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     targetAthlete: "Somchai Rakdee",
     targetBib: "01",
     roundId: "round-2",
-    details: "Zone A - โค้งที่ 1",
+    details: "เข่างอ",
+    symbol: ">",
   },
   {
     id: "log-007",
@@ -399,7 +539,8 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     targetAthlete: "Jane Doe",
     targetBib: "02",
     roundId: "round-2",
-    details: "Zone B - ทางตรงฝั่งสแตนด์",
+    details: "เท้าลอย",
+    symbol: "~",
   },
   {
     id: "log-008",
@@ -414,7 +555,8 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     targetAthlete: "Somchai Rakdee",
     targetBib: "01",
     roundId: "round-2",
-    details: "Zone A - โค้งที่ 1",
+    details: "เข่างอ",
+    symbol: ">",
   },
   {
     id: "log-009",
@@ -424,12 +566,13 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     actor: "Coach B",
     actorId: "J-02",
     role: "judge",
-    action: "ให้ใบแดง (สัญลักษณ์: >)",
+    action: "ให้ใบแดง",
     actionType: "red_card",
     targetAthlete: "Jane Doe",
     targetBib: "02",
     roundId: "round-2",
-    details: "Zone B - เข่างอ",
+    details: "เข่างอ",
+    symbol: ">",
   },
   {
     id: "log-010",
@@ -458,7 +601,8 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     targetAthlete: "Chanida Runfast",
     targetBib: "03",
     roundId: "round-2",
-    details: "Zone C - โค้งที่ 2",
+    details: "เท้าลอย",
+    symbol: "~",
   },
   {
     id: "log-012",
@@ -473,7 +617,8 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     targetAthlete: "Chanida Runfast",
     targetBib: "03",
     roundId: "round-2",
-    details: "Zone A - โค้งที่ 1",
+    details: "เข่างอ",
+    symbol: ">",
   },
   {
     id: "log-013",
@@ -488,7 +633,8 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     targetAthlete: "Chanida Runfast",
     targetBib: "03",
     roundId: "round-2",
-    details: "Zone B - ทางตรงฝั่งสแตนด์",
+    details: "เท้าลอย",
+    symbol: "~",
   },
   {
     id: "log-014",
@@ -503,7 +649,8 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     targetAthlete: "Chanida Runfast",
     targetBib: "03",
     roundId: "round-2",
-    details: "Zone C - โค้งที่ 2",
+    details: "เข่างอ",
+    symbol: ">",
   },
   {
     id: "log-015",
@@ -518,7 +665,8 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     targetAthlete: "Chanida Runfast",
     targetBib: "03",
     roundId: "round-2",
-    details: "Zone A - โค้งที่ 1",
+    details: "เท้าลอย",
+    symbol: "~",
   },
   {
     id: "log-016",
@@ -528,12 +676,13 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     actor: "Coach B",
     actorId: "J-02",
     role: "judge",
-    action: "ให้ใบแดง (สัญลักษณ์: ~)",
+    action: "ให้ใบแดง",
     actionType: "red_card",
     targetAthlete: "Luis Garcia",
     targetBib: "04",
     roundId: "round-2",
-    details: "Zone B - ยกเท้า / เท้าไม่ติดพื้น",
+    details: "เท้าลอย",
+    symbol: "~",
   },
   {
     id: "log-017",
@@ -543,17 +692,19 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
     actor: "Coach A",
     actorId: "J-01",
     role: "judge",
-    action: "ให้ใบแดง (สัญลักษณ์: >)",
+    action: "ให้ใบแดง",
     actionType: "red_card",
     targetAthlete: "Luis Garcia",
     targetBib: "04",
     roundId: "round-2",
-    details: "Zone A - เข่างอ",
+    details: "เข่างอ",
+    symbol: ">",
   },
 ];
 
 type PendingRedCard = {
   id: string;
+  roundId: string;
   judgeId: string;
   judgeName: string;
   judgeZone: string;
@@ -566,6 +717,7 @@ type PendingRedCard = {
 const MOCK_PENDING: PendingRedCard[] = [
   {
     id: "pending-001",
+    roundId: "round-2",
     judgeId: "J-01",
     judgeName: "Coach A",
     judgeZone: "Zone A",
@@ -576,6 +728,7 @@ const MOCK_PENDING: PendingRedCard[] = [
   },
   {
     id: "pending-002",
+    roundId: "round-2",
     judgeId: "J-02",
     judgeName: "Coach B",
     judgeZone: "Zone B",
@@ -591,14 +744,14 @@ export default function EventModeratorPage(
 ) {
   const { eventId } = use(props.params);
   const eventInfo = MOCK_EVENT_STATUS[eventId];
+  const router = useRouter();
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
-  const [expandedJudgeIds, setExpandedJudgeIds] = useState<Set<string>>(
-    new Set(MOCK_PENDING.map((p) => p.judgeId))
-  );
+  const [expandedJudgeIds, setExpandedJudgeIds] = useState<Set<string>>(new Set());
   const [pendingRedCards, setPendingRedCards] = useState<PendingRedCard[]>(MOCK_PENDING);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [selectedExportRound, setSelectedExportRound] = useState<string | null>(null);
   const [selectedExportAthlete, setSelectedExportAthlete] = useState<string>("all");
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
 
   const handleConfirmRedCard = (id: string) => {
     setPendingRedCards((prev) => prev.filter((c) => c.id !== id));
@@ -644,7 +797,10 @@ export default function EventModeratorPage(
   // Get data for selected round
   const roundAthletes = displayRoundId ? MOCK_ATHLETES_BY_ROUND[displayRoundId] || [] : [];
   const roundJudges = displayRoundId ? MOCK_JUDGES_BY_ROUND[displayRoundId] || [] : [];
-  const roundLogs = displayRoundId 
+  const roundPendingCards = displayRoundId
+    ? pendingRedCards.filter((p) => p.roundId === displayRoundId)
+    : [];
+  const roundLogs = displayRoundId
     ? MOCK_ACTIVITY_LOGS.filter((log) => log.roundId === displayRoundId).sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       )
@@ -700,6 +856,7 @@ export default function EventModeratorPage(
   }
 
   return (
+    <>
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-8">
         {/* Header */}
@@ -816,7 +973,7 @@ export default function EventModeratorPage(
                       <p className="mt-1 text-xs text-slate-500">{displayRound.note}</p>
                     )}
                   </div>
-                  <div className="flex flex-col items-end gap-1 text-xs">
+                  <div className="flex flex-col items-end gap-2 text-xs">
                     {displayRound.scheduled_time && (
                       <p className="text-slate-600">
                         เริ่ม:{" "}
@@ -843,6 +1000,18 @@ export default function EventModeratorPage(
                         </span>
                       </p>
                     )}
+                    {displayRound.status === "finished" && (
+                      <button
+                        type="button"
+                        onClick={() => setShowEditConfirm(true)}
+                        className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        แก้ไขข้อมูลรอบนี้
+                      </button>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -857,9 +1026,9 @@ export default function EventModeratorPage(
                     <p className="text-xs text-slate-500">กดที่ชื่อกรรมการเพื่อดูใบที่ให้</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {pendingRedCards.length > 0 && (
+                    {roundPendingCards.length > 0 && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-300">
-                        ● {pendingRedCards.length} ใบแดงรอยืนยัน
+                        ● {roundPendingCards.length} ใบแดงรอยืนยัน
                       </span>
                     )}
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
@@ -885,7 +1054,7 @@ export default function EventModeratorPage(
                           const { yellowCards, redCards } = getJudgeLogs(judge.id);
                           const maxY = roundAthletes.length * 2;
                           const maxR = roundAthletes.length;
-                          const judgePending = pendingRedCards.filter((p) => p.judgeId === judge.id);
+                          const judgePending = roundPendingCards.filter((p) => p.judgeId === judge.id);
                           const hasPending = judgePending.length > 0;
                           return (
                             <Fragment key={judge.id}>
@@ -1061,7 +1230,7 @@ export default function EventModeratorPage(
                                                   <th className="px-4 py-3 text-left">Bib</th>
                                                   <th className="px-4 py-3 text-left">นักกีฬา</th>
                                                   <th className="px-4 py-3 text-left">เวลา</th>
-                                                  <th className="px-4 py-3 text-left">รายละเอียด</th>
+                                                  <th className="px-4 py-3 text-left">ลักษณะความผิด</th>
                                                 </tr>
                                               </thead>
                                               <tbody className="divide-y divide-amber-100 bg-white">
@@ -1076,8 +1245,15 @@ export default function EventModeratorPage(
                                                     <td className="px-4 py-3 font-mono text-slate-500">
                                                       {log.time}
                                                     </td>
-                                                    <td className="px-4 py-3 text-slate-500">
-                                                      {log.details ?? "-"}
+                                                    <td className="px-4 py-3">
+                                                      <div className="flex items-center gap-2">
+                                                        {log.symbol && (
+                                                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 font-mono text-[10px] font-bold text-white">
+                                                            {log.symbol}
+                                                          </span>
+                                                        )}
+                                                        <span className="text-slate-700">{log.details ?? "-"}</span>
+                                                      </div>
                                                     </td>
                                                   </tr>
                                                 ))}
@@ -1105,7 +1281,7 @@ export default function EventModeratorPage(
                                                   <th className="px-4 py-3 text-left">Bib</th>
                                                   <th className="px-4 py-3 text-left">นักกีฬา</th>
                                                   <th className="px-4 py-3 text-left">เวลา</th>
-                                                  <th className="px-4 py-3 text-left">รายละเอียด</th>
+                                                  <th className="px-4 py-3 text-left">ลักษณะความผิด</th>
                                                 </tr>
                                               </thead>
                                               <tbody className="divide-y divide-red-100 bg-white">
@@ -1120,8 +1296,15 @@ export default function EventModeratorPage(
                                                     <td className="px-4 py-3 font-mono text-slate-500">
                                                       {log.time}
                                                     </td>
-                                                    <td className="px-4 py-3 text-slate-500">
-                                                      {log.details ?? "-"}
+                                                    <td className="px-4 py-3">
+                                                      <div className="flex items-center gap-2">
+                                                        {log.symbol && (
+                                                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 font-mono text-[10px] font-bold text-white">
+                                                            {log.symbol}
+                                                          </span>
+                                                        )}
+                                                        <span className="text-slate-700">{log.details ?? "-"}</span>
+                                                      </div>
                                                     </td>
                                                   </tr>
                                                 ))}
@@ -1243,9 +1426,16 @@ export default function EventModeratorPage(
                                 )}
                               </p>
                               {log.details && (
-                                <p className="mt-0.5 text-[10px] text-slate-500">
-                                  {log.details}
-                                </p>
+                                <div className="mt-0.5 flex items-center gap-1.5">
+                                  {log.symbol && (
+                                    <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full font-mono text-[9px] font-bold text-white ${
+                                      log.actionType === "yellow_card" ? "bg-amber-400" : "bg-red-500"
+                                    }`}>
+                                      {log.symbol}
+                                    </span>
+                                  )}
+                                  <p className="text-[10px] text-slate-500">{log.details}</p>
+                                </div>
                               )}
                             </div>
                           </li>
@@ -1363,5 +1553,50 @@ export default function EventModeratorPage(
         </div>
       )}
     </main>
+
+    {/* Confirm before entering edit mode */}
+    {showEditConfirm && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="mx-4 max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">ยืนยันการแก้ไขข้อมูล</h2>
+            <button
+              type="button"
+              onClick={() => setShowEditConfirm(false)}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="mt-4 space-y-4">
+            <p className="text-xs text-slate-600">
+              คุณกำลังจะเข้าสู่โหมดแก้ไขข้อมูลรอบนี้ การเปลี่ยนแปลงจะถูกบันทึกเป็น audit log โดย Moderator
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowEditConfirm(false)}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditConfirm(false);
+                  router.push(`/admin/events/${eventId}/moderator/edit?round=${displayRoundId}`);
+                }}
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+              >
+                ยืนยัน
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
