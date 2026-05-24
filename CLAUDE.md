@@ -24,7 +24,7 @@ No test runner is configured. There is no `npm test` command.
 
 ### Route Structure & Role Separation
 
-The app has four user roles, each with its own route tree:
+The app has five non-admin user roles plus an admin panel, each with its own route tree:
 
 | Role | Route prefix | Theme |
 |------|-------------|-------|
@@ -32,6 +32,7 @@ The app has four user roles, each with its own route tree:
 | Judge | `/judge/events/[eventId]/` | Dark (slate-950 bg) |
 | Head Judge | `/head-judge/events/[eventId]/` | Dark |
 | Event Logger | `/event-logger/events/[eventId]/` | Dark |
+| Timekeeper | `/timekeeper/events/[eventId]/` | Dark |
 | Public scoreboard | `/events/[eventId]` | Dark |
 
 Each non-admin role has two pages: a **join page** (`/join`) and a **workspace page**. The join page takes a 6-character alphanumeric secret code (`round_secret_code`) that the Admin generates per judge per round.
