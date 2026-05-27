@@ -4,83 +4,61 @@ import { notFound } from "next/navigation";
 import { EventForm, type EventFormValues } from "@/components/events/event-form";
 import { RoundsList, type Round } from "@/components/rounds/rounds-list";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "จัดการกิจกรรม – การแข่งขันเดินทน",
-  description:
-    "หน้าแก้ไขข้อมูล Event การแข่งขันเดินทนในระบบ Racewalk Tournament สำหรับอัปเดตวันที่ สถานที่ สถานะ และโค้ดสำหรับกรรมการ.",
+  description: "หน้าแก้ไขข้อมูล Event การแข่งขันเดินทนในระบบ Racewalk Tournament",
 };
 
-const MOCK_EVENT_BY_ID: Record<string, EventFormValues> = {
-  "evt-001": {
-    name: "Racewalk Championship 2025",
-    date: "2025-03-15",
-    location: "สนามกีฬาแห่งชาติ",
-    distance_km: "20",
-    status: "scheduled",
-    note: "รายการหลักประจำปีของสมาคม",
-    judge_join_code: "RW2025-A",
-  },
-  "evt-002": {
-    name: "Bangkok City Racewalk",
-    date: "2025-01-20",
-    location: "Bangkok City Route",
-    distance_km: "10",
-    status: "finished",
-    note: "ใช้เส้นทางใจกลางเมือง",
-    judge_join_code: "BKK-RW-10K",
-  },
-};
+type Props = { params: Promise<{ eventId: string }> };
 
-// TODO: ภายหลังให้ดึงจากฐานข้อมูลจริง
-const MOCK_ROUNDS_BY_EVENT: Record<string, Round[]> = {
-  "evt-001": [
-    {
-      id: "rnd-001",
-      name: "รอบที่ 1 - ชาย 20 กม.",
-      start_time: "08:00",
-      status: "scheduled",
-      athlete_count: 25,
-      judge_count: 6,
-    },
-    {
-      id: "rnd-002",
-      name: "รอบที่ 2 - หญิง 20 กม.",
-      start_time: "14:00",
-      status: "scheduled",
-      athlete_count: 18,
-      judge_count: 5,
-    },
-  ],
-  "evt-002": [
-    {
-      id: "rnd-003",
-      name: "รอบที่ 1 - 10 กม.",
-      start_time: "07:00",
-      status: "finished",
-      athlete_count: 15,
-      judge_count: 4,
-    },
-  ],
-};
+function toDateInput(dt: Date) {
+  return dt.toISOString().slice(0, 10);
+}
 
-type EventDetailPageProps = {
-  params: Promise<{
-    eventId: string;
-  }>;
-};
-
-export default async function EventDetailPage(props: EventDetailPageProps) {
+export default async function EventDetailPage(props: Props) {
   const { eventId } = await props.params;
 
-  const event = MOCK_EVENT_BY_ID[eventId];
-  const rounds = MOCK_ROUNDS_BY_EVENT[eventId] || [];
+  const event = await prisma.event.findUnique({
+    where: { id: eventId, deletedAt: null },
+    include: {
+      rounds: {
+        where: { deletedAt: null },
+        orderBy: { scheduledTime: "asc" },
+        include: {
+          _count: {
+            select: {
+              roundAthletes: { where: { deletedAt: null } },
+              roundOfficials: { where: { deletedAt: null } },
+            },
+          },
+        },
+      },
+    },
+  });
 
-  if (!event) {
-    // TODO: ในภายหลังให้เปลี่ยนมา fetch จากฐานข้อมูลจริง และ handle not found ให้เหมาะสม
-    notFound();
-  }
+  if (!event) notFound();
+
+  const eventValues: EventFormValues = {
+    name: event.name,
+    date: toDateInput(event.date),
+    location: event.location,
+    distanceKm: event.distanceKm,
+    status: event.status,
+    isCurrent: event.isCurrent,
+  };
+
+  const rounds: Round[] = event.rounds.map((r) => ({
+    id: r.id,
+    name: r.name,
+    start_time: r.scheduledTime
+      ? r.scheduledTime.toTimeString().slice(0, 5)
+      : undefined,
+    status: r.status.toLowerCase() as Round["status"],
+    athlete_count: r._count.roundAthletes,
+    judge_count: r._count.roundOfficials,
+  }));
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -106,19 +84,15 @@ export default async function EventDetailPage(props: EventDetailPageProps) {
           </Link>
         </div>
 
-        <Card className="rounded-2xl border-slate-200">
-          <CardContent className="p-6">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">
-              ข้อมูลพื้นฐานของ Event
-            </h2>
-            <EventForm mode="edit" defaultValues={event} />
-          </CardContent>
-        </Card>
+        <div>
+          <h2 className="mb-3 text-base font-semibold text-slate-900">
+            ข้อมูลพื้นฐานของ Event
+          </h2>
+          <EventForm mode="edit" eventId={eventId} defaultValues={eventValues} />
+        </div>
 
         <RoundsList eventId={eventId} rounds={rounds} />
       </div>
     </main>
   );
 }
-
-

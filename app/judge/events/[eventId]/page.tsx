@@ -1,37 +1,88 @@
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { JudgeWorkspace } from "@/components/judge/judge-workspace";
+import { JudgeWorkspace, type JudgeAthleteRow } from "@/components/judge/judge-workspace";
+import { AutoRefresh } from "@/components/common/auto-refresh";
+import { prisma } from "@/lib/prisma";
+import { getOfficialSession } from "@/lib/official-session";
 
 export const metadata: Metadata = {
   title: "หน้าทำงานกรรมการ – การแข่งขันเดินทน",
-  description:
-    "หน้าทำงานสำหรับกรรมการในการบันทึกสถานะและผลการแข่งขันของ Event เดินทนบน Racewalk Tournament.",
 };
 
-type JudgeWorkspacePageProps = {
-  params: Promise<{
-    eventId: string;
-  }>;
-};
+type Props = { params: Promise<{ eventId: string }> };
 
-const MOCK_JUDGE_EVENT_INFO = {
-  "evt-001": {
-    id: "evt-001",
-    name: "Racewalk Championship 2025",
-    heat_name: "รุ่นทั่วไป ระยะ 20 กม.",
-    lapCount: 20,
-    currentLap: 7,
-    distance_km: "20",
-  },
-};
-
-export default async function JudgeWorkspacePage(
-  props: JudgeWorkspacePageProps,
-) {
+export default async function JudgePage(props: Props) {
   const { eventId } = await props.params;
-  const event =
-    MOCK_JUDGE_EVENT_INFO[eventId as keyof typeof MOCK_JUDGE_EVENT_INFO] ??
-    null;
+  const session = await getOfficialSession();
 
-  return <JudgeWorkspace eventId={eventId} event={event} />;
+  if (!session || session.eventId !== eventId) {
+    redirect(`/judge/events/${eventId}/join`);
+  }
+  if (session.position !== "JUDGE" && session.position !== "HEAD_JUDGE") {
+    // Wrong role for this page - send to their correct workspace
+    redirect(`/judge/events/${eventId}/join`);
+  }
+
+  const round = await prisma.round.findUnique({
+    where: { id: session.roundId, deletedAt: null },
+    include: {
+      event: { select: { id: true, name: true } },
+      roundAthletes: {
+        where: { deletedAt: null },
+        include: { athlete: { select: { name: true } } },
+        orderBy: [{ position: "asc" }, { bib: "asc" }],
+      },
+      cards: {
+        where: { deletedAt: null },
+      },
+    },
+  });
+
+  if (!round) {
+    redirect(`/judge/events/${eventId}/join`);
+  }
+
+  const myJudgeId = session.judgeId;
+
+  const rows: JudgeAthleteRow[] = round.roundAthletes.map((ra) => {
+    const myCards = round.cards.filter(
+      (c) => c.athleteId === ra.athleteId && c.judgeId === myJudgeId,
+    );
+    const myYellowKnee = myCards.some((c) => c.color === "YELLOW" && c.symbol === "BENT_KNEE");
+    const myYellowFoot = myCards.some((c) => c.color === "YELLOW" && c.symbol === "LIFTED_FOOT");
+    const myRed = myCards.find((c) => c.color === "RED" && c.state !== "OVERRIDDEN");
+    const totalRed = round.cards.filter(
+      (c) => c.athleteId === ra.athleteId && c.color === "RED" && c.state === "CONFIRMED",
+    ).length;
+    return {
+      bib: ra.bib,
+      athleteId: ra.athleteId,
+      name: ra.athlete.name,
+      status: ra.status,
+      myYellowKnee,
+      myYellowFoot,
+      myRedSymbol: myRed ? (myRed.symbol === "BENT_KNEE" ? ">" : "~") : null,
+      totalRed,
+    };
+  });
+
+  return (
+    <>
+      <AutoRefresh intervalMs={15000} />
+      <JudgeWorkspace
+        eventId={eventId}
+        judgeName={session.judgeName}
+        event={{
+          id: round.event.id,
+          name: round.event.name,
+          roundName: round.name,
+          heatName: round.heatName ?? "",
+          distanceKm: round.distanceKm ?? "",
+          lapCount: round.lapCount ?? 0,
+          currentLap: round.currentLap,
+        }}
+        athletes={rows}
+      />
+    </>
+  );
 }
-

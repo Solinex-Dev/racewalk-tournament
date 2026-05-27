@@ -2,533 +2,36 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { JudgesList } from "@/components/judges/judges-list";
-
-type Judge = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  department: string;
-  organization: string;
-  country?: string;
-  province?: string;
-  status: "active" | "inactive";
-  note?: string;
-};
-
-// TODO: เชื่อมต่อกับฐานข้อมูล / API จริงภายหลัง
-const MOCK_JUDGES: Judge[] = [
-  // Thailand Judges
-  {
-    id: "jud-001",
-    first_name: "Somchai",
-    last_name: "Rakdee",
-    department: "Technical Committee",
-    organization: "สมาคมกรีฑาแห่งประเทศไทย",
-    country: "ประเทศไทย",
-    province: "กรุงเทพมหานคร",
-    status: "active",
-    note: "หัวหน้าทีมกรรมการหลัก",
-  },
-  {
-    id: "jud-002",
-    first_name: "Sumalee",
-    last_name: "Pongsakul",
-    department: "Timing & Measurement",
-    organization: "สมาคมกรีฑาแห่งประเทศไทย",
-    country: "ประเทศไทย",
-    province: "กรุงเทพมหานคร",
-    status: "active",
-    note: "ผู้เชี่ยวชาญด้านจับเวลา",
-  },
-  {
-    id: "jud-003",
-    first_name: "Anon",
-    last_name: "Wattana",
-    department: "Race Walking Judge",
-    organization: "สมาคมกรีฑาแห่งประเทศไทย",
-    country: "ประเทศไทย",
-    province: "กรุงเทพมหานคร",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-004",
-    first_name: "Pranee",
-    last_name: "Srisawat",
-    department: "Chief Judge",
-    organization: "สมาคมกรีฑาแห่งประเทศไทย",
-    country: "ประเทศไทย",
-    province: "กรุงเทพมหานคร",
-    status: "active",
-    note: "กรรมการหลัก",
-  },
-  {
-    id: "jud-005",
-    first_name: "Nattapong",
-    last_name: "Suwannarat",
-    department: "Race Walking Judge",
-    organization: "สมาคมกรีฑาภาคเหนือ",
-    country: "ประเทศไทย",
-    province: "เชียงใหม่",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-006",
-    first_name: "Waraporn",
-    last_name: "Kaewmool",
-    department: "Technical Committee",
-    organization: "สมาคมกรีฑาภาคเหนือ",
-    country: "ประเทศไทย",
-    province: "เชียงใหม่",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-007",
-    first_name: "Somsak",
-    last_name: "Thongdee",
-    department: "Race Walking Judge",
-    organization: "สมาคมกรีฑาภาคใต้",
-    country: "ประเทศไทย",
-    province: "ภูเก็ต",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-008",
-    first_name: "Preecha",
-    last_name: "Saengsuk",
-    department: "Chief Judge",
-    organization: "สมาคมกรีฑาภาคอีสาน",
-    country: "ประเทศไทย",
-    province: "ขอนแก่น",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-009",
-    first_name: "Siriporn",
-    last_name: "Boonsri",
-    department: "Technical Committee",
-    organization: "สมาคมกรีฑาภาคอีสาน",
-    country: "ประเทศไทย",
-    province: "ขอนแก่น",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-010",
-    first_name: "Chalerm",
-    last_name: "Phongsri",
-    department: "Race Walking Judge",
-    organization: "สมาคมกรีฑาแห่งประเทศไทย",
-    country: "ประเทศไทย",
-    province: "นนทบุรี",
-    status: "active",
-    note: "",
-  },
-  // USA Judges
-  {
-    id: "jud-011",
-    first_name: "Jane",
-    last_name: "Smith",
-    department: "Chief Judge",
-    organization: "USA Track & Field",
-    country: "USA",
-    province: "California",
-    status: "active",
-    note: "International certified judge",
-  },
-  {
-    id: "jud-012",
-    first_name: "Michael",
-    last_name: "Johnson",
-    department: "Race Walking Judge",
-    organization: "USA Track & Field",
-    country: "USA",
-    province: "California",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-013",
-    first_name: "Sarah",
-    last_name: "Williams",
-    department: "Technical Committee",
-    organization: "USA Track & Field",
-    country: "USA",
-    province: "California",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-014",
-    first_name: "David",
-    last_name: "Brown",
-    department: "Timing & Measurement",
-    organization: "USA Track & Field",
-    country: "USA",
-    province: "California",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-015",
-    first_name: "Emily",
-    last_name: "Davis",
-    department: "Chief Judge",
-    organization: "USA Track & Field",
-    country: "USA",
-    province: "New York",
-    status: "active",
-    note: "Olympic Games experience",
-  },
-  {
-    id: "jud-016",
-    first_name: "Robert",
-    last_name: "Martinez",
-    department: "Race Walking Judge",
-    organization: "USA Track & Field",
-    country: "USA",
-    province: "New York",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-017",
-    first_name: "Jennifer",
-    last_name: "Garcia",
-    department: "Technical Committee",
-    organization: "USA Track & Field",
-    country: "USA",
-    province: "New York",
-    status: "inactive",
-    note: "Retired",
-  },
-  // Japan Judges
-  {
-    id: "jud-018",
-    first_name: "Takeshi",
-    last_name: "Yamamoto",
-    department: "Chief Judge",
-    organization: "Japan Association of Athletics Federations",
-    country: "Japan",
-    province: "Tokyo",
-    status: "active",
-    note: "IAAF Level 1",
-  },
-  {
-    id: "jud-019",
-    first_name: "Yuki",
-    last_name: "Tanaka",
-    department: "Race Walking Judge",
-    organization: "Japan Association of Athletics Federations",
-    country: "Japan",
-    province: "Tokyo",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-020",
-    first_name: "Sakura",
-    last_name: "Nakamura",
-    department: "Technical Committee",
-    organization: "Japan Association of Athletics Federations",
-    country: "Japan",
-    province: "Tokyo",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-021",
-    first_name: "Hiroshi",
-    last_name: "Suzuki",
-    department: "Timing & Measurement",
-    organization: "Japan Association of Athletics Federations",
-    country: "Japan",
-    province: "Tokyo",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-022",
-    first_name: "Kenji",
-    last_name: "Watanabe",
-    department: "Race Walking Judge",
-    organization: "Japan Association of Athletics Federations",
-    country: "Japan",
-    province: "Osaka",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-023",
-    first_name: "Ayumi",
-    last_name: "Kobayashi",
-    department: "Chief Judge",
-    organization: "Japan Association of Athletics Federations",
-    country: "Japan",
-    province: "Osaka",
-    status: "active",
-    note: "",
-  },
-  // China Judges
-  {
-    id: "jud-024",
-    first_name: "Wei",
-    last_name: "Zhang",
-    department: "Chief Judge",
-    organization: "Chinese Athletic Association",
-    country: "China",
-    province: "Beijing",
-    status: "active",
-    note: "National level judge",
-  },
-  {
-    id: "jud-025",
-    first_name: "Li",
-    last_name: "Wang",
-    department: "Race Walking Judge",
-    organization: "Chinese Athletic Association",
-    country: "China",
-    province: "Beijing",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-026",
-    first_name: "Jing",
-    last_name: "Liu",
-    department: "Technical Committee",
-    organization: "Chinese Athletic Association",
-    country: "China",
-    province: "Beijing",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-027",
-    first_name: "Feng",
-    last_name: "Chen",
-    department: "Race Walking Judge",
-    organization: "Chinese Athletic Association",
-    country: "China",
-    province: "Beijing",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-028",
-    first_name: "Ming",
-    last_name: "Yang",
-    department: "Chief Judge",
-    organization: "Chinese Athletic Association",
-    country: "China",
-    province: "Shanghai",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-029",
-    first_name: "Xiao",
-    last_name: "Zhou",
-    department: "Technical Committee",
-    organization: "Chinese Athletic Association",
-    country: "China",
-    province: "Shanghai",
-    status: "active",
-    note: "",
-  },
-  // South Korea Judges
-  {
-    id: "jud-030",
-    first_name: "Min-ji",
-    last_name: "Kim",
-    department: "Chief Judge",
-    organization: "Korea Association of Athletics Federations",
-    country: "South Korea",
-    province: "Seoul",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-031",
-    first_name: "Sung-ho",
-    last_name: "Park",
-    department: "Race Walking Judge",
-    organization: "Korea Association of Athletics Federations",
-    country: "South Korea",
-    province: "Seoul",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-032",
-    first_name: "Ji-woo",
-    last_name: "Lee",
-    department: "Technical Committee",
-    organization: "Korea Association of Athletics Federations",
-    country: "South Korea",
-    province: "Seoul",
-    status: "active",
-    note: "",
-  },
-  // Singapore & Malaysia Judges
-  {
-    id: "jud-033",
-    first_name: "Wei Ling",
-    last_name: "Tan",
-    department: "Chief Judge",
-    organization: "Singapore Athletic Association",
-    country: "Singapore",
-    province: "Singapore",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-034",
-    first_name: "Ahmad",
-    last_name: "Hassan",
-    department: "Race Walking Judge",
-    organization: "Singapore Athletic Association",
-    country: "Singapore",
-    province: "Singapore",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-035",
-    first_name: "Aziz",
-    last_name: "Rahman",
-    department: "Chief Judge",
-    organization: "Malaysian Athletics Federation",
-    country: "Malaysia",
-    province: "Kuala Lumpur",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-036",
-    first_name: "Siti",
-    last_name: "Abdullah",
-    department: "Race Walking Judge",
-    organization: "Malaysian Athletics Federation",
-    country: "Malaysia",
-    province: "Kuala Lumpur",
-    status: "active",
-    note: "",
-  },
-  // Australia Judges
-  {
-    id: "jud-037",
-    first_name: "James",
-    last_name: "Smith",
-    department: "Chief Judge",
-    organization: "Athletics Australia",
-    country: "Australia",
-    province: "New South Wales",
-    status: "active",
-    note: "Commonwealth Games judge",
-  },
-  {
-    id: "jud-038",
-    first_name: "Emma",
-    last_name: "Wilson",
-    department: "Race Walking Judge",
-    organization: "Athletics Australia",
-    country: "Australia",
-    province: "New South Wales",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-039",
-    first_name: "Oliver",
-    last_name: "Taylor",
-    department: "Technical Committee",
-    organization: "Athletics Australia",
-    country: "Australia",
-    province: "Victoria",
-    status: "active",
-    note: "",
-  },
-  // Europe Judges
-  {
-    id: "jud-040",
-    first_name: "Tom",
-    last_name: "Walker",
-    department: "Chief Judge",
-    organization: "UK Athletics",
-    country: "United Kingdom",
-    province: "London",
-    status: "active",
-    note: "IAAF certified",
-  },
-  {
-    id: "jud-041",
-    first_name: "Charlotte",
-    last_name: "Evans",
-    department: "Race Walking Judge",
-    organization: "UK Athletics",
-    country: "United Kingdom",
-    province: "London",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-042",
-    first_name: "Hans",
-    last_name: "Mueller",
-    department: "Chief Judge",
-    organization: "German Athletics Association",
-    country: "Germany",
-    province: "Berlin",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-043",
-    first_name: "Anna",
-    last_name: "Schmidt",
-    department: "Race Walking Judge",
-    organization: "German Athletics Association",
-    country: "Germany",
-    province: "Berlin",
-    status: "inactive",
-    note: "On leave",
-  },
-  {
-    id: "jud-044",
-    first_name: "Pierre",
-    last_name: "Dubois",
-    department: "Chief Judge",
-    organization: "French Athletics Federation",
-    country: "France",
-    province: "Île-de-France",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "jud-045",
-    first_name: "Marie",
-    last_name: "Martin",
-    department: "Technical Committee",
-    organization: "French Athletics Federation",
-    country: "France",
-    province: "Île-de-France",
-    status: "active",
-    note: "",
-  },
-];
+import { CsvImportButton } from "@/components/common/csv-import-button";
+import { bulkImportJudges } from "@/app/actions/import";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "จัดการกรรมการ – การแข่งขันเดินทน",
   description:
-    "หน้ารายชื่อกรรมการทั้งหมดที่ใช้ในการตัดสินการแข่งขันเดินทน",
+    "หน้ารายการกรรมการทั้งหมดพร้อมลิงก์เข้าไปดู / แก้ไข และสร้างกรรมการใหม่",
 };
 
-export default function JudgesPage() {
+export default async function JudgesPage() {
+  const rows = await prisma.judge.findMany({
+    where: { deletedAt: null },
+    orderBy: { name: "asc" },
+  });
+
+  const judges = rows.map((j) => {
+    const spaceIdx = j.name.indexOf(" ");
+    const first_name = spaceIdx >= 0 ? j.name.slice(0, spaceIdx) : j.name;
+    const last_name = spaceIdx >= 0 ? j.name.slice(spaceIdx + 1) : "";
+    return {
+      id: j.id,
+      first_name,
+      last_name,
+      department: "",
+      organization: "",
+      status: "active" as const,
+    };
+  });
+
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-6">
@@ -538,21 +41,27 @@ export default function JudgesPage() {
               จัดการกรรมการ
             </h1>
             <p className="mt-1 text-sm text-slate-600">
-              รายชื่อกรรมการทั้งหมดที่ถูกลงทะเบียนในระบบสำหรับใช้ตัดสินการแข่งขันเดินทน
+              รายการกรรมการทั้งหมดพร้อมลิงก์เข้าไปดู / แก้ไข
+              และสร้างกรรมการใหม่
             </p>
           </div>
 
-          <Link href="/admin/judges/new">
-            <Button className="rounded-xl px-4 py-2 text-sm font-medium">
-              + เพิ่มกรรมการใหม่
-            </Button>
-          </Link>
+          <div className="flex flex-wrap items-end gap-2">
+            <CsvImportButton
+              label="Import CSV"
+              hint="คอลัมน์: name (ชื่อกรรมการ)"
+              importAction={bulkImportJudges}
+            />
+            <Link href="/admin/judges/new">
+              <Button className="rounded-xl px-4 py-2 text-sm font-medium">
+                + เพิ่มกรรมการใหม่
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        <JudgesList judges={MOCK_JUDGES} />
+        <JudgesList judges={judges} />
       </div>
     </main>
   );
 }
-
-

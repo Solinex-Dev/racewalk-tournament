@@ -3,47 +3,22 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { JudgeForm } from "@/components/judges/judge-form";
 import { Button } from "@/components/ui/button";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "แก้ไขข้อมูลกรรมการ – การแข่งขันเดินทน",
-  description:
-    "หน้าแก้ไขข้อมูลกรรมการที่ลงทะเบียนในระบบ Racewalk Tournament สำหรับอัปเดตแผนก องค์กร และสถานะการใช้งาน.",
+  description: "หน้าแก้ไขข้อมูลกรรมการที่ลงทะเบียนในระบบ",
 };
 
-const MOCK_JUDGE_BY_ID = {
-  "jud-001": {
-    first_name: "Somchai",
-    last_name: "Rakdee",
-    department: "Technical Committee",
-    organization: "สมาคมกรีฑาแห่งประเทศไทย",
-    status: "active" as const,
-    note: "หัวหน้าทีมกรรมการหลัก",
-  },
-  "jud-002": {
-    first_name: "Jane",
-    last_name: "Smith",
-    department: "Scoring",
-    organization: "Example Athletic Federation",
-    status: "inactive" as const,
-    note: "",
-  },
-};
+type Props = { params: Promise<{ judgeId: string }> };
 
-type JudgeDetailPageProps = {
-  params: Promise<{
-    judgeId: string;
-  }>;
-};
-
-export default async function JudgeDetailPage(props: JudgeDetailPageProps) {
+export default async function JudgeDetailPage(props: Props) {
   const { judgeId } = await props.params;
 
-  const judge = MOCK_JUDGE_BY_ID[judgeId as keyof typeof MOCK_JUDGE_BY_ID];
-
-  if (!judge) {
-    // TODO: ในภายหลังให้เปลี่ยนมา fetch จากฐานข้อมูลจริง และ handle not found ให้เหมาะสม
-    notFound();
-  }
+  const judge = await prisma.judge.findUnique({
+    where: { id: judgeId, deletedAt: null },
+  });
+  if (!judge) notFound();
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -53,26 +28,22 @@ export default async function JudgeDetailPage(props: JudgeDetailPageProps) {
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
               แก้ไขข้อมูลกรรมการ
             </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              ดูและอัปเดตข้อมูลกรรมการที่เลือก
-            </p>
+            <p className="mt-1 text-sm text-slate-600">ดูและอัปเดตข้อมูลกรรมการที่เลือก</p>
           </div>
 
           <Link href="/admin/judges">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg border-slate-200 text-xs"
-            >
+            <Button variant="outline" size="sm" className="rounded-lg border-slate-200 text-xs">
               กลับไปหน้ารายการ
             </Button>
           </Link>
         </div>
 
-        <JudgeForm mode="edit" defaultValues={judge} />
+        <JudgeForm
+          mode="edit"
+          judgeId={judgeId}
+          defaultValues={{ name: judge.name }}
+        />
       </div>
     </main>
   );
 }
-
-

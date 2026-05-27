@@ -1,788 +1,537 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { createRound, updateRound } from "@/app/actions/rounds";
 
-type AthleteEntry = {
-  athlete_id: string;
-  bib_no: string;
+export type AthleteOption = { id: string; name: string };
+export type JudgeOption = { id: string; name: string };
+
+type AthleteEntry = { athleteId: string; bib: string };
+type OfficialEntry = {
+  judgeId: string;
+  zone: string;
+  secretCode: string;
+  position: "JUDGE" | "HEAD_JUDGE" | "EVENT_LOGGER" | "TIMEKEEPER";
 };
 
-type JudgeEntry = {
-  judge_id: string;
-  table_no: string;
-  round_secret_code: string;
-  position: "judge" | "head_judge" | "event_logger";
+export type RoundFormValues = {
+  name: string;
+  scheduledTime: string;
+  distanceKm: string;
+  status: "SCHEDULED" | "ONGOING" | "FINISHED";
+  athletes: AthleteEntry[];
+  officials: OfficialEntry[];
 };
 
 type RoundFormProps = {
   mode: "create" | "edit";
   eventId: string;
+  roundId?: string;
+  athleteOptions: AthleteOption[];
+  judgeOptions: JudgeOption[];
   defaultValues?: Partial<RoundFormValues>;
 };
 
-export type RoundFormValues = {
-  name: string;
-  start_time?: string;
-  status: "draft" | "scheduled" | "ongoing" | "finished";
-  max_athletes: string;
-  max_judges: string;
-  athletes: AthleteEntry[];
-  judges: JudgeEntry[];
-};
-
-const EMPTY_VALUES: RoundFormValues = {
+const EMPTY: RoundFormValues = {
   name: "",
-  start_time: "",
-  status: "draft",
-  max_athletes: "",
-  max_judges: "",
+  scheduledTime: "",
+  distanceKm: "",
+  status: "SCHEDULED",
   athletes: [],
-  judges: [],
+  officials: [],
 };
 
-// TODO: ภายหลังให้ดึงรายการนักกีฬา / กรรมการจากฐานข้อมูลจริง
-const MOCK_ATHLETE_OPTIONS = [
-  { id: "ath-001", name: "Somchai Rakdee" },
-  { id: "ath-002", name: "Jane Doe" },
-  { id: "ath-003", name: "Chanida Runfast" },
-  { id: "ath-004", name: "John Smith" },
-  { id: "ath-005", name: "Siriwan Walkfast" },
-];
+const SECRET_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-const MOCK_JUDGE_OPTIONS = [
-  { id: "jud-001", name: "Mr. Referee 1" },
-  { id: "jud-002", name: "Ms. Referee 2" },
-  { id: "jud-003", name: "Head Judge" },
-  { id: "jud-004", name: "Assistant Judge 1" },
-  { id: "jud-005", name: "Assistant Judge 2" },
-];
-
-const ROUND_SECRET_CODE_LENGTH = 6;
-const ROUND_SECRET_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-function generateRoundSecretCode() {
+function generateSecretCode() {
   let code = "";
-  for (let i = 0; i < ROUND_SECRET_CODE_LENGTH; i += 1) {
-    const idx = Math.floor(Math.random() * ROUND_SECRET_CODE_CHARS.length);
-    code += ROUND_SECRET_CODE_CHARS[idx] ?? "X";
+  for (let i = 0; i < 6; i++) {
+    code += SECRET_CHARS[Math.floor(Math.random() * SECRET_CHARS.length)] ?? "X";
   }
   return code;
 }
 
-export function RoundForm({ mode, eventId, defaultValues }: RoundFormProps) {
-  const [form, setForm] = React.useState<RoundFormValues>(() => {
-    const merged: RoundFormValues = {
-      ...EMPTY_VALUES,
-      ...defaultValues,
-      athletes: defaultValues?.athletes ?? EMPTY_VALUES.athletes,
-      judges: (defaultValues?.judges as any) ?? EMPTY_VALUES.judges,
-    };
+const POSITION_LABEL: Record<OfficialEntry["position"], string> = {
+  JUDGE: "กรรมการ",
+  HEAD_JUDGE: "หัวหน้ากรรมการ",
+  EVENT_LOGGER: "เก็บ Lap Time",
+  TIMEKEEPER: "จับเวลา",
+};
 
-    const judgesWithCode: JudgeEntry[] = (merged.judges ?? []).map(
-      (judge: any) => ({
-        judge_id: judge.judge_id ?? "",
-        table_no: judge.table_no ?? "",
-        round_secret_code:
-          judge.round_secret_code && typeof judge.round_secret_code === "string"
-            ? judge.round_secret_code
-            : generateRoundSecretCode(),
-        position: (judge.position ?? "judge") as "judge" | "head_judge" | "event_logger",
-      }),
-    );
-
-    return {
-      ...merged,
-      judges: judgesWithCode,
-    };
+export function RoundForm({
+  mode,
+  eventId,
+  roundId,
+  athleteOptions,
+  judgeOptions,
+  defaultValues,
+}: RoundFormProps) {
+  const router = useRouter();
+  const [form, setForm] = React.useState<RoundFormValues>({
+    ...EMPTY,
+    ...defaultValues,
+    officials: (defaultValues?.officials ?? []).map((o) => ({
+      ...o,
+      secretCode: o.secretCode || generateSecretCode(),
+    })),
   });
-
-  const isEdit = mode === "edit";
-  const maxAthletes = Number(form.max_athletes || 0);
-  const maxJudges = Number(form.max_judges || 0);
+  const [isPending, startTransition] = React.useTransition();
+  const [error, setError] = React.useState<string | null>(null);
 
   const [athleteSearch, setAthleteSearch] = React.useState("");
   const [judgeSearch, setJudgeSearch] = React.useState("");
   const [athletePickerOpen, setAthletePickerOpen] = React.useState(false);
   const [judgePickerOpen, setJudgePickerOpen] = React.useState(false);
-  const [athletePickerSelected, setAthletePickerSelected] = React.useState<
-    string[]
-  >([]);
-  const [judgePickerSelected, setJudgePickerSelected] = React.useState<
-    string[]
-  >([]);
+  const [athletePickerSelected, setAthletePickerSelected] = React.useState<string[]>([]);
+  const [judgePickerSelected, setJudgePickerSelected] = React.useState<string[]>([]);
 
-  const filteredAthleteOptions = MOCK_ATHLETE_OPTIONS.filter((a) => {
+  const isEdit = mode === "edit";
+
+  const filteredAthletes = athleteOptions.filter((a) => {
     if (!athleteSearch) return true;
     const q = athleteSearch.toLowerCase();
-    return (
-      a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)
-    );
+    return a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q);
   });
 
-  const filteredJudgeOptions = MOCK_JUDGE_OPTIONS.filter((j) => {
+  const filteredJudges = judgeOptions.filter((j) => {
     if (!judgeSearch) return true;
     const q = judgeSearch.toLowerCase();
     return j.name.toLowerCase().includes(q) || j.id.toLowerCase().includes(q);
   });
 
-  const handleAddAthleteRow = () => {
-    if (maxAthletes > 0 && form.athletes.length >= maxAthletes) {
-      alert("จำนวนรายชื่อนักกีฬาเกินค่าที่กำหนดแล้ว");
-      return;
-    }
-    setAthletePickerSelected([]);
-    setAthleteSearch("");
-    setAthletePickerOpen(true);
-  };
+  const handleRemoveAthlete = (index: number) =>
+    setForm((p) => ({ ...p, athletes: p.athletes.filter((_, i) => i !== index) }));
 
-  const handleRemoveAthleteRow = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      athletes: prev.athletes.filter((_, i) => i !== index),
+  const handleBibChange = (index: number, bib: string) =>
+    setForm((p) => ({
+      ...p,
+      athletes: p.athletes.map((a, i) => (i === index ? { ...a, bib } : a)),
     }));
-  };
 
-  const handleAthleteBibChange = (index: number, bib: string) => {
-    setForm((prev) => ({
-      ...prev,
-      athletes: prev.athletes.map((a, i) =>
-        i === index ? { ...a, bib_no: bib } : a,
+  const handleRemoveOfficial = (index: number) =>
+    setForm((p) => ({ ...p, officials: p.officials.filter((_, i) => i !== index) }));
+
+  const handleZoneChange = (index: number, zone: string) =>
+    setForm((p) => ({
+      ...p,
+      officials: p.officials.map((o, i) => (i === index ? { ...o, zone } : o)),
+    }));
+
+  const handlePositionChange = (index: number, position: OfficialEntry["position"]) =>
+    setForm((p) => ({
+      ...p,
+      officials: p.officials.map((o, i) => (i === index ? { ...o, position } : o)),
+    }));
+
+  const handleRegenerateSecret = (index: number) =>
+    setForm((p) => ({
+      ...p,
+      officials: p.officials.map((o, i) =>
+        i === index ? { ...o, secretCode: generateSecretCode() } : o,
       ),
     }));
-  };
-
-  const handleAddJudgeRow = () => {
-    if (maxJudges > 0 && form.judges.length >= maxJudges) {
-      alert("จำนวนกรรมการเกินค่าที่กำหนดแล้ว");
-      return;
-    }
-    setJudgePickerSelected([]);
-    setJudgeSearch("");
-    setJudgePickerOpen(true);
-  };
-
-  const handleRemoveJudgeRow = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      judges: prev.judges.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleJudgeTableChange = (index: number, tableNo: string) => {
-    setForm((prev) => ({
-      ...prev,
-      judges: prev.judges.map((j, i) =>
-        i === index ? { ...j, table_no: tableNo } : j,
-      ),
-    }));
-  };
-
-  const handleJudgePositionChange = (index: number, position: "judge" | "head_judge" | "event_logger") => {
-    setForm((prev) => ({
-      ...prev,
-      judges: prev.judges.map((j, i) =>
-        i === index ? { ...j, position } : j,
-      ),
-    }));
-  };
-
-  const toggleAthletePickerItem = (id: string) => {
-    setAthletePickerSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  };
 
   const confirmAthletePicker = () => {
-    const existingIds = new Set(form.athletes.map((a) => a.athlete_id));
-    const candidates = athletePickerSelected.filter((id) => !existingIds.has(id));
-
-    if (candidates.length === 0) {
-      setAthletePickerOpen(false);
-      return;
+    const existing = new Set(form.athletes.map((a) => a.athleteId));
+    const toAdd = athletePickerSelected.filter((id) => !existing.has(id));
+    if (toAdd.length > 0) {
+      setForm((p) => ({
+        ...p,
+        athletes: [...p.athletes, ...toAdd.map((id) => ({ athleteId: id, bib: "" }))],
+      }));
     }
-
-    let remaining = Infinity;
-    if (maxAthletes > 0) {
-      remaining = maxAthletes - form.athletes.length;
-    }
-
-    if (remaining <= 0) {
-      alert("จำนวนรายชื่อนักกีฬาเกินค่าที่กำหนดแล้ว");
-      setAthletePickerOpen(false);
-      return;
-    }
-
-    const toAdd = candidates.slice(0, remaining);
-    if (toAdd.length < candidates.length) {
-      alert("มีบางรายชื่อไม่ถูกเพิ่มเพราะเกินจำนวนสูงสุดที่กำหนด");
-    }
-
-    setForm((prev) => ({
-      ...prev,
-      athletes: [
-        ...prev.athletes,
-        ...toAdd.map((id) => ({ athlete_id: id, bib_no: "" })),
-      ],
-    }));
-
     setAthletePickerOpen(false);
-  };
-
-  const toggleJudgePickerItem = (id: string) => {
-    setJudgePickerSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setAthletePickerSelected([]);
   };
 
   const confirmJudgePicker = () => {
-    const existingIds = new Set(form.judges.map((j) => j.judge_id));
-    const candidates = judgePickerSelected.filter((id) => !existingIds.has(id));
-
-    if (candidates.length === 0) {
-      setJudgePickerOpen(false);
-      return;
+    const existing = new Set(form.officials.map((o) => o.judgeId));
+    const toAdd = judgePickerSelected.filter((id) => !existing.has(id));
+    if (toAdd.length > 0) {
+      setForm((p) => ({
+        ...p,
+        officials: [
+          ...p.officials,
+          ...toAdd.map((id) => ({
+            judgeId: id,
+            zone: "",
+            secretCode: generateSecretCode(),
+            position: "JUDGE" as const,
+          })),
+        ],
+      }));
     }
-
-    let remaining = Infinity;
-    if (maxJudges > 0) {
-      remaining = maxJudges - form.judges.length;
-    }
-
-    if (remaining <= 0) {
-      alert("จำนวนกรรมการเกินค่าที่กำหนดแล้ว");
-      setJudgePickerOpen(false);
-      return;
-    }
-
-    const toAdd = candidates.slice(0, remaining);
-    if (toAdd.length < candidates.length) {
-      alert("มีบางรายชื่อกรรมการไม่ถูกเพิ่มเพราะเกินจำนวนสูงสุดที่กำหนด");
-    }
-
-    setForm((prev) => ({
-      ...prev,
-      judges: [
-        ...prev.judges,
-        ...toAdd.map((id) => ({
-          judge_id: id,
-          table_no: "",
-          round_secret_code: generateRoundSecretCode(),
-          position: "judge" as const,
-        })),
-      ],
-    }));
-
     setJudgePickerOpen(false);
+    setJudgePickerSelected([]);
   };
 
-  const handleRegenerateJudgeSecret = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      judges: prev.judges.map((j, i) =>
-        i === index
-          ? {
-              ...j,
-              round_secret_code: generateRoundSecretCode(),
-            }
-          : j,
-      ),
-    }));
-  };
-
-  // TODO: เชื่อมต่อ submit กับ server action / API จริงภายหลัง
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // eslint-disable-next-line no-console
-    console.log("[Mock submit round]", form);
-    alert(
-      isEdit
-        ? "บันทึกการแก้ไข Round (mock) เรียบร้อย – รอเชื่อมต่อฐานข้อมูลจริง"
-        : "สร้าง Round ใหม่ (mock) เรียบร้อย – รอเชื่อมต่อฐานข้อมูลจริง",
-    );
+    setError(null);
+    startTransition(async () => {
+      try {
+        if (isEdit && roundId) {
+          await updateRound(eventId, roundId, form);
+        } else {
+          await createRound(eventId, form);
+        }
+        router.push(`/admin/events/${eventId}`);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+      }
+    });
   };
 
   return (
     <Card className="rounded-2xl border-slate-200">
       <CardContent className="p-6">
         <form className="space-y-5" onSubmit={handleSubmit}>
+          {/* Basic info */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-800">
-                ชื่อรอบแข่ง
-              </label>
+              <label className="text-sm font-medium text-slate-800">ชื่อรอบแข่ง</label>
               <Input
                 required
                 value={form.name}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, name: e.target.value }))
-                }
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                 placeholder="เช่น รอบที่ 1 - ชาย 20 กม."
               />
-              <p className="text-[11px] text-slate-500">
-                ชื่อของรอบแข่งที่จะใช้แสดงในระบบ
-              </p>
             </div>
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-800">
-                เวลาเริ่มแข่ง
+                วันและเวลาเริ่มแข่ง
               </label>
               <Input
-                type="time"
-                value={form.start_time}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, start_time: e.target.value }))
-                }
+                type="datetime-local"
+                value={form.scheduledTime}
+                onChange={(e) => setForm((p) => ({ ...p, scheduledTime: e.target.value }))}
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-800">
-                สถานะรอบแข่ง
+                ระยะทาง (กม.)
               </label>
+              <Input
+                type="number"
+                min={0}
+                step="0.1"
+                value={form.distanceKm}
+                onChange={(e) => setForm((p) => ({ ...p, distanceKm: e.target.value }))}
+                placeholder="เช่น 10, 20"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-800">สถานะรอบแข่ง</label>
               <select
                 className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5"
                 value={form.status}
                 onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    status: e.target.value as RoundFormValues["status"],
-                  }))
+                  setForm((p) => ({ ...p, status: e.target.value as RoundFormValues["status"] }))
                 }
               >
-                <option value="draft">ร่าง – ยังไม่เผยแพร่</option>
-                <option value="scheduled">กำหนดการ – ตั้งเวลาไว้แล้ว</option>
-                <option value="ongoing">กำลังดำเนินการ – กำลังแข่งขัน</option>
-                <option value="finished">เสร็จสิ้น – แข่งขันเสร็จแล้ว</option>
+                <option value="SCHEDULED">กำหนดการ – ตั้งเวลาไว้แล้ว</option>
+                <option value="ONGOING">กำลังดำเนินการ – กำลังแข่งขัน</option>
+                <option value="FINISHED">เสร็จสิ้น – แข่งขันเสร็จแล้ว</option>
               </select>
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-800">
-                จำนวนนักกีฬาสูงสุดในรอบนี้
-              </label>
-              <Input
-                type="number"
-                min={0}
-                value={form.max_athletes}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    max_athletes: e.target.value,
-                  }))
-                }
-                placeholder="เช่น 50"
-              />
-              <p className="text-[11px] text-slate-500">
-                ใช้กำหนดจำนวนรายชื่อนักกีฬาที่อนุญาตให้เข้าร่วมรอบนี้
-              </p>
-              {form.athletes.length > 0 && (
-                <p className="text-[11px] text-slate-500">
-                  ปัจจุบันเลือกนักกีฬาแล้ว {form.athletes.length} คน
-                  {maxAthletes > 0 && ` / จำกัด ${maxAthletes} คน`}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-800">
-                จำนวนกรรมการสูงสุดในรอบนี้
-              </label>
-              <Input
-                type="number"
-                min={0}
-                value={form.max_judges}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    max_judges: e.target.value,
-                  }))
-                }
-                placeholder="เช่น 10"
-              />
-              <p className="text-[11px] text-slate-500">
-                ใช้กำหนดจำนวนกรรมการ / โต๊ะ ที่จะใช้ในรอบนี้
-              </p>
-              {form.judges.length > 0 && (
-                <p className="text-[11px] text-slate-500">
-                  ปัจจุบันเลือกกรรมการแล้ว {form.judges.length} คน
-                  {maxJudges > 0 && ` / จำกัด ${maxJudges} คน`}
-                </p>
-              )}
-            </div>
-          </div>
-
+          {/* Athletes */}
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                จัดการรายชื่อนักกีฬาในรอบนี้
-              </h2>
-              <p className="mt-1 text-[11px] text-slate-600">
-                เลือกนักกีฬาที่จะเข้าร่วมรอบนี้ และกำหนด{" "}
-                <span className="font-medium">หมายเลขประจำตัวในรอบ</span>{" "}
-                (bib number) ให้แต่ละคน
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  รายชื่อนักกีฬาในรอบนี้
+                </h2>
+                <p className="mt-0.5 text-[11px] text-slate-600">
+                  เลือกนักกีฬาและกำหนดหมายเลข bib ให้แต่ละคน
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 rounded-lg px-3 text-xs"
+                onClick={() => {
+                  setAthletePickerSelected([]);
+                  setAthleteSearch("");
+                  setAthletePickerOpen(true);
+                }}
+              >
+                + เพิ่มนักกีฬา
+              </Button>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <div className="text-[11px] text-slate-600">
-                  แถวรายชื่อนักกีฬา (สูงสุด{" "}
-                  {maxAthletes > 0 ? `${maxAthletes} คน` : "ไม่จำกัด"}) –
-                  ปัจจุบันเพิ่ม {form.athletes.length} แถว
-                </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    className="h-7 w-40 px-2 py-1 text-xs"
-                    placeholder="ค้นหานักกีฬา..."
-                    value={athleteSearch}
-                    onChange={(e) => setAthleteSearch(e.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-7 rounded-lg px-3 text-xs"
-                    onClick={handleAddAthleteRow}
-                  >
-                    + เพิ่มแถว
-                  </Button>
-                </div>
-              </div>
-
-              <div className="min-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                <table className="min-w-full border-collapse text-xs">
-                  <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
+            <div className="min-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white">
+              <table className="min-w-full border-collapse text-xs">
+                <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2 text-left">#</th>
+                    <th className="px-3 py-2 text-left">นักกีฬา</th>
+                    <th className="px-3 py-2 text-left">หมายเลข Bib</th>
+                    <th className="px-3 py-2 text-right">ลบ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {form.athletes.length === 0 ? (
                     <tr>
-                      <th className="px-3 py-2 text-left">#</th>
-                      <th className="px-3 py-2 text-left">นักกีฬา</th>
-                      <th className="px-3 py-2 text-left">หมายเลขนักกีฬา (bib)</th>
-                      <th className="px-3 py-2 text-right">ลบ</th>
+                      <td colSpan={4} className="px-3 py-4 text-center text-[11px] text-slate-500">
+                        ยังไม่มีนักกีฬา – กด &quot;เพิ่มนักกีฬา&quot;
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {form.athletes.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={4}
-                          className="px-3 py-4 text-center text-[11px] text-slate-500"
-                        >
-                          ยังไม่มีรายชื่อนักกีฬาในรอบนี้ – กดปุ่ม
-                          &quot;เพิ่มแถว&quot; เพื่อเริ่มเพิ่มนักกีฬา
-                        </td>
-                      </tr>
-                    )}
-                    {form.athletes.map((row, index) => (
-                      <tr key={index} className="hover:bg-slate-50/80">
-                        <td className="px-3 py-2 align-middle text-[11px] text-slate-500">
-                          {index + 1}
-                        </td>
-                        <td className="px-3 py-2 align-middle">
+                  ) : (
+                    form.athletes.map((row, i) => (
+                      <tr key={row.athleteId} className="hover:bg-slate-50/80">
+                        <td className="px-3 py-2 text-[11px] text-slate-500">{i + 1}</td>
+                        <td className="px-3 py-2">
                           <span className="text-xs text-slate-800">
-                            {MOCK_ATHLETE_OPTIONS.find(
-                              (a) => a.id === row.athlete_id,
-                            )?.name || "-"}
-                            {row.athlete_id && (
-                              <span className="ml-1 font-mono text-[10px] text-slate-500">
-                                ({row.athlete_id})
-                              </span>
-                            )}
+                            {athleteOptions.find((a) => a.id === row.athleteId)?.name ?? row.athleteId}
                           </span>
                         </td>
-                        <td className="px-3 py-2 align-middle">
+                        <td className="px-3 py-2">
                           <Input
-                            className="h-7 w-full px-2 py-1 text-xs"
-                            value={row.bib_no}
-                            onChange={(e) =>
-                              handleAthleteBibChange(index, e.target.value)
-                            }
-                            placeholder="เช่น 101, 102"
+                            className="h-7 w-28 px-2 py-1 text-xs"
+                            value={row.bib}
+                            onChange={(e) => handleBibChange(i, e.target.value)}
+                            placeholder="เช่น 101"
                           />
                         </td>
-                        <td className="px-3 py-2 align-middle text-right">
+                        <td className="px-3 py-2 text-right">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             className="h-7 rounded-lg border-slate-200 px-2 text-[11px]"
-                            onClick={() => handleRemoveAthleteRow(index)}
+                            onClick={() => handleRemoveAthlete(i)}
                           >
                             ลบ
                           </Button>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
+          {/* Officials */}
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                จัดการกรรมการ / โต๊ะกรรมการในรอบนี้
-              </h2>
-              <p className="mt-1 text-[11px] text-slate-600">
-                เลือกกรรมการสำหรับรอบนี้
-                และกำหนด{" "}
-                <span className="font-medium">หมายเลขโต๊ะที่นั่งของกรรมการ</span>{" "}
-                และ{" "}
-                <span className="font-medium">
-                  รหัสลับของกรรมการในรอบ (round secret code)
-                </span>{" "}
-                สำหรับใช้ยืนยันตัวตนในฝั่ง Judger
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  กรรมการ / เจ้าหน้าที่ในรอบนี้
+                </h2>
+                <p className="mt-0.5 text-[11px] text-slate-600">
+                  เลือกกรรมการ กำหนดตำแหน่ง โซน และรหัสลับสำหรับ join
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 rounded-lg px-3 text-xs"
+                onClick={() => {
+                  setJudgePickerSelected([]);
+                  setJudgeSearch("");
+                  setJudgePickerOpen(true);
+                }}
+              >
+                + เพิ่มกรรมการ
+              </Button>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <div className="text-[11px] text-slate-600">
-                  แถวรายชื่อกรรมการ (สูงสุด{" "}
-                  {maxJudges > 0 ? `${maxJudges} คน` : "ไม่จำกัด"}) – ปัจจุบันเพิ่ม{" "}
-                  {form.judges.length} แถว
-                </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    className="h-7 w-40 px-2 py-1 text-xs"
-                    placeholder="ค้นหากรรมการ..."
-                    value={judgeSearch}
-                    onChange={(e) => setJudgeSearch(e.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-7 rounded-lg px-3 text-xs"
-                    onClick={handleAddJudgeRow}
-                  >
-                    + เพิ่มแถว
-                  </Button>
-                </div>
-              </div>
-
-              <div className="min-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                <table className="min-w-full border-collapse text-xs">
-                  <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
+            <div className="min-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white">
+              <table className="min-w-full border-collapse text-xs">
+                <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2 text-left">#</th>
+                    <th className="px-3 py-2 text-left">กรรมการ</th>
+                    <th className="px-3 py-2 text-left">ตำแหน่ง</th>
+                    <th className="px-3 py-2 text-left">โซน / โต๊ะ</th>
+                    <th className="px-3 py-2 text-left">รหัสลับ (6 ตัว)</th>
+                    <th className="px-3 py-2 text-right">ลบ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {form.officials.length === 0 ? (
                     <tr>
-                      <th className="px-3 py-2 text-left">#</th>
-                      <th className="px-3 py-2 text-left">กรรมการ</th>
-                      <th className="px-3 py-2 text-left">ตำแหน่ง</th>
-                      <th className="px-3 py-2 text-left">โต๊ะที่นั่ง</th>
-                      <th className="px-3 py-2 text-left">
-                        รหัสลับในรอบ (6 ตัวอักษร)
-                      </th>
-                      <th className="px-3 py-2 text-right">ลบ</th>
+                      <td colSpan={6} className="px-3 py-4 text-center text-[11px] text-slate-500">
+                        ยังไม่มีกรรมการ – กด &quot;เพิ่มกรรมการ&quot;
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {form.judges.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="px-3 py-4 text-center text-[11px] text-slate-500"
-                        >
-                          ยังไม่มีรายชื่อกรรมการในรอบนี้ – กดปุ่ม
-                          &quot;เพิ่มแถว&quot; เพื่อเริ่มเพิ่มกรรมการ
-                        </td>
-                      </tr>
-                    )}
-                    {form.judges.map((row, index) => (
-                      <tr key={index} className="hover:bg-slate-50/80">
-                        <td className="px-3 py-2 align-middle text-[11px] text-slate-500">
-                          {index + 1}
-                        </td>
-                        <td className="px-3 py-2 align-middle">
+                  ) : (
+                    form.officials.map((row, i) => (
+                      <tr key={row.judgeId} className="hover:bg-slate-50/80">
+                        <td className="px-3 py-2 text-[11px] text-slate-500">{i + 1}</td>
+                        <td className="px-3 py-2">
                           <span className="text-xs text-slate-800">
-                            {MOCK_JUDGE_OPTIONS.find(
-                              (j) => j.id === row.judge_id,
-                            )?.name || "-"}
-                            {row.judge_id && (
-                              <span className="ml-1 font-mono text-[10px] text-slate-500">
-                                ({row.judge_id})
-                              </span>
-                            )}
+                            {judgeOptions.find((j) => j.id === row.judgeId)?.name ?? row.judgeId}
                           </span>
                         </td>
-                        <td className="px-3 py-2 align-middle">
+                        <td className="px-3 py-2">
                           <select
-                            className="h-7 w-full rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5"
+                            className="h-7 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-900 shadow-sm"
                             value={row.position}
                             onChange={(e) =>
-                              handleJudgePositionChange(index, e.target.value as "judge" | "head_judge" | "event_logger")
+                              handlePositionChange(i, e.target.value as OfficialEntry["position"])
                             }
                           >
-                            <option value="judge">กรรมการ</option>
-                            <option value="head_judge">หัวหน้ากรรมการ</option>
-                            <option value="event_logger">เก็บ Lap Time</option>
+                            {Object.entries(POSITION_LABEL).map(([val, label]) => (
+                              <option key={val} value={val}>
+                                {label}
+                              </option>
+                            ))}
                           </select>
                         </td>
-                        <td className="px-3 py-2 align-middle">
+                        <td className="px-3 py-2">
                           <Input
-                            className="h-7 w-full px-2 py-1 text-xs"
-                            value={row.table_no}
-                            onChange={(e) =>
-                              handleJudgeTableChange(index, e.target.value)
-                            }
-                            placeholder="เช่น 1, 2, A, B"
+                            className="h-7 w-24 px-2 py-1 text-xs"
+                            value={row.zone}
+                            onChange={(e) => handleZoneChange(i, e.target.value)}
+                            placeholder="เช่น A, 1"
                           />
                         </td>
-                        <td className="px-3 py-2 align-middle">
+                        <td className="px-3 py-2">
                           <div className="flex items-center gap-2">
                             <span className="inline-flex items-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-800">
-                              {row.round_secret_code || "------"}
+                              {row.secretCode || "------"}
                             </span>
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               className="h-7 rounded-lg border-slate-200 px-2 text-[11px]"
-                              onClick={() => handleRegenerateJudgeSecret(index)}
+                              onClick={() => handleRegenerateSecret(i)}
                             >
-                              รีเซ็ตโค้ด
+                              รีเซ็ต
                             </Button>
                           </div>
                         </td>
-                        <td className="px-3 py-2 align-middle text-right">
+                        <td className="px-3 py-2 text-right">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             className="h-7 rounded-lg border-slate-200 px-2 text-[11px]"
-                            onClick={() => handleRemoveJudgeRow(index)}
+                            onClick={() => handleRemoveOfficial(i)}
                           >
                             ลบ
                           </Button>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
+          {error && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          )}
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button
               type="submit"
+              disabled={isPending}
               className="rounded-xl px-4 py-2 text-sm font-medium"
             >
-              {isEdit ? "บันทึกการเปลี่ยนแปลง" : "สร้างรอบแข่งใหม่"}
+              {isPending
+                ? "กำลังบันทึก..."
+                : isEdit
+                ? "บันทึกการเปลี่ยนแปลง"
+                : "สร้างรอบแข่งใหม่"}
             </Button>
           </div>
-
-          <p className="text-[11px] text-slate-500">
-            * ฟอร์มนี้เป็นตัวอย่างเบื้องต้น – ในขั้นต่อไปจะเชื่อมต่อกับ Prisma
-            / MySQL และเพิ่มการ validate อย่างละเอียดมากขึ้น
-          </p>
         </form>
 
+        {/* Athlete Picker Modal */}
         {athletePickerOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40">
             <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-900">
-                    เพิ่มนักกีฬาเข้ารอบ
-                  </h2>
-                  <p className="mt-1 text-[11px] text-slate-600">
-                    เลือกนักกีฬาที่ต้องการเพิ่ม สามารถค้นหาด้วยชื่อหรือรหัสได้
-                  </p>
-                </div>
+                <h2 className="text-sm font-semibold text-slate-900">เพิ่มนักกีฬาเข้ารอบ</h2>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 rounded-lg border-slate-200 px-2 text-[11px]"
+                  className="h-7 rounded-lg px-2 text-[11px]"
                   onClick={() => setAthletePickerOpen(false)}
                 >
                   ปิด
                 </Button>
               </div>
 
-              <div className="mb-3 flex items-center gap-2">
-                <Input
-                  className="h-8 px-2 py-1 text-xs"
-                  placeholder="ค้นหานักกีฬา..."
-                  value={athleteSearch}
-                  onChange={(e) => setAthleteSearch(e.target.value)}
-                />
-                <span className="text-[11px] text-slate-500">
-                  เลือกได้สูงสุด{" "}
-                  {maxAthletes > 0
-                    ? Math.max(maxAthletes - form.athletes.length, 0)
-                    : "ไม่จำกัด"}
-                </span>
-              </div>
+              <Input
+                className="mb-3 h-8 px-2 py-1 text-xs"
+                placeholder="ค้นหานักกีฬา..."
+                value={athleteSearch}
+                onChange={(e) => setAthleteSearch(e.target.value)}
+              />
 
               <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200">
                 <ul className="divide-y divide-slate-200 text-xs">
-                  {filteredAthleteOptions.length === 0 && (
+                  {filteredAthletes.length === 0 ? (
                     <li className="px-3 py-3 text-center text-[11px] text-slate-500">
                       ไม่พบนักกีฬาตามคำค้นหา
                     </li>
-                  )}
-                  {[...filteredAthleteOptions]
-                    .sort((a, b) => {
-                      const aIn = form.athletes.some(
-                        (x) => x.athlete_id === a.id,
-                      );
-                      const bIn = form.athletes.some(
-                        (x) => x.athlete_id === b.id,
-                      );
-                      if (aIn === bIn) return 0;
-                      return aIn ? 1 : -1;
-                    })
-                    .map((athlete) => {
-                      const alreadyInRound = form.athletes.some(
-                        (a) => a.athlete_id === athlete.id,
-                      );
-                      const checked =
-                        athletePickerSelected.includes(athlete.id);
-                      return (
-                        <li
-                          key={athlete.id}
-                          className="flex items-center justify-between px-3 py-2 hover:bg-slate-50/80"
-                        >
-                          <label className="flex flex-1 items-center gap-2">
-                            <input
-                              type="checkbox"
-                              className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900"
-                              disabled={alreadyInRound}
-                              checked={checked && !alreadyInRound}
-                              onChange={() =>
-                                !alreadyInRound &&
-                                toggleAthletePickerItem(athlete.id)
-                              }
-                            />
-                            <span className="truncate">
-                              {athlete.name}{" "}
-                              <span className="font-mono text-[10px] text-slate-500">
-                                ({athlete.id})
+                  ) : (
+                    [...filteredAthletes]
+                      .sort((a, b) => {
+                        const aIn = form.athletes.some((x) => x.athleteId === a.id);
+                        const bIn = form.athletes.some((x) => x.athleteId === b.id);
+                        if (aIn === bIn) return 0;
+                        return aIn ? 1 : -1;
+                      })
+                      .map((athlete) => {
+                        const alreadyIn = form.athletes.some((x) => x.athleteId === athlete.id);
+                        const checked = athletePickerSelected.includes(athlete.id);
+                        return (
+                          <li
+                            key={athlete.id}
+                            className="flex items-center justify-between px-3 py-2 hover:bg-slate-50/80"
+                          >
+                            <label className="flex flex-1 items-center gap-2">
+                              <input
+                                type="checkbox"
+                                className="h-3.5 w-3.5 rounded border-slate-300"
+                                disabled={alreadyIn}
+                                checked={checked && !alreadyIn}
+                                onChange={() =>
+                                  !alreadyIn &&
+                                  setAthletePickerSelected((p) =>
+                                    p.includes(athlete.id)
+                                      ? p.filter((x) => x !== athlete.id)
+                                      : [...p, athlete.id],
+                                  )
+                                }
+                              />
+                              <span className="truncate">{athlete.name}</span>
+                            </label>
+                            {alreadyIn && (
+                              <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                                อยู่ในรอบแล้ว
                               </span>
-                            </span>
-                          </label>
-                          {alreadyInRound && (
-                            <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                              อยู่ในรอบแล้ว
-                            </span>
-                          )}
-                        </li>
-                      );
-                    })}
+                            )}
+                          </li>
+                        );
+                      })
+                  )}
                 </ul>
               </div>
 
-              <div className="mt-3 flex items-center justify-end gap-2">
+              <div className="mt-3 flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 rounded-lg border-slate-200 px-3 text-xs"
+                  className="h-8 rounded-lg px-3 text-xs"
                   onClick={() => setAthletePickerOpen(false)}
                 >
                   ยกเลิก
@@ -794,114 +543,94 @@ export function RoundForm({ mode, eventId, defaultValues }: RoundFormProps) {
                   onClick={confirmAthletePicker}
                   disabled={athletePickerSelected.length === 0}
                 >
-                  ยืนยันการเพิ่ม
+                  ยืนยันการเพิ่ม ({athletePickerSelected.length})
                 </Button>
               </div>
             </div>
           </div>
         )}
 
+        {/* Judge Picker Modal */}
         {judgePickerOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40">
             <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-900">
-                    เพิ่มกรรมการเข้ารอบ
-                  </h2>
-                  <p className="mt-1 text-[11px] text-slate-600">
-                    เลือกกรรมการที่ต้องการเพิ่ม สามารถค้นหาด้วยชื่อหรือรหัสได้
-                  </p>
-                </div>
+                <h2 className="text-sm font-semibold text-slate-900">เพิ่มกรรมการเข้ารอบ</h2>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 rounded-lg border-slate-200 px-2 text-[11px]"
+                  className="h-7 rounded-lg px-2 text-[11px]"
                   onClick={() => setJudgePickerOpen(false)}
                 >
                   ปิด
                 </Button>
               </div>
 
-              <div className="mb-3 flex items-center gap-2">
-                <Input
-                  className="h-8 px-2 py-1 text-xs"
-                  placeholder="ค้นหากรรมการ..."
-                  value={judgeSearch}
-                  onChange={(e) => setJudgeSearch(e.target.value)}
-                />
-                <span className="text-[11px] text-slate-500">
-                  เลือกได้สูงสุด{" "}
-                  {maxJudges > 0
-                    ? Math.max(maxJudges - form.judges.length, 0)
-                    : "ไม่จำกัด"}
-                </span>
-              </div>
+              <Input
+                className="mb-3 h-8 px-2 py-1 text-xs"
+                placeholder="ค้นหากรรมการ..."
+                value={judgeSearch}
+                onChange={(e) => setJudgeSearch(e.target.value)}
+              />
 
               <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200">
                 <ul className="divide-y divide-slate-200 text-xs">
-                  {filteredJudgeOptions.length === 0 && (
+                  {filteredJudges.length === 0 ? (
                     <li className="px-3 py-3 text-center text-[11px] text-slate-500">
                       ไม่พบกรรมการตามคำค้นหา
                     </li>
-                  )}
-                  {[...filteredJudgeOptions]
-                    .sort((a, b) => {
-                      const aIn = form.judges.some(
-                        (x) => x.judge_id === a.id,
-                      );
-                      const bIn = form.judges.some(
-                        (x) => x.judge_id === b.id,
-                      );
-                      if (aIn === bIn) return 0;
-                      return aIn ? 1 : -1;
-                    })
-                    .map((judge) => {
-                      const alreadyInRound = form.judges.some(
-                        (j) => j.judge_id === judge.id,
-                      );
-                      const checked = judgePickerSelected.includes(judge.id);
-                      return (
-                        <li
-                          key={judge.id}
-                          className="flex items-center justify-between px-3 py-2 hover:bg-slate-50/80"
-                        >
-                          <label className="flex flex-1 items-center gap-2">
-                            <input
-                              type="checkbox"
-                              className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900"
-                              disabled={alreadyInRound}
-                              checked={checked && !alreadyInRound}
-                              onChange={() =>
-                                !alreadyInRound &&
-                                toggleJudgePickerItem(judge.id)
-                              }
-                            />
-                            <span className="truncate">
-                              {judge.name}{" "}
-                              <span className="font-mono text-[10px] text-slate-500">
-                                ({judge.id})
+                  ) : (
+                    [...filteredJudges]
+                      .sort((a, b) => {
+                        const aIn = form.officials.some((x) => x.judgeId === a.id);
+                        const bIn = form.officials.some((x) => x.judgeId === b.id);
+                        if (aIn === bIn) return 0;
+                        return aIn ? 1 : -1;
+                      })
+                      .map((judge) => {
+                        const alreadyIn = form.officials.some((x) => x.judgeId === judge.id);
+                        const checked = judgePickerSelected.includes(judge.id);
+                        return (
+                          <li
+                            key={judge.id}
+                            className="flex items-center justify-between px-3 py-2 hover:bg-slate-50/80"
+                          >
+                            <label className="flex flex-1 items-center gap-2">
+                              <input
+                                type="checkbox"
+                                className="h-3.5 w-3.5 rounded border-slate-300"
+                                disabled={alreadyIn}
+                                checked={checked && !alreadyIn}
+                                onChange={() =>
+                                  !alreadyIn &&
+                                  setJudgePickerSelected((p) =>
+                                    p.includes(judge.id)
+                                      ? p.filter((x) => x !== judge.id)
+                                      : [...p, judge.id],
+                                  )
+                                }
+                              />
+                              <span className="truncate">{judge.name}</span>
+                            </label>
+                            {alreadyIn && (
+                              <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                                อยู่ในรอบแล้ว
                               </span>
-                            </span>
-                          </label>
-                          {alreadyInRound && (
-                            <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                              อยู่ในรอบแล้ว
-                            </span>
-                          )}
-                        </li>
-                      );
-                    })}
+                            )}
+                          </li>
+                        );
+                      })
+                  )}
                 </ul>
               </div>
 
-              <div className="mt-3 flex items-center justify-end gap-2">
+              <div className="mt-3 flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 rounded-lg border-slate-200 px-3 text-xs"
+                  className="h-8 rounded-lg px-3 text-xs"
                   onClick={() => setJudgePickerOpen(false)}
                 >
                   ยกเลิก
@@ -913,7 +642,7 @@ export function RoundForm({ mode, eventId, defaultValues }: RoundFormProps) {
                   onClick={confirmJudgePicker}
                   disabled={judgePickerSelected.length === 0}
                 >
-                  ยืนยันการเพิ่ม
+                  ยืนยันการเพิ่ม ({judgePickerSelected.length})
                 </Button>
               </div>
             </div>
@@ -923,4 +652,3 @@ export function RoundForm({ mode, eventId, defaultValues }: RoundFormProps) {
     </Card>
   );
 }
-

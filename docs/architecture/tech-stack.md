@@ -44,11 +44,10 @@ See [data-model.md](data-model.md) for the planned schema.
 - **Dark theme** for in-event role workspaces (judge, head judge, event logger, timekeeper) — reduces glare at venue
 - No user-controllable dark/light toggle (intentional; theme is fixed per route prefix)
 
-## Internationalization (i18n)
+## Language
 
-- Languages: **Thai (`th`)**, **English (`en`)**
-- Toggle changes language immediately — no reload
-- Approach: see [i18n.md](i18n.md)
+- **Thai only.** The UI ships in Thai with no language toggle.
+- Documentation in [docs/](../) is written in English for maintainers; Thai terms used by the UI are listed in [product/glossary.md](../product/glossary.md) as a translation aid.
 
 ## Linting
 

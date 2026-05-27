@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { AdminLoginForm } from "@/components/auth/admin-login-form";
 
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function Login() {
-  return <AdminLoginForm />;
+  return (
+    <Suspense>
+      <AdminLoginForm />
+    </Suspense>
+  );
 }

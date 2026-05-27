@@ -1,22 +1,65 @@
+"use client";
+
+import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createAdmin, updateAdmin } from "@/app/actions/admins";
 
 export type AdminFormValues = {
   name: string;
   email: string;
-  role: string;
-   password: string;
-  status: "active" | "inactive";
+  title: string;
+  password: string;
+  status: "ACTIVE" | "SUSPENDED";
 };
 
 type AdminFormProps = {
   mode: "create" | "edit";
+  adminId?: string;
   defaultValues?: Partial<AdminFormValues>;
 };
 
-export function AdminForm({ mode, defaultValues }: AdminFormProps) {
+const EMPTY: AdminFormValues = {
+  name: "",
+  email: "",
+  title: "",
+  password: "",
+  status: "ACTIVE",
+};
+
+export function AdminForm({ mode, adminId, defaultValues }: AdminFormProps) {
+  const router = useRouter();
+  const [form, setForm] = React.useState<AdminFormValues>({ ...EMPTY, ...defaultValues, password: "" });
+  const [isPending, startTransition] = React.useTransition();
+  const [error, setError] = React.useState<string | null>(null);
+
   const isEdit = mode === "edit";
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    startTransition(async () => {
+      try {
+        const payload = {
+          name: form.name.trim(),
+          email: form.email.trim(),
+          title: form.title.trim(),
+          password: form.password,
+          status: form.status,
+        };
+        if (isEdit && adminId) {
+          await updateAdmin(adminId, payload);
+        } else {
+          await createAdmin(payload);
+        }
+        router.push("/admin/admins");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+      }
+    });
+  };
 
   return (
     <Card className="rounded-2xl border-slate-200">
@@ -29,89 +72,65 @@ export function AdminForm({ mode, defaultValues }: AdminFormProps) {
         </p>
       </CardHeader>
       <CardContent className="pt-4">
-        <form className="space-y-4">
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-1.5">
-            <label
-              htmlFor="name"
-              className="block text-xs font-medium text-slate-800"
-            >
-              ชื่อแสดงผล
-            </label>
+            <label className="block text-xs font-medium text-slate-800">ชื่อแสดงผล</label>
             <Input
-              id="name"
-              name="name"
-              defaultValue={defaultValues?.name}
-                placeholder="เช่น ผู้ดูแลระบบ"
+              required
+              value={form.name}
+              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              placeholder="เช่น ผู้ดูแลระบบ"
               className="rounded-xl text-sm"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label
-              htmlFor="email"
-              className="block text-xs font-medium text-slate-800"
-            >
-              อีเมล
-            </label>
+            <label className="block text-xs font-medium text-slate-800">อีเมล</label>
             <Input
-              id="email"
-              name="email"
+              required
               type="email"
-              defaultValue={defaultValues?.email}
+              value={form.email}
+              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
               placeholder="admin@example.com"
               className="rounded-xl text-sm"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label
-              htmlFor="password"
-              className="block text-xs font-medium text-slate-800"
-            >
-              รหัสผ่าน
-            </label>
+            <label className="block text-xs font-medium text-slate-800">รหัสผ่าน</label>
             <Input
-              id="password"
-              name="password"
+              required={!isEdit}
               type="password"
-              placeholder={isEdit ? "เว้นว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่าน" : "กำหนดรหัสผ่านเริ่มต้น"}
+              value={form.password}
+              onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+              placeholder={isEdit ? "เว้นว่างหากไม่ต้องการเปลี่ยน" : "กำหนดรหัสผ่านเริ่มต้น (อย่างน้อย 8 ตัว)"}
               className="rounded-xl text-sm"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label
-              htmlFor="role"
-              className="block text-xs font-medium text-slate-800"
-            >
-              บทบาท
-            </label>
-            <select
-              id="role"
-              name="role"
-              defaultValue={defaultValues?.role ?? ""}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-0 focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
-            >
-              <option value="" disabled>
-                เลือกบทบาทของ Admin
-              </option>
-              <option value="owner">เจ้าของระบบ / ผู้ดูแลระบบ</option>
-              <option value="event_admin">ผู้ดูแลกิจกรรม</option>
-              <option value="score_admin">ผู้ดูแลคะแนน</option>
-            </select>
+            <label className="block text-xs font-medium text-slate-800">บทบาท (Display label)</label>
+            <Input
+              value={form.title}
+              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+              placeholder="เช่น Owner, Event Manager, Score Officer"
+              className="rounded-xl text-sm"
+            />
+            <p className="text-[11px] text-slate-500">
+              ป้ายข้อความที่ใช้แสดงในตาราง Admin (ทุกคนได้สิทธิ์ ADMIN เท่ากันในระบบ)
+            </p>
           </div>
 
           <div className="space-y-1.5">
-            <span className="block text-xs font-medium text-slate-800">
-              สถานะการใช้งาน
-            </span>
+            <span className="block text-xs font-medium text-slate-800">สถานะการใช้งาน</span>
             <div className="flex gap-3 text-xs">
               <label className="inline-flex items-center gap-1.5">
                 <input
                   type="radio"
                   name="status"
-                  value="active"
-                  defaultChecked={defaultValues?.status !== "inactive"}
+                  value="ACTIVE"
+                  checked={form.status === "ACTIVE"}
+                  onChange={() => setForm((p) => ({ ...p, status: "ACTIVE" }))}
                   className="h-3.5 w-3.5 accent-slate-900"
                 />
                 <span>ใช้งานอยู่</span>
@@ -120,21 +139,27 @@ export function AdminForm({ mode, defaultValues }: AdminFormProps) {
                 <input
                   type="radio"
                   name="status"
-                  value="inactive"
-                  defaultChecked={defaultValues?.status === "inactive"}
+                  value="SUSPENDED"
+                  checked={form.status === "SUSPENDED"}
+                  onChange={() => setForm((p) => ({ ...p, status: "SUSPENDED" }))}
                   className="h-3.5 w-3.5 accent-slate-900"
                 />
-                <span>ปิดการใช้งาน</span>
+                <span>ระงับการใช้งาน</span>
               </label>
             </div>
           </div>
 
+          {error && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          )}
+
           <div className="flex justify-end gap-2 pt-2">
             <Button
               type="submit"
+              disabled={isPending}
               className="rounded-xl px-4 py-2 text-sm font-medium"
             >
-              {isEdit ? "บันทึกการแก้ไข" : "สร้าง Admin"}
+              {isPending ? "กำลังบันทึก..." : isEdit ? "บันทึกการแก้ไข" : "สร้าง Admin"}
             </Button>
           </div>
         </form>
@@ -142,4 +167,3 @@ export function AdminForm({ mode, defaultValues }: AdminFormProps) {
     </Card>
   );
 }
-

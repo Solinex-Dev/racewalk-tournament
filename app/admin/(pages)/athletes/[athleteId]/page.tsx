@@ -3,50 +3,30 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AthleteForm } from "@/components/athletes/athlete-form";
 import { Button } from "@/components/ui/button";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "แก้ไขข้อมูลนักกีฬา – การแข่งขันเดินทน",
-  description:
-    "หน้าแก้ไขข้อมูลนักกีฬาที่ลงทะเบียนในระบบ Racewalk Tournament สำหรับอัปเดตสังกัด ประเทศ และหมายเหตุ.",
+  description: "หน้าแก้ไขข้อมูลนักกีฬาที่ลงทะเบียนในระบบ",
 };
 
-const MOCK_ATHLETE_BY_ID = {
-  "ath-001": {
-    first_name: "Somchai",
-    last_name: "Rakdee",
-    affiliation: "ชมรมเดินทนกรุงเทพฯ",
-    country: "Thailand",
-    province: "กรุงเทพมหานคร",
-    note: "นักกีฬาทีมชาติ",
-  },
-  "ath-002": {
-    first_name: "Jane",
-    last_name: "Doe",
-    affiliation: "Example Athletic Club",
-    country: "USA",
-    province: "California",
-    note: "",
-  },
-};
+type Props = { params: Promise<{ athleteId: string }> };
 
-type AthleteDetailPageProps = {
-  params: Promise<{
-    athleteId: string;
-  }>;
-};
-
-export default async function AthleteDetailPage(
-  props: AthleteDetailPageProps,
-) {
+export default async function AthleteDetailPage(props: Props) {
   const { athleteId } = await props.params;
 
-  const athlete =
-    MOCK_ATHLETE_BY_ID[athleteId as keyof typeof MOCK_ATHLETE_BY_ID];
+  const [athlete, affiliations] = await Promise.all([
+    prisma.athlete.findUnique({
+      where: { id: athleteId, deletedAt: null },
+    }),
+    prisma.affiliation.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
 
-  if (!athlete) {
-    // TODO: ในภายหลังให้เปลี่ยนมา fetch จากฐานข้อมูลจริง และ handle not found ให้เหมาะสม
-    notFound();
-  }
+  if (!athlete) notFound();
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -56,26 +36,27 @@ export default async function AthleteDetailPage(
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
               แก้ไขข้อมูลนักกีฬา
             </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              ดูและอัปเดตข้อมูลนักกีฬาที่เลือก
-            </p>
+            <p className="mt-1 text-sm text-slate-600">ดูและอัปเดตข้อมูลนักกีฬาที่เลือก</p>
           </div>
 
           <Link href="/admin/athletes">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg border-slate-200 text-xs"
-            >
+            <Button variant="outline" size="sm" className="rounded-lg border-slate-200 text-xs">
               กลับไปหน้ารายการ
             </Button>
           </Link>
         </div>
 
-        <AthleteForm mode="edit" defaultValues={athlete} />
+        <AthleteForm
+          mode="edit"
+          athleteId={athleteId}
+          affiliations={affiliations}
+          defaultValues={{
+            name: athlete.name,
+            country: athlete.country,
+            affiliationId: athlete.affiliationId ?? "",
+          }}
+        />
       </div>
     </main>
   );
 }
-
-

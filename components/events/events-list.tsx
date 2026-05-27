@@ -205,7 +205,7 @@ export function EventsList({ events }: EventsListProps) {
                       name="dateFilterMode"
                       value="none"
                       checked={dateFilterMode === "none"}
-                      onChange={(e) => {
+                      onChange={() => {
                         setDateFilterMode("none");
                         setSingleDate("");
                         setStartDate("");
@@ -222,7 +222,7 @@ export function EventsList({ events }: EventsListProps) {
                       name="dateFilterMode"
                       value="single"
                       checked={dateFilterMode === "single"}
-                      onChange={(e) => {
+                      onChange={() => {
                         setDateFilterMode("single");
                         setStartDate("");
                         setEndDate("");
@@ -238,7 +238,7 @@ export function EventsList({ events }: EventsListProps) {
                       name="dateFilterMode"
                       value="range"
                       checked={dateFilterMode === "range"}
-                      onChange={(e) => {
+                      onChange={() => {
                         setDateFilterMode("range");
                         setSingleDate("");
                         setCurrentPage(1);
@@ -536,10 +536,6 @@ export function EventsList({ events }: EventsListProps) {
             </div>
           )}
 
-          <p className="border-t border-slate-200 px-4 py-3 text-[11px] text-slate-500">
-            * ข้อมูลในตารางนี้เป็นตัวอย่างเบื้องต้น – จะเชื่อมต่อฐานข้อมูล
-            และเพิ่มระบบค้นหา/กรอง Event ภายหลัง
-          </p>
         </CardContent>
       </Card>
     </div>

@@ -3,71 +3,34 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AdminForm } from "@/components/admins/admin-form";
 import { Button } from "@/components/ui/button";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "แก้ไขผู้ดูแลระบบ – การแข่งขันเดินทน",
-  description:
-    "หน้าแก้ไขข้อมูลผู้ดูแลระบบของ Racewalk Tournament สำหรับอัปเดตสิทธิ์และข้อมูลติดต่อของ Admin.",
+  description: "หน้าแก้ไขข้อมูลผู้ดูแลระบบ",
 };
 
-const MOCK_ADMIN_BY_ID = {
-  "adm-001": {
-    name: "ผู้ดูแลระบบ",
-    email: "admin@example.com",
-    role: "เจ้าของระบบ",
-    status: "active" as const,
-  },
-  "adm-002": {
-    name: "ผู้จัดการกิจกรรม",
-    email: "event@example.com",
-    role: "ผู้ดูแลกิจกรรม",
-    status: "active" as const,
-  },
-  "adm-003": {
-    name: "เจ้าหน้าที่คะแนน",
-    email: "score@example.com",
-    role: "ผู้ดูแลคะแนน",
-    status: "inactive" as const,
-  },
-};
+type Props = { params: Promise<{ adminId: string }> };
 
-// หมายเหตุ: ใน Next.js รุ่นใหม่ props ของ route อาจถูกส่งมาเป็น Promise
-// เลยต้อง unwrap ด้วย await ก่อนจะอ่านค่า params
-type AdminDetailPageProps = {
-  params: Promise<{
-    adminId: string;
-  }>;
-};
-
-export default async function AdminDetailPage(props: AdminDetailPageProps) {
+export default async function AdminDetailPage(props: Props) {
   const { adminId } = await props.params;
 
-  const admin = MOCK_ADMIN_BY_ID[adminId as keyof typeof MOCK_ADMIN_BY_ID];
-
-  if (!admin) {
-    // TODO: ในภายหลังให้เปลี่ยนมา fetch จากฐานข้อมูลจริง และ handle not found ให้เหมาะสม
-    notFound();
-  }
+  const user = await prisma.user.findUnique({
+    where: { id: adminId },
+  });
+  if (!user || user.role !== "ADMIN" || user.status === "DELETED") notFound();
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-              แก้ไข Admin
-            </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              ดูและอัปเดตข้อมูลผู้ดูแลระบบที่เลือก
-            </p>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">แก้ไข Admin</h1>
+            <p className="mt-1 text-sm text-slate-600">ดูและอัปเดตข้อมูลผู้ดูแลระบบที่เลือก</p>
           </div>
 
           <Link href="/admin/admins">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg border-slate-200 text-xs"
-            >
+            <Button variant="outline" size="sm" className="rounded-lg border-slate-200 text-xs">
               กลับไปหน้ารายการ
             </Button>
           </Link>
@@ -75,10 +38,16 @@ export default async function AdminDetailPage(props: AdminDetailPageProps) {
 
         <AdminForm
           mode="edit"
-          defaultValues={admin}
+          adminId={adminId}
+          defaultValues={{
+            name: user.name ?? "",
+            email: user.email ?? "",
+            title: user.title ?? "",
+            status: user.status === "ACTIVE" ? "ACTIVE" : "SUSPENDED",
+            password: "",
+          }}
         />
       </div>
     </main>
   );
 }
-

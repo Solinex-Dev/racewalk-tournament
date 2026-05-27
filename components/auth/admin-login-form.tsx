@@ -3,8 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useRouter } from "next/navigation";
-import type { JSX, SVGProps } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, type JSX, type SVGProps } from "react";
 
 const Logo = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   <svg
@@ -30,12 +31,45 @@ const Logo = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
 
 export function AdminLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(
+    searchParams.get("error") === "AccessDenied"
+      ? "บัญชีนี้ไม่มีสิทธิ์เข้าใช้แดชบอร์ดผู้ดูแล"
+      : null,
+  );
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    if (!email || !password) {
+      setError("กรุณากรอกอีเมลและรหัสผ่าน");
+      return;
+    }
+    setPending(true);
+    const result = await signIn("credentials", {
+      email,
+      password,
+      rememberMe: "true",
+      redirect: false,
+    });
+    setPending(false);
+    if (!result || result.error) {
+      setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      return;
+    }
+    const callbackUrl = searchParams.get("callbackUrl");
+    router.push(callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/admin");
+    router.refresh();
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <Card className="w-full max-w-sm rounded-3xl px-6 py-10 pt-14 shadow-lg">
         <CardContent>
-          <div className="flex flex-col items-center space-y-8">
+          <form className="flex flex-col items-center space-y-8" onSubmit={handleSubmit}>
             <Logo />
 
             <div className="space-y-2 text-center">
@@ -43,24 +77,28 @@ export function AdminLoginForm() {
                 เข้าสู่ระบบผู้ดูแล
               </h1>
               <p className="text-muted-foreground text-sm">
-                ระบุชื่อผู้ใช้และรหัสผ่านเพื่อเข้าแดชบอร์ดจัดการการแข่งขัน
+                ระบุอีเมลและรหัสผ่านเพื่อเข้าแดชบอร์ดจัดการการแข่งขัน
               </p>
             </div>
 
             <div className="w-full space-y-4">
               <div className="space-y-2">
                 <label
-                  htmlFor="username"
+                  htmlFor="email"
                   className="block text-sm font-medium text-foreground"
                 >
-                  ชื่อผู้ใช้
+                  อีเมล
                 </label>
                 <Input
-                  id="username"
-                  type="text"
-                  autoComplete="username"
-                  placeholder="เช่น admin"
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="admin@example.com"
                   className="w-full rounded-xl"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={pending}
+                  required
                 />
               </div>
 
@@ -77,27 +115,38 @@ export function AdminLoginForm() {
                   autoComplete="current-password"
                   placeholder="••••••••"
                   className="w-full rounded-xl"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={pending}
+                  required
                 />
               </div>
+
+              {error && (
+                <p
+                  role="alert"
+                  className="text-center text-sm text-destructive"
+                >
+                  {error}
+                </p>
+              )}
 
               <Button
                 className="w-full cursor-pointer rounded-xl"
                 size="lg"
-                type="button"
-                onClick={() => router.push("/admin")}
+                type="submit"
+                disabled={pending}
               >
-                เข้าสู่ระบบ
+                {pending ? "กำลังเข้าสู่ระบบ…" : "เข้าสู่ระบบ"}
               </Button>
             </div>
 
             <p className="w-11/12 text-center text-xs text-muted-foreground">
               สำหรับผู้ดูแลระบบ Racewalk Tournament เท่านั้น
             </p>
-          </div>
+          </form>
         </CardContent>
       </Card>
     </div>
   );
 }
-
-

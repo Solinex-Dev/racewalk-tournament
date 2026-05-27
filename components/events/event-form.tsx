@@ -1,56 +1,63 @@
- "use client";
+"use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-
-type EventFormProps = {
-  mode: "create" | "edit";
-  defaultValues?: Partial<EventFormValues>;
-};
+import { createEvent, updateEvent } from "@/app/actions/events";
 
 export type EventFormValues = {
   name: string;
   date: string;
   location: string;
-  distance_km: string;
-  status: "draft" | "scheduled" | "ongoing" | "finished";
-  note?: string;
-  judge_join_code?: string;
+  distanceKm: string;
+  status: "DRAFT" | "SCHEDULED" | "ONGOING" | "FINISHED";
+  isCurrent: boolean;
 };
 
-const EMPTY_VALUES: EventFormValues = {
+type EventFormProps = {
+  mode: "create" | "edit";
+  eventId?: string;
+  defaultValues?: Partial<EventFormValues>;
+};
+
+const EMPTY: EventFormValues = {
   name: "",
   date: "",
   location: "",
-  distance_km: "",
-  status: "draft",
-  note: "",
-  judge_join_code: "",
+  distanceKm: "",
+  status: "DRAFT",
+  isCurrent: false,
 };
 
-
-export function EventForm({ mode, defaultValues }: EventFormProps) {
-  const [form, setForm] = React.useState<EventFormValues>(() => {
-    return {
-      ...EMPTY_VALUES,
-      ...defaultValues,
-    };
+export function EventForm({ mode, eventId, defaultValues }: EventFormProps) {
+  const router = useRouter();
+  const [form, setForm] = React.useState<EventFormValues>({
+    ...EMPTY,
+    ...defaultValues,
   });
+  const [isPending, startTransition] = React.useTransition();
+  const [error, setError] = React.useState<string | null>(null);
 
   const isEdit = mode === "edit";
 
-  // TODO: เชื่อมต่อ submit กับ server action / API จริงภายหลัง
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // eslint-disable-next-line no-console
-    console.log("[Mock submit event]", form);
-    alert(
-      isEdit
-        ? "บันทึกการแก้ไข Event (mock) เรียบร้อย – รอเชื่อมต่อฐานข้อมูลจริง"
-        : "สร้าง Event ใหม่ (mock) เรียบร้อย – รอเชื่อมต่อฐานข้อมูลจริง",
-    );
+    setError(null);
+    startTransition(async () => {
+      try {
+        if (isEdit && eventId) {
+          await updateEvent(eventId, form);
+          router.push(`/admin/events/${eventId}`);
+        } else {
+          const result = await createEvent(form);
+          router.push(`/admin/events/${result.id}`);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+      }
+    });
   };
 
   return (
@@ -65,9 +72,7 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
               <Input
                 required
                 value={form.name}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, name: e.target.value }))
-                }
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                 placeholder="เช่น Racewalk Championship 2025"
               />
               <p className="text-[11px] text-slate-500">
@@ -83,9 +88,7 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
                 type="date"
                 required
                 value={form.date}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, date: e.target.value }))
-                }
+                onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
               />
             </div>
 
@@ -95,9 +98,7 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
               </label>
               <Input
                 value={form.location}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, location: e.target.value }))
-                }
+                onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
                 placeholder="เช่น สนามกีฬาแห่งชาติ"
               />
             </div>
@@ -110,13 +111,8 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
                 type="number"
                 min={0}
                 step="0.1"
-                value={form.distance_km}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    distance_km: e.target.value,
-                  }))
-                }
+                value={form.distanceKm}
+                onChange={(e) => setForm((p) => ({ ...p, distanceKm: e.target.value }))}
                 placeholder="เช่น 10, 20, 50"
               />
             </div>
@@ -131,76 +127,59 @@ export function EventForm({ mode, defaultValues }: EventFormProps) {
                 className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5"
                 value={form.status}
                 onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    status: e.target.value as EventFormValues["status"],
-                  }))
+                  setForm((p) => ({ ...p, status: e.target.value as EventFormValues["status"] }))
                 }
               >
-                <option value="draft">ร่าง – ยังไม่เผยแพร่</option>
-                <option value="scheduled">กำหนดการ – ตั้งวันไว้แล้ว</option>
-                <option value="ongoing">กำลังดำเนินการ – กำลังแข่งขัน</option>
-                <option value="finished">เสร็จสิ้น – แข่งขันเสร็จแล้ว</option>
+                <option value="DRAFT">ร่าง – ยังไม่เผยแพร่</option>
+                <option value="SCHEDULED">กำหนดการ – ตั้งวันไว้แล้ว</option>
+                <option value="ONGOING">กำลังดำเนินการ – กำลังแข่งขัน</option>
+                <option value="FINISHED">เสร็จสิ้น – แข่งขันเสร็จแล้ว</option>
               </select>
               <p className="text-[11px] text-slate-500">
                 ใช้กำหนด state หลักของ Event เพื่อแสดงผลและคุม flow อื่น ๆ
               </p>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-800">
-                โค้ดสำหรับกรรมการ (Judge join code)
+            <div className="space-y-1.5 flex flex-col justify-center">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300"
+                  checked={form.isCurrent}
+                  onChange={(e) => setForm((p) => ({ ...p, isCurrent: e.target.checked }))}
+                />
+                <span className="text-sm font-medium text-slate-800">
+                  กิจกรรมปัจจุบัน (isCurrent)
+                </span>
               </label>
-              <Input
-                value={form.judge_join_code}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    judge_join_code: e.target.value,
-                  }))
-                }
-                placeholder="เช่น RW2025-A – ใช้สำหรับกรรมการ join เข้ารายการนี้"
-              />
-              <p className="text-[11px] text-slate-500">
-                โค้ดนี้จะใช้ในหน้า Judger join match page
+              <p className="text-[11px] text-slate-500 ml-6">
+                เปิดหน้าแสดงผลสาธารณะและหน้ากรรมการสำหรับ Event นี้
+                (จะยกเลิก Event อื่นที่เป็น isCurrent อยู่โดยอัตโนมัติ)
               </p>
             </div>
           </div>
 
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-800">
-              หมายเหตุภายใน (Internal note)
-            </label>
-            <textarea
-              className="min-h-[80px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5"
-              value={form.note}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, note: e.target.value }))
-              }
-              placeholder="รายละเอียดเพิ่มเติม เช่น เงื่อนไขพิเศษ / หมายเหตุสำหรับทีมงาน"
-            />
-          </div>
+          {error && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+              {error}
+            </p>
+          )}
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button
               type="submit"
+              disabled={isPending}
               className="rounded-xl px-4 py-2 text-sm font-medium"
             >
-              {isEdit ? "บันทึกการเปลี่ยนแปลง" : "สร้าง Event ใหม่"}
+              {isPending
+                ? "กำลังบันทึก..."
+                : isEdit
+                ? "บันทึกการเปลี่ยนแปลง"
+                : "สร้าง Event ใหม่"}
             </Button>
           </div>
-
-          <p className="text-[11px] text-slate-500">
-            * ฟอร์มนี้เป็นตัวอย่างเบื้องต้น – ในขั้นต่อไปจะเชื่อมต่อกับ Prisma
-            / MySQL และเพิ่มการ validate อย่างละเอียดมากขึ้น
-            <br />
-            * หลังจากสร้าง Event แล้ว สามารถสร้างรอบแข่ง (Round) และเพิ่มนักกีฬา/กรรมการในแต่ละรอบได้
-          </p>
         </form>
       </CardContent>
     </Card>
   );
 }
-
-

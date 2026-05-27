@@ -1,23 +1,47 @@
+"use client";
+
+import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createJudge, updateJudge } from "@/app/actions/judges";
 
 export type JudgeFormValues = {
-  first_name: string;
-  last_name: string;
-  department: string;
-  organization: string;
-  status: "active" | "inactive";
-  note: string;
+  name: string;
 };
 
 type JudgeFormProps = {
   mode: "create" | "edit";
+  judgeId?: string;
   defaultValues?: Partial<JudgeFormValues>;
 };
 
-export function JudgeForm({ mode, defaultValues }: JudgeFormProps) {
+export function JudgeForm({ mode, judgeId, defaultValues }: JudgeFormProps) {
+  const router = useRouter();
+  const [form, setForm] = React.useState<JudgeFormValues>({ name: "", ...defaultValues });
+  const [isPending, startTransition] = React.useTransition();
+  const [error, setError] = React.useState<string | null>(null);
+
   const isEdit = mode === "edit";
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    startTransition(async () => {
+      try {
+        const payload = { name: form.name.trim() };
+        if (isEdit && judgeId) {
+          await updateJudge(judgeId, payload);
+        } else {
+          await createJudge(payload);
+        }
+        router.push("/admin/judges");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+      }
+    });
+  };
 
   return (
     <Card className="rounded-2xl border-slate-200">
@@ -26,130 +50,35 @@ export function JudgeForm({ mode, defaultValues }: JudgeFormProps) {
           {isEdit ? "แก้ไขข้อมูลกรรมการ" : "เพิ่มกรรมการใหม่"}
         </CardTitle>
         <p className="text-xs text-slate-600">
-          ระบุข้อมูลพื้นฐานของกรรมการที่จะใช้ในระบบ เช่น ชื่อ หน่วยงาน และสถานะการใช้งาน
+          ระบุชื่อกรรมการ เพื่อใช้กำหนดเข้ารอบแข่งและออกรหัสลับสำหรับ login ในวันแข่ง
         </p>
       </CardHeader>
       <CardContent className="pt-4">
-        <form className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <label
-                htmlFor="first_name"
-                className="block text-xs font-medium text-slate-800"
-              >
-                ชื่อ (First name)
-              </label>
-              <Input
-                id="first_name"
-                name="first_name"
-                defaultValue={defaultValues?.first_name}
-                placeholder="เช่น Somchai"
-                className="rounded-xl text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label
-                htmlFor="last_name"
-                className="block text-xs font-medium text-slate-800"
-              >
-                นามสกุล (Last name)
-              </label>
-              <Input
-                id="last_name"
-                name="last_name"
-                defaultValue={defaultValues?.last_name}
-                placeholder="เช่น Rakdee"
-                className="rounded-xl text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <label
-                htmlFor="department"
-                className="block text-xs font-medium text-slate-800"
-              >
-                แผนก / หน่วยงาน (Department)
-              </label>
-              <Input
-                id="department"
-                name="department"
-                defaultValue={defaultValues?.department}
-                placeholder="เช่น Technical Committee, ภาควิชาพลศึกษา"
-                className="rounded-xl text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label
-                htmlFor="organization"
-                className="block text-xs font-medium text-slate-800"
-              >
-                องค์กร / สังกัด (Organization)
-              </label>
-              <Input
-                id="organization"
-                name="organization"
-                defaultValue={defaultValues?.organization}
-                placeholder="เช่น สมาคมกรีฑา, มหาวิทยาลัยตัวอย่าง"
-                className="rounded-xl text-sm"
-              />
-            </div>
-          </div>
-
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-1.5">
-            <span className="block text-xs font-medium text-slate-800">
-              สถานะการใช้งาน
-            </span>
-            <div className="flex gap-3 text-xs">
-              <label className="inline-flex items-center gap-1.5">
-                <input
-                  type="radio"
-                  name="status"
-                  value="active"
-                  defaultChecked={defaultValues?.status !== "inactive"}
-                  className="h-3.5 w-3.5 accent-slate-900"
-                />
-                <span>ใช้งานอยู่</span>
-              </label>
-              <label className="inline-flex items-center gap-1.5">
-                <input
-                  type="radio"
-                  name="status"
-                  value="inactive"
-                  defaultChecked={defaultValues?.status === "inactive"}
-                  className="h-3.5 w-3.5 accent-slate-900"
-                />
-                <span>ปิดการใช้งาน</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label
-              htmlFor="note"
-              className="block text-xs font-medium text-slate-800"
-            >
-              หมายเหตุ (Note)
+            <label className="block text-xs font-medium text-slate-800">
+              ชื่อ-นามสกุล กรรมการ
             </label>
-            <textarea
-              id="note"
-              name="note"
-              defaultValue={defaultValues?.note}
-              placeholder="ข้อมูลเพิ่มเติมเกี่ยวกับกรรมการ เช่น ความเชี่ยวชาญ ประสบการณ์ หรือข้อจำกัดเฉพาะ"
-              rows={3}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-0 placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
+            <Input
+              required
+              value={form.name}
+              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              placeholder="เช่น Coach Somchai"
+              className="rounded-xl text-sm"
             />
           </div>
+
+          {error && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button
               type="submit"
+              disabled={isPending}
               className="rounded-xl px-4 py-2 text-sm font-medium"
             >
-              {isEdit ? "บันทึกการแก้ไข" : "เพิ่มกรรมการ"}
+              {isPending ? "กำลังบันทึก..." : isEdit ? "บันทึกการแก้ไข" : "เพิ่มกรรมการ"}
             </Button>
           </div>
         </form>
@@ -157,5 +86,3 @@ export function JudgeForm({ mode, defaultValues }: JudgeFormProps) {
     </Card>
   );
 }
-
-

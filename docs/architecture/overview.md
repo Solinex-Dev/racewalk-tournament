@@ -95,5 +95,4 @@ Two auth surfaces:
 - [tech-stack.md](tech-stack.md) — versions and libraries
 - [data-model.md](data-model.md) — entity relationships, planned schema
 - [state-and-data-flow.md](state-and-data-flow.md) — mock-to-real migration plan
-- [i18n.md](i18n.md) — language switching
 - [../pages/README.md](../pages/README.md) — full route tree
