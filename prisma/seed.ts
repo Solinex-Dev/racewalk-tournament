@@ -280,17 +280,18 @@ const SEED_ROUNDS = [
     id:              "round-2",
     eventId:         "evt-001",
     name:            "รอบชิงชนะเลิศ",
-    // Pre-race state — Admin must press "Start race" in /admin/.../moderator to begin
-    status:          "SCHEDULED" as const,
+    // ONGOING mid-race — populated with cards, pending reds, lap times, DQ for UI demo.
+    // For "fresh start" testing, use evt-pre/round-pre (SCHEDULED + clean).
+    status:          "ONGOING" as const,
     distanceKm:      "20",
     scheduledTime:   RECENT_RACE_START,
     expectedEndTime: new Date(RECENT_RACE_START.getTime() + 3 * 60 * 60 * 1000),
-    startedAt:       null,
+    startedAt:       RECENT_RACE_START,  // synced timer source — all roles see same elapsed
     endedAt:         null,
     heatName:        "รุ่นทั่วไป ระยะ 20 กม.",
     lapCount:        20,
-    currentLap:      0,
-    note:            "รอ Admin กดเริ่มการแข่งขัน — หลังเริ่มจะเปิดให้ judge ออก card / timekeeper บันทึก lap ได้",
+    currentLap:      7,  // consistent with seeded lap times (leader at lap 7)
+    note:            "รอบจริง — pending red รอ Head Judge ยืนยัน + 1 DQ จาก 4 confirmed reds",
   },
 
   // evt-pre — SCHEDULED, 1 round ready to start (no startedAt yet)
@@ -356,13 +357,12 @@ const SEED_ROUND_ATHLETES: {
   { roundId: "round-1", athleteId: "ath-002", bib: "02", status: "OK", position: 2 },
   { roundId: "round-1", athleteId: "ath-003", bib: "03", status: "OK", position: 3 },
 
-  // round-2 — 5 athletes, ONGOING with various card states
-  // Round 2 is pre-race — all athletes start OK, no cards/laps yet
-  { roundId: "round-2", athleteId: "ath-001", bib: "01", status: "OK" },
-  { roundId: "round-2", athleteId: "ath-002", bib: "02", status: "OK" },
-  { roundId: "round-2", athleteId: "ath-003", bib: "03", status: "OK" },
-  { roundId: "round-2", athleteId: "ath-004", bib: "04", status: "OK" },
-  { roundId: "round-2", athleteId: "ath-005", bib: "05", status: "OK" },
+  // round-2 — 5 athletes, ONGOING with diverse card states for UI demo
+  { roundId: "round-2", athleteId: "ath-001", bib: "01", status: "OK" },              // clean leader, lap 7
+  { roundId: "round-2", athleteId: "ath-002", bib: "02", status: "OK" },              // 2 yellow + 1 pending red (waiting for Head Judge)
+  { roundId: "round-2", athleteId: "ath-003", bib: "03", status: "OK" },              // 3 yellow + 1 confirmed red
+  { roundId: "round-2", athleteId: "ath-004", bib: "04", status: "DQ" },              // DQ — 4 confirmed reds from 4 different judges
+  { roundId: "round-2", athleteId: "ath-005", bib: "05", status: "OK" },              // clean newcomer at lap 6
 
   // round-pre — 4 athletes, SCHEDULED
   { roundId: "round-pre", athleteId: "ath-008", bib: "11", status: "OK" },
@@ -469,7 +469,55 @@ const SEED_CARDS: {
       state: "OVERRIDDEN", decidedBy: "jud-005",
       issuedAt: new Date("2025-03-15T09:00:00.000Z") },
 
-    // round-2 — NO seeded cards. Race is pre-start; judges issue cards via /judge UI.
+    // ─── round-2 (ONGOING) — comprehensive scenarios for UI demo ───────────
+    // Timestamps relative to RECENT_RACE_START via inline math.
+    // ath-002 — 2 yellow + 1 PENDING red (waiting for Head Judge to confirm/reject)
+    { id: "card-r2-001", roundId: "round-2", athleteId: "ath-002", judgeId: "jud-001",
+      color: "YELLOW", symbol: "BENT_KNEE",
+      issuedAt: new Date(RECENT_RACE_START.getTime() + 5 * 60_000) },
+    { id: "card-r2-002", roundId: "round-2", athleteId: "ath-002", judgeId: "jud-002",
+      color: "YELLOW", symbol: "LIFTED_FOOT",
+      issuedAt: new Date(RECENT_RACE_START.getTime() + 12 * 60_000) },
+    { id: "card-r2-003", roundId: "round-2", athleteId: "ath-002", judgeId: "jud-001",
+      color: "RED", symbol: "BENT_KNEE",
+      state: "PENDING",
+      issuedAt: new Date(RECENT_RACE_START.getTime() + 20 * 60_000) },
+
+    // ath-003 — 3 yellow (from 3 different judges) + 1 CONFIRMED red
+    { id: "card-r2-004", roundId: "round-2", athleteId: "ath-003", judgeId: "jud-001",
+      color: "YELLOW", symbol: "BENT_KNEE",
+      issuedAt: new Date(RECENT_RACE_START.getTime() + 8 * 60_000) },
+    { id: "card-r2-005", roundId: "round-2", athleteId: "ath-003", judgeId: "jud-002",
+      color: "YELLOW", symbol: "LIFTED_FOOT",
+      issuedAt: new Date(RECENT_RACE_START.getTime() + 14 * 60_000) },
+    { id: "card-r2-006", roundId: "round-2", athleteId: "ath-003", judgeId: "jud-003",
+      color: "YELLOW", symbol: "BENT_KNEE",
+      issuedAt: new Date(RECENT_RACE_START.getTime() + 18 * 60_000) },
+    { id: "card-r2-007", roundId: "round-2", athleteId: "ath-003", judgeId: "jud-004",
+      color: "RED", symbol: "LIFTED_FOOT",
+      state: "CONFIRMED", decidedBy: "jud-005",
+      issuedAt: new Date(RECENT_RACE_START.getTime() + 22 * 60_000) },
+
+    // ath-004 — 1 early yellow + 4 CONFIRMED reds (one from each judge) → auto-DQ
+    { id: "card-r2-008", roundId: "round-2", athleteId: "ath-004", judgeId: "jud-001",
+      color: "YELLOW", symbol: "LIFTED_FOOT",
+      issuedAt: new Date(RECENT_RACE_START.getTime() + 7 * 60_000) },
+    { id: "card-r2-009", roundId: "round-2", athleteId: "ath-004", judgeId: "jud-001",
+      color: "RED", symbol: "BENT_KNEE",
+      state: "CONFIRMED", decidedBy: "jud-005",
+      issuedAt: new Date(RECENT_RACE_START.getTime() + 10 * 60_000) },
+    { id: "card-r2-010", roundId: "round-2", athleteId: "ath-004", judgeId: "jud-002",
+      color: "RED", symbol: "LIFTED_FOOT",
+      state: "CONFIRMED", decidedBy: "jud-005",
+      issuedAt: new Date(RECENT_RACE_START.getTime() + 13 * 60_000) },
+    { id: "card-r2-011", roundId: "round-2", athleteId: "ath-004", judgeId: "jud-003",
+      color: "RED", symbol: "BENT_KNEE",
+      state: "CONFIRMED", decidedBy: "jud-005",
+      issuedAt: new Date(RECENT_RACE_START.getTime() + 16 * 60_000) },
+    { id: "card-r2-012", roundId: "round-2", athleteId: "ath-004", judgeId: "jud-004",
+      color: "RED", symbol: "LIFTED_FOOT",
+      state: "CONFIRMED", decidedBy: "jud-005",
+      issuedAt: new Date(RECENT_RACE_START.getTime() + 19 * 60_000) },  // 4th red → DQ
 
     // round-past — historical OVERRIDDEN red (audit trail demo)
     { id: "card-rp-ovr", roundId: "round-past", athleteId: "ath-007", judgeId: "jud-001",
@@ -607,12 +655,37 @@ const SEED_LAP_TIMES_R1: {
 })();
 
 // Round 2 — mid-race; athletes at different lap counts (matches scenario)
-// Round 2 starts EMPTY — no lap times pre-seeded.
-// Admin presses "Start race" → Timekeeper records real laps via UI.
+// Round 2 mid-race — athletes at various lap counts (consistent with currentLap=7)
 const SEED_LAP_TIMES_R2: {
   id: string; roundId: string; athleteId: string;
   lapNumber: number; timeMs: number; recordedBy: string; source: string;
-}[] = [];
+}[] = (() => {
+  const out: typeof SEED_LAP_TIMES_R2 = [];
+  // (athlete, laps completed, per-lap base time in ms)
+  const racers: { id: string; laps: number; baseMs: number }[] = [
+    { id: "ath-001", laps: 7, baseMs: 134_000 }, // 2:14/lap — clean leader
+    { id: "ath-002", laps: 7, baseMs: 138_000 }, // 2:18/lap — pending red
+    { id: "ath-003", laps: 6, baseMs: 142_000 }, // 2:22/lap — has confirmed red
+    { id: "ath-004", laps: 5, baseMs: 145_000 }, // 2:25/lap — DQ'd at lap 5
+    { id: "ath-005", laps: 6, baseMs: 147_000 }, // 2:27/lap — clean newcomer
+  ];
+  for (const r of racers) {
+    let cumulative = 0;
+    for (let lap = 1; lap <= r.laps; lap++) {
+      cumulative += r.baseMs + (lap === 1 ? 2_000 : 0); // first lap slightly slower
+      out.push({
+        id: `lap-r2-${r.id}-${lap}`,
+        roundId: "round-2",
+        athleteId: r.id,
+        lapNumber: lap,
+        timeMs: cumulative,
+        recordedBy: "jud-006",
+        source: "EVENT_LOGGER",
+      });
+    }
+  }
+  return out;
+})();
 
 // Round past — 10 laps for 3 finishers
 const SEED_LAP_TIMES_PAST: {
@@ -724,7 +797,16 @@ const SEED_ACTIVITY_LOGS: {
     actorId: "system", actorName: "Moderator", actorRole: "MODERATOR",
     actionType: "round_end", details: "จบรอบคัดเลือก" },
 
-  // round-2 — no seeded logs (race not started yet; logs will be created by real actions)
+  // round-2 (ONGOING)
+  { id: "log-r2-start", roundId: "round-2", timestamp: new Date(RECENT_RACE_START.getTime() - 60_000),
+    actorId: "system", actorName: "Moderator", actorRole: "MODERATOR",
+    actionType: "round_start", details: "เริ่มรอบชิงชนะเลิศ ระยะ 20 กม." },
+  // ath-004 auto-DQ after 4th confirmed red (matches card-r2-012 timestamp)
+  { id: "log-r2-dq-004", roundId: "round-2",
+    timestamp: new Date(RECENT_RACE_START.getTime() + 19 * 60_000 + 30_000),
+    actorId: "jud-005", actorName: "Head Judge Ref", actorRole: "HEAD_JUDGE",
+    actionType: "athlete_dq", targetAthleteId: "ath-004", targetBib: "04",
+    details: "DQ — ครบใบแดง 4 ใบ จาก 4 กรรมการ" },
 
 
   // round-past timeline
