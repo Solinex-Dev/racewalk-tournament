@@ -14,7 +14,11 @@ type Props = { params: Promise<{ eventId: string }> };
 export default async function NewRoundPage(props: Props) {
   const { eventId } = await props.params;
 
-  const [athletes, judges] = await Promise.all([
+  const [event, athletes, judges] = await Promise.all([
+    prisma.event.findUnique({
+      where: { id: eventId, deletedAt: null },
+      select: { lapCount: true, distanceKm: true },
+    }),
     prisma.athlete.findMany({
       where: { deletedAt: null },
       orderBy: { name: "asc" },
@@ -26,6 +30,12 @@ export default async function NewRoundPage(props: Props) {
       select: { id: true, name: true },
     }),
   ]);
+
+  // Pre-fill lapCount and distanceKm from event so admin doesn't retype
+  const roundDefaults = {
+    lapCount: event?.lapCount ?? 1,
+    distanceKm: event?.distanceKm ?? "",
+  };
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -57,6 +67,7 @@ export default async function NewRoundPage(props: Props) {
           eventId={eventId}
           athleteOptions={athletes}
           judgeOptions={judges}
+          defaultValues={roundDefaults}
         />
       </div>
     </main>

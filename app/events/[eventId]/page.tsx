@@ -234,7 +234,7 @@ export default async function EventLivePage(props: Props) {
                     <th className="px-5 py-4 text-center text-sm">BIB</th>
                     <th className="px-5 py-4 text-center text-sm">นักกีฬา</th>
                     <th className="px-5 py-4 text-center text-sm hidden md:table-cell">ใบแดง</th>
-                    <th className="px-5 py-4 text-center text-sm">เวลา</th>
+                    {/* <th className="px-5 py-4 text-center text-sm">เวลา</th> */}
                     <th className="px-5 py-4 text-center text-sm hidden md:table-cell">สถานะ</th>
                   </tr>
                 </thead>
@@ -246,7 +246,7 @@ export default async function EventLivePage(props: Props) {
                       </td>
                     </tr>
                   ) : (
-                    athletes.map((athlete, idx) => {
+                    athletes.map((athlete) => {
                       const isDQ = athlete.status === "DQ";
                       return (
                         <tr
@@ -290,9 +290,9 @@ export default async function EventLivePage(props: Props) {
                               />
                             </div>
                           </td>
-                          <td className={`px-5 py-4 font-mono ${isDQ ? "text-slate-500" : "text-slate-100"}`}>
+                          {/* <td className={`px-5 py-4 font-mono ${isDQ ? "text-slate-500" : "text-slate-100"}`}>
                             {athlete.totalTime}
-                          </td>
+                          </td> */}
                           <td className="hidden px-5 py-4 md:table-cell">
                             <span
                               className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${

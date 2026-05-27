@@ -16,6 +16,7 @@ export type RoundActionData = {
   name: string;
   scheduledTime?: string;
   distanceKm?: string;
+  lapCount?: number;
   status: "SCHEDULED" | "ONGOING" | "FINISHED";
   athletes: AthleteInput[];
   officials: OfficialInput[];
@@ -30,6 +31,7 @@ export async function createRound(eventId: string, data: RoundActionData) {
         name: data.name,
         status: data.status,
         distanceKm: data.distanceKm || null,
+        lapCount: data.lapCount ? Math.max(1, Math.floor(data.lapCount)) : null,
         scheduledTime: data.scheduledTime ? new Date(data.scheduledTime) : null,
       },
     });
@@ -83,6 +85,7 @@ export async function updateRound(
         name: data.name,
         status: data.status,
         distanceKm: data.distanceKm || null,
+        lapCount: data.lapCount ? Math.max(1, Math.floor(data.lapCount)) : null,
         scheduledTime: data.scheduledTime ? new Date(data.scheduledTime) : null,
       },
     });

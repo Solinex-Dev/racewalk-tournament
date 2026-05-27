@@ -54,13 +54,9 @@ export type ActivityLogItem = {
   actorId?: string;
   role: "judge" | "moderator";
   action: string;
-  actionType?:
-    | "yellow_card"
-    | "red_card"
-    | "red_card_confirm"
-    | "round_start"
-    | "round_end"
-    | "other";
+  // Free-form to match RoundActivityLog.actionType — ActionBadge does a
+  // defensive lookup with fallback so unknown types still render gracefully.
+  actionType?: string;
   targetAthlete?: string;
   targetBib?: string;
   roundId: string;
@@ -772,17 +768,33 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
 }
 
 function ActionBadge({ actionType }: { actionType: ActivityLogItem["actionType"] }) {
-  const labels: Record<NonNullable<ActivityLogItem["actionType"]>, { label: string; cls: string }> = {
-    yellow_card: { label: "ใบเหลือง", cls: "bg-amber-50 text-amber-700" },
-    red_card: { label: "ใบแดง", cls: "bg-red-50 text-red-700" },
-    red_card_confirm: { label: "ยืนยันใบแดง", cls: "bg-red-50 text-red-700" },
-    round_start: { label: "เริ่มรอบ", cls: "bg-emerald-50 text-emerald-700" },
-    round_end: { label: "จบรอบ", cls: "bg-slate-100 text-slate-700" },
-    other: { label: "อื่นๆ", cls: "bg-slate-50 text-slate-600" },
-  };
   if (!actionType) return null;
-  const { label, cls } = labels[actionType];
-  return <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${cls}`}>{label}</span>;
+  // Known action types — defensive lookup with sensible fallback for unknown values
+  // (RoundActivityLog.actionType is a free-form string, so new types may appear)
+  const labels: Record<string, { label: string; cls: string }> = {
+    yellow_card:         { label: "ใบเหลือง",       cls: "bg-amber-50 text-amber-700" },
+    red_card:            { label: "ใบแดง",          cls: "bg-red-50 text-red-700" },
+    red_card_confirm:    { label: "ยืนยันใบแดง",     cls: "bg-red-50 text-red-700" },
+    red_card_override:   { label: "ยกเลิกใบแดง",    cls: "bg-slate-100 text-slate-700" },
+    athlete_dq:          { label: "DQ",             cls: "bg-red-100 text-red-800" },
+    round_start:         { label: "เริ่มรอบ",        cls: "bg-emerald-50 text-emerald-700" },
+    round_end:           { label: "จบรอบ",          cls: "bg-slate-100 text-slate-700" },
+    lap_time:            { label: "Lap",            cls: "bg-sky-50 text-sky-700" },
+    finish_time:         { label: "เข้าเส้นชัย",     cls: "bg-emerald-100 text-emerald-800" },
+    moderator_delete_card:    { label: "Mod: ลบใบ",     cls: "bg-violet-50 text-violet-700" },
+    moderator_override_status:{ label: "Mod: สถานะ",    cls: "bg-violet-50 text-violet-700" },
+    moderator_edit_lap:       { label: "Mod: แก้ Lap",  cls: "bg-violet-50 text-violet-700" },
+    moderator_delete_lap:     { label: "Mod: ลบ Lap",   cls: "bg-violet-50 text-violet-700" },
+    moderator_edit_finish:    { label: "Mod: แก้ Finish",cls: "bg-violet-50 text-violet-700" },
+    moderator_delete_finish:  { label: "Mod: ลบ Finish", cls: "bg-violet-50 text-violet-700" },
+    other:               { label: "อื่นๆ",          cls: "bg-slate-50 text-slate-600" },
+  };
+  const meta = labels[actionType] ?? { label: actionType, cls: "bg-slate-50 text-slate-600" };
+  return (
+    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}>
+      {meta.label}
+    </span>
+  );
 }
 
 function PendingRedCardSection({ cards, eventId: _eventId }: { cards: PendingRedCard[]; eventId: string }) {

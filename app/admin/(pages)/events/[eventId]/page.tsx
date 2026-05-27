@@ -45,6 +45,7 @@ export default async function EventDetailPage(props: Props) {
     date: toDateInput(event.date),
     location: event.location,
     distanceKm: event.distanceKm,
+    lapCount: event.lapCount,
     status: event.status,
     isCurrent: event.isCurrent,
   };

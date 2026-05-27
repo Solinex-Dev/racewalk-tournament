@@ -29,24 +29,28 @@ const Logo = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const DEV_QUICK_LOGIN_EMAIL = "owner@racewalk.local";
+const DEV_QUICK_LOGIN_PASSWORD = "owner1234";
+const isDev = process.env.NODE_ENV === "development";
+
 export function AdminLoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [devOpen, setDevOpen] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function performLogin(loginEmail: string, loginPassword: string) {
     setError(null);
-    if (!email || !password) {
+    if (!loginEmail || !loginPassword) {
       setError("กรุณากรอกอีเมลและรหัสผ่าน");
       return;
     }
     setPending(true);
     const result = await signIn("credentials", {
-      email,
-      password,
+      email: loginEmail,
+      password: loginPassword,
       rememberMe: "true",
       redirect: false,
     });
@@ -59,6 +63,17 @@ export function AdminLoginForm() {
     const target =
       callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/admin";
     window.location.assign(target);
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    await performLogin(email, password);
+  }
+
+  async function handleDevQuickLogin() {
+    setEmail(DEV_QUICK_LOGIN_EMAIL);
+    setPassword(DEV_QUICK_LOGIN_PASSWORD);
+    await performLogin(DEV_QUICK_LOGIN_EMAIL, DEV_QUICK_LOGIN_PASSWORD);
   }
 
   return (
@@ -140,6 +155,33 @@ export function AdminLoginForm() {
             <p className="w-11/12 text-center text-xs text-muted-foreground">
               สำหรับผู้ดูแลระบบ Racewalk Tournament เท่านั้น
             </p>
+
+            {isDev && (
+              <div className="flex w-full flex-col items-center gap-2">
+                <button
+                  type="button"
+                  aria-expanded={devOpen}
+                  aria-label={devOpen ? "ซ่อนเมนู dev" : "แสดงเมนู dev"}
+                  className="cursor-pointer text-[10px] leading-none text-muted-foreground/60 transition-transform hover:text-muted-foreground"
+                  style={{ transform: devOpen ? "rotate(180deg)" : undefined }}
+                  onClick={() => setDevOpen((open) => !open)}
+                >
+                  ^
+                </button>
+                {devOpen && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full cursor-pointer rounded-xl text-xs"
+                    disabled={pending}
+                    onClick={handleDevQuickLogin}
+                  >
+                    Quick login for dev
+                  </Button>
+                )}
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>

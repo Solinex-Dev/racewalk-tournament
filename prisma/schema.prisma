@@ -223,6 +223,10 @@ model Event {
   date       DateTime
   location   String
   distanceKm String
+  // Number of laps that make up the full race distance for this venue.
+  // Different venues have different per-lap distances (400m track vs 1km road loop, etc.),
+  // so this is venue-specific configuration. Used as default for new rounds in this event.
+  lapCount   Int         @default(1)
   status     EventStatus @default(DRAFT)
   // At most one event should have isCurrent=true at a time (enforced at app level)
   isCurrent  Boolean     @default(false)

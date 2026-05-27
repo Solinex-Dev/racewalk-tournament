@@ -147,7 +147,7 @@ export default async function ModeratorPage(props: Props) {
       actorId: log.actorId,
       role: log.actorRole === "MODERATOR" ? "moderator" : "judge",
       action: log.details ?? log.actionType,
-      actionType: (log.actionType as ActivityLogItem["actionType"]) ?? "other",
+      actionType: log.actionType || "other",
       targetBib: log.targetBib ?? undefined,
       roundId: r.id,
       details: log.details ?? undefined,

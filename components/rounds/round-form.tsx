@@ -22,6 +22,7 @@ export type RoundFormValues = {
   name: string;
   scheduledTime: string;
   distanceKm: string;
+  lapCount: number;
   status: "SCHEDULED" | "ONGOING" | "FINISHED";
   athletes: AthleteEntry[];
   officials: OfficialEntry[];
@@ -40,6 +41,7 @@ const EMPTY: RoundFormValues = {
   name: "",
   scheduledTime: "",
   distanceKm: "",
+  lapCount: 1,
   status: "SCHEDULED",
   athletes: [],
   officials: [],
@@ -225,6 +227,26 @@ export function RoundForm({
                 onChange={(e) => setForm((p) => ({ ...p, distanceKm: e.target.value }))}
                 placeholder="เช่น 10, 20"
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-800">
+                จำนวนรอบสนาม (Laps) <span className="text-red-500">*</span>
+              </label>
+              <Input
+                type="number"
+                min={1}
+                step="1"
+                required
+                value={form.lapCount}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, lapCount: Math.max(1, Number(e.target.value) || 1) }))
+                }
+                placeholder="เช่น 10, 20"
+              />
+              <p className="text-[11px] text-slate-500">
+                Default ตั้งตาม Event — แก้ได้ถ้ารอบนี้ใช้สนามต่างกัน
+              </p>
             </div>
 
             <div className="space-y-1.5">

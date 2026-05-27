@@ -146,6 +146,7 @@ const SEED_EVENTS = [
     date:       new Date("2025-03-15T00:00:00.000Z"),
     location:   "สนามกีฬาแห่งชาติ",
     distanceKm: "20",
+    lapCount:   20,   // 1 km/lap stadium loop
     status:     "ONGOING" as const,
     isCurrent:  true,
   },
@@ -155,6 +156,7 @@ const SEED_EVENTS = [
     date:       new Date("2026-04-13T00:00:00.000Z"),
     location:   "Khao San Road",
     distanceKm: "10",
+    lapCount:   1,    // default, admin not yet configured
     status:     "DRAFT" as const,
     isCurrent:  false,
   },
@@ -164,6 +166,7 @@ const SEED_EVENTS = [
     date:       new Date("2026-06-20T00:00:00.000Z"),
     location:   "Bangkok City Route",
     distanceKm: "10",
+    lapCount:   10,   // 1 km/lap city route
     status:     "SCHEDULED" as const,
     isCurrent:  false,
   },
@@ -173,6 +176,7 @@ const SEED_EVENTS = [
     date:       new Date("2024-11-15T00:00:00.000Z"),
     location:   "Chiang Mai Sports Complex",
     distanceKm: "10",
+    lapCount:   25,   // 400m track loop demo
     status:     "FINISHED" as const,
     isCurrent:  false,
   },
@@ -690,6 +694,7 @@ async function main() {
         date: e.date,
         location: e.location,
         distanceKm: e.distanceKm,
+        lapCount: e.lapCount,
       },
     });
   }

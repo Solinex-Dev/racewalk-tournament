@@ -12,6 +12,7 @@ export type EventFormValues = {
   date: string;
   location: string;
   distanceKm: string;
+  lapCount: number;
   status: "DRAFT" | "SCHEDULED" | "ONGOING" | "FINISHED";
   isCurrent: boolean;
 };
@@ -27,6 +28,7 @@ const EMPTY: EventFormValues = {
   date: "",
   location: "",
   distanceKm: "",
+  lapCount: 1,
   status: "DRAFT",
   isCurrent: false,
 };
@@ -105,7 +107,7 @@ export function EventForm({ mode, eventId, defaultValues }: EventFormProps) {
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-800">
-                ระยะทาง (กิโลเมตร)
+                ระยะทางรวม (กิโลเมตร)
               </label>
               <Input
                 type="number"
@@ -115,6 +117,35 @@ export function EventForm({ mode, eventId, defaultValues }: EventFormProps) {
                 onChange={(e) => setForm((p) => ({ ...p, distanceKm: e.target.value }))}
                 placeholder="เช่น 10, 20, 50"
               />
+              <p className="text-[11px] text-slate-500">
+                ระยะทางทั้งหมดของการแข่งขัน (รวมทุกรอบสนาม)
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-800">
+                จำนวนรอบสนาม (Lap count) <span className="text-red-500">*</span>
+              </label>
+              <Input
+                type="number"
+                min={1}
+                step="1"
+                required
+                value={form.lapCount}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, lapCount: Math.max(1, Number(e.target.value) || 1) }))
+                }
+                placeholder="เช่น 10, 20, 50"
+              />
+              <p className="text-[11px] text-slate-500">
+                จำนวนรอบที่นักกีฬาต้องเดินครบเพื่อจบการแข่งขัน — กำหนดตามขนาดสนามจริง
+                (เช่น สนามระยะรอบ 1 กม. ที่แข่ง 20 กม. ใส่ 20 รอบ)
+                {form.distanceKm && form.lapCount > 0 && (
+                  <span className="block mt-0.5 text-emerald-600">
+                    ระยะต่อรอบประมาณ {(Number(form.distanceKm) / form.lapCount).toFixed(2)} กม./รอบ
+                  </span>
+                )}
+              </p>
             </div>
           </div>
 

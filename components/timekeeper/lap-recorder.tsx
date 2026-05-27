@@ -181,7 +181,7 @@ export function LapRecorder({
               <thead className="border-b border-slate-800 bg-slate-900/95 text-[11px] font-medium uppercase text-slate-400">
                 <tr>
                   <th className="px-3 py-2 text-left">BIB</th>
-                  <th className="px-3 py-2 text-left">นักกีฬา</th>
+                  {/* <th className="px-3 py-2 text-left">นักกีฬา</th> */}
                   <th className="px-3 py-2 text-center">รอบ</th>
                   <th className="px-3 py-2 text-center">Lap ล่าสุด</th>
                   <th className="px-3 py-2 text-center">สถานะ</th>
@@ -211,7 +211,7 @@ export function LapRecorder({
                         <td className={`px-3 py-3 font-mono text-base font-bold ${isDQ ? "text-slate-500" : "text-amber-400"}`}>
                           {a.bib}
                         </td>
-                        <td className="px-3 py-3 text-slate-100">{a.name}</td>
+                        {/* <td className="px-3 py-3 text-slate-100">{a.name}</td> */}
                         <td className="px-3 py-3 text-center font-mono text-sm">
                           {a.currentLap}<span className="text-xs text-slate-500">/{a.lapCount}</span>
                         </td>

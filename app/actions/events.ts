@@ -9,6 +9,7 @@ export type EventActionData = {
   date: string;
   location: string;
   distanceKm: string;
+  lapCount: number;
   status: "DRAFT" | "SCHEDULED" | "ONGOING" | "FINISHED";
   isCurrent: boolean;
 };
@@ -26,6 +27,7 @@ export async function createEvent(data: EventActionData) {
       date: new Date(data.date),
       location: data.location,
       distanceKm: data.distanceKm,
+      lapCount: Math.max(1, Math.floor(data.lapCount || 1)),
       status: data.status,
       isCurrent: data.isCurrent,
     },
@@ -52,6 +54,7 @@ export async function updateEvent(id: string, data: EventActionData) {
       date: new Date(data.date),
       location: data.location,
       distanceKm: data.distanceKm,
+      lapCount: Math.max(1, Math.floor(data.lapCount || 1)),
       status: data.status,
       isCurrent: data.isCurrent,
     },
