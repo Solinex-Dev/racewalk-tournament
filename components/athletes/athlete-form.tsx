@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,9 @@ export type AthleteFormValues = {
   name: string;
   country: string;
   affiliationId: string;
+  province: string;
+  club: string;
+  note: string;
 };
 
 type AthleteFormProps = {
@@ -22,34 +26,44 @@ type AthleteFormProps = {
   defaultValues?: Partial<AthleteFormValues>;
 };
 
-const EMPTY: AthleteFormValues = { name: "", country: "TH", affiliationId: "" };
+const EMPTY: AthleteFormValues = {
+  name: "",
+  country: "THA",
+  affiliationId: "",
+  province: "",
+  club: "",
+  note: "",
+};
 
 export function AthleteForm({ mode, athleteId, affiliations, defaultValues }: AthleteFormProps) {
   const router = useRouter();
   const [form, setForm] = React.useState<AthleteFormValues>({ ...EMPTY, ...defaultValues });
   const [isPending, startTransition] = React.useTransition();
-  const [error, setError] = React.useState<string | null>(null);
 
   const isEdit = mode === "edit";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     startTransition(async () => {
       try {
         const payload = {
           name: form.name.trim(),
-          country: form.country.trim() || "TH",
+          country: form.country.trim() || "THA",
           affiliationId: form.affiliationId || null,
+          province: form.province.trim() || null,
+          club: form.club.trim() || null,
+          note: form.note.trim() || null,
         };
         if (isEdit && athleteId) {
           await updateAthlete(athleteId, payload);
+          toast.success("บันทึกการแก้ไขเรียบร้อย");
         } else {
           await createAthlete(payload);
+          toast.success("เพิ่มนักกีฬาเรียบร้อย");
         }
         router.push("/admin/athletes");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+        toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
       }
     });
   };
@@ -61,14 +75,14 @@ export function AthleteForm({ mode, athleteId, affiliations, defaultValues }: At
           {isEdit ? "แก้ไขข้อมูลนักกีฬา" : "เพิ่มนักกีฬาใหม่"}
         </CardTitle>
         <p className="text-xs text-slate-600">
-          ระบุข้อมูลพื้นฐานของนักกีฬาที่จะใช้ในระบบจัดการแข่งขันเดินทน
+          ระบุข้อมูลของนักกีฬาสำหรับใช้งานในระบบจัดการแข่งขันเดินทน
         </p>
       </CardHeader>
       <CardContent className="pt-4">
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-slate-800">
-              ชื่อ-นามสกุล นักกีฬา
+              ชื่อ-นามสกุล นักกีฬา <span className="text-red-500">*</span>
             </label>
             <Input
               required
@@ -78,15 +92,13 @@ export function AthleteForm({ mode, athleteId, affiliations, defaultValues }: At
               className="rounded-xl text-sm"
             />
             <p className="text-[11px] text-slate-500">
-              ระบบจะเก็บเป็นชื่อเต็ม (ใช้ช่องว่างคั่นชื่อ-นามสกุล)
+              ชื่อเต็ม (ใส่ชื่อและนามสกุล คั่นด้วยช่องว่าง)
             </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-800">
-                สังกัด / สโมสร
-              </label>
+              <label className="block text-xs font-medium text-slate-800">สังกัด / สโมสรหลัก</label>
               <select
                 value={form.affiliationId}
                 onChange={(e) => setForm((p) => ({ ...p, affiliationId: e.target.value }))}
@@ -101,24 +113,55 @@ export function AthleteForm({ mode, athleteId, affiliations, defaultValues }: At
 
             <div className="space-y-1.5">
               <label className="block text-xs font-medium text-slate-800">
-                ประเทศ (ISO code)
+                ประเทศ (ISO 3-letter)
               </label>
               <Input
                 value={form.country}
                 onChange={(e) => setForm((p) => ({ ...p, country: e.target.value.toUpperCase() }))}
-                placeholder="เช่น THA, ESP, GBR"
+                placeholder="เช่น THA, USA, JPN"
                 maxLength={3}
                 className="rounded-xl text-sm uppercase"
               />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-slate-800">จังหวัด (Province)</label>
+              <Input
+                value={form.province}
+                onChange={(e) => setForm((p) => ({ ...p, province: e.target.value }))}
+                placeholder="เช่น กรุงเทพมหานคร"
+                className="rounded-xl text-sm"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-slate-800">
+                สโมสร / ทีมย่อย (Club)
+              </label>
+              <Input
+                value={form.club}
+                onChange={(e) => setForm((p) => ({ ...p, club: e.target.value }))}
+                placeholder="ระบุชื่อสโมสรย่อยหรือทีมต้นสังกัด"
+                className="rounded-xl text-sm"
+              />
               <p className="text-[11px] text-slate-500">
-                ใช้ ISO 3-letter country code (เช่น THA, USA, JPN)
+                ใช้แยกย่อยจากสังกัดหลัก (เช่น สโมสรในระดับโรงเรียน/มหาวิทยาลัย)
               </p>
             </div>
           </div>
 
-          {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
-          )}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-slate-800">หมายเหตุ (Note)</label>
+            <textarea
+              value={form.note}
+              onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
+              placeholder="ข้อมูลเพิ่มเติม เช่น หมายเลขเสื้อถาวร, ข้อจำกัดด้านสุขภาพ ฯลฯ"
+              rows={3}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
+            />
+          </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button

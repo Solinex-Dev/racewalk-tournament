@@ -70,6 +70,13 @@ enum RedCardState {
   OVERRIDDEN
 }
 
+// Operational status of a Judge — distinct from soft-delete (deletedAt).
+// INACTIVE judges are hidden from selection dropdowns but kept in DB.
+enum JudgeStatus {
+  ACTIVE
+  INACTIVE
+}
+
 // --- Auth.js (NextAuth) required models ---
 
 model Account {
@@ -165,6 +172,7 @@ model Affiliation {
   country            String    @default("TH")
   province           String?
   headOfAffiliation  String?
+  joinedAt           DateTime?
   note               String?   @db.Text
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -193,15 +201,16 @@ model Athlete {
 }
 
 model Judge {
-  id           String    @id @default(cuid())
+  id           String      @id @default(cuid())
   name         String
-  country      String    @default("TH")
+  country      String      @default("TH")
   province     String?
   department   String?
   organization String?
-  note         String?   @db.Text
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  status       JudgeStatus @default(ACTIVE)
+  note         String?     @db.Text
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
   deletedAt    DateTime?
 
   roundOfficials RoundOfficial[]

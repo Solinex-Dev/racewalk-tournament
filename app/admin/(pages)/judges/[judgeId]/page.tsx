@@ -41,7 +41,15 @@ export default async function JudgeDetailPage(props: Props) {
         <JudgeForm
           mode="edit"
           judgeId={judgeId}
-          defaultValues={{ name: judge.name }}
+          defaultValues={{
+            name: judge.name,
+            country: judge.country,
+            province: judge.province ?? "",
+            department: judge.department ?? "",
+            organization: judge.organization ?? "",
+            status: judge.status,
+            note: judge.note ?? "",
+          }}
         />
       </div>
     </main>

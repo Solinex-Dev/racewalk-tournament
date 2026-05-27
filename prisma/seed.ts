@@ -73,6 +73,7 @@ const SEED_AFFILIATIONS = [
     country: "TH",
     province: "กรุงเทพมหานคร",
     headOfAffiliation: "นายสมชาย ใจดี",
+    joinedAt: new Date("2020-05-01"),
     note: "สมาชิกหลักภาคกลาง",
   },
   {
@@ -81,6 +82,7 @@ const SEED_AFFILIATIONS = [
     country: "TH",
     province: "กรุงเทพมหานคร",
     headOfAffiliation: "Jane Manager",
+    joinedAt: new Date("2021-03-15"),
     note: "กลุ่มนักวิ่งและเดินทนกรุงเทพ",
   },
   {
@@ -89,6 +91,7 @@ const SEED_AFFILIATIONS = [
     country: "TH",
     province: "เชียงใหม่",
     headOfAffiliation: "คุณชนิดา วิ่งไว",
+    joinedAt: new Date("2022-01-10"),
     note: "สโมสรภาคเหนือ",
   },
   {
@@ -97,6 +100,7 @@ const SEED_AFFILIATIONS = [
     country: "TH",
     province: "สงขลา",
     headOfAffiliation: "Luis Garcia",
+    joinedAt: new Date("2023-06-20"),
     note: "สโมสรภาคใต้ — รองรับนักกีฬาต่างชาติ",
   },
 ];
@@ -121,16 +125,16 @@ const SEED_ATHLETES = [
 // ─── Judges (10 total) ────────────────────────────────────────────────────────
 
 const SEED_JUDGES = [
-  { id: "jud-001", name: "สมศักดิ์ กรรมการ", country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายกรรมการสนาม", organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", note: "Zone A — Coach A" },
-  { id: "jud-002", name: "วิชัย ตัดสิน", country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายกรรมการสนาม", organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", note: "Zone B — Coach B" },
-  { id: "jud-003", name: "ประเสริฐ มองทาง", country: "TH", province: "นนทบุรี",       department: "ฝ่ายกรรมการสนาม", organization: "ชมรมเดินทนกรุงเทพฯ", note: "Zone C — Coach C" },
-  { id: "jud-004", name: "อนุชา ฟ้าใส", country: "TH", province: "ปทุมธานี",     department: "ฝ่ายกรรมการสนาม", organization: "Bangkok Road Runners", note: "Zone D — Coach D" },
-  { id: "jud-005", name: "Head Judge Ref", country: "TH", province: "กรุงเทพมหานคร", department: "หัวหน้ากรรมการ", organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", note: "Head Judge หลัก" },
-  { id: "jud-006", name: "Event Logger 1", country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายบันทึกผล", organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", note: "Event Logger" },
-  { id: "jud-007", name: "Timekeeper 1", country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายจับเวลา", organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", note: "Timekeeper" },
-  { id: "jud-008", name: "Coach E", country: "TH", province: "เชียงใหม่",       department: "ฝ่ายกรรมการสนาม", organization: "ChiangMai Striders", note: "pre-race judge" },
-  { id: "jud-009", name: "Head Judge Backup", country: "TH", province: "เชียงใหม่", department: "หัวหน้ากรรมการ", organization: "ChiangMai Striders", note: "Head Judge สำรอง" },
-  { id: "jud-010", name: "Timekeeper Pre-race", country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายจับเวลา", organization: "Bangkok Road Runners", note: "pre-race timekeeper" },
+  { id: "jud-001", name: "สมศักดิ์ กรรมการ",   country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายกรรมการสนาม", organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", status: "ACTIVE"   as const, note: "Zone A — Coach A" },
+  { id: "jud-002", name: "วิชัย ตัดสิน",         country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายกรรมการสนาม", organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", status: "ACTIVE"   as const, note: "Zone B — Coach B" },
+  { id: "jud-003", name: "ประเสริฐ มองทาง",     country: "TH", province: "นนทบุรี",       department: "ฝ่ายกรรมการสนาม", organization: "ชมรมเดินทนกรุงเทพฯ",            status: "ACTIVE"   as const, note: "Zone C — Coach C" },
+  { id: "jud-004", name: "อนุชา ฟ้าใส",          country: "TH", province: "ปทุมธานี",      department: "ฝ่ายกรรมการสนาม", organization: "Bangkok Road Runners",          status: "ACTIVE"   as const, note: "Zone D — Coach D" },
+  { id: "jud-005", name: "Head Judge Ref",      country: "TH", province: "กรุงเทพมหานคร", department: "หัวหน้ากรรมการ",  organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", status: "ACTIVE"   as const, note: "Head Judge หลัก" },
+  { id: "jud-006", name: "Event Logger 1",      country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายบันทึกผล",    organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", status: "ACTIVE"   as const, note: "Event Logger" },
+  { id: "jud-007", name: "Timekeeper 1",        country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายจับเวลา",     organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", status: "ACTIVE"   as const, note: "Timekeeper" },
+  { id: "jud-008", name: "Coach E",             country: "TH", province: "เชียงใหม่",     department: "ฝ่ายกรรมการสนาม", organization: "ChiangMai Striders",            status: "ACTIVE"   as const, note: "pre-race judge" },
+  { id: "jud-009", name: "Head Judge Backup",   country: "TH", province: "เชียงใหม่",     department: "หัวหน้ากรรมการ",  organization: "ChiangMai Striders",            status: "INACTIVE" as const, note: "Head Judge สำรอง (ปิดใช้งานชั่วคราว)" },
+  { id: "jud-010", name: "Timekeeper Pre-race", country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายจับเวลา",     organization: "Bangkok Road Runners",          status: "ACTIVE"   as const, note: "pre-race timekeeper" },
 ];
 
 // ─── Events ───────────────────────────────────────────────────────────────────
@@ -632,6 +636,7 @@ async function main() {
         country: a.country,
         province: a.province ?? null,
         headOfAffiliation: a.headOfAffiliation ?? null,
+        joinedAt: a.joinedAt ?? null,
         note: a.note ?? null,
       },
     });
@@ -666,6 +671,7 @@ async function main() {
         province: j.province ?? null,
         department: j.department ?? null,
         organization: j.organization ?? null,
+        status: j.status,
         note: j.note ?? null,
       },
     });

@@ -41,7 +41,14 @@ export default async function AffiliationDetailPage(props: Props) {
         <AffiliationForm
           mode="edit"
           affiliationId={affiliationId}
-          defaultValues={{ name: aff.name }}
+          defaultValues={{
+            name: aff.name,
+            country: aff.country,
+            province: aff.province ?? "",
+            headOfAffiliation: aff.headOfAffiliation ?? "",
+            joinedAt: aff.joinedAt ? aff.joinedAt.toISOString().slice(0, 10) : "",
+            note: aff.note ?? "",
+          }}
         />
       </div>
     </main>

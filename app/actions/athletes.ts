@@ -8,6 +8,9 @@ export type AthleteActionData = {
   name: string;
   country: string;
   affiliationId: string | null;
+  province: string | null;
+  club: string | null;
+  note: string | null;
 };
 
 export async function createAthlete(data: AthleteActionData) {
@@ -16,6 +19,9 @@ export async function createAthlete(data: AthleteActionData) {
       name: data.name,
       country: data.country || "TH",
       affiliationId: data.affiliationId || null,
+      province: data.province?.trim() || null,
+      club: data.club?.trim() || null,
+      note: data.note?.trim() || null,
     },
   });
   await logCurrentAdmin(ActivityLogAction.ATHLETE_CREATED, "Athlete", athlete.id, {
@@ -33,6 +39,9 @@ export async function updateAthlete(id: string, data: AthleteActionData) {
       name: data.name,
       country: data.country || "TH",
       affiliationId: data.affiliationId || null,
+      province: data.province?.trim() || null,
+      club: data.club?.trim() || null,
+      note: data.note?.trim() || null,
     },
   });
   await logCurrentAdmin(ActivityLogAction.ATHLETE_UPDATED, "Athlete", id, {

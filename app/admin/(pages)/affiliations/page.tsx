@@ -21,7 +21,7 @@ export default async function AffiliationsPage() {
     country: a.country,
     province: a.province ?? "",
     head_of_affiliation: a.headOfAffiliation ?? "",
-    join_at: a.createdAt.toISOString().slice(0, 10),
+    join_at: (a.joinedAt ?? a.createdAt).toISOString().slice(0, 10),
     note: a.note ?? "",
   }));
 

@@ -31,7 +31,7 @@ export default async function JudgesPage() {
       department: j.department ?? "",
       organization: j.organization ?? "",
       note: j.note ?? "",
-      status: "active" as const,
+      status: (j.status === "ACTIVE" ? "active" : "inactive") as "active" | "inactive",
     };
   });
 

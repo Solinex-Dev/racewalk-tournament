@@ -54,6 +54,9 @@ export default async function AthleteDetailPage(props: Props) {
             name: athlete.name,
             country: athlete.country,
             affiliationId: athlete.affiliationId ?? "",
+            province: athlete.province ?? "",
+            club: athlete.club ?? "",
+            note: athlete.note ?? "",
           }}
         />
       </div>
