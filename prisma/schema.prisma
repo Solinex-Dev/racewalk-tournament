@@ -160,11 +160,15 @@ model ActivityLog {
 // --- Domain models ---
 
 model Affiliation {
-  id        String    @id @default(cuid())
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id                 String    @id @default(cuid())
+  name               String
+  country            String    @default("TH")
+  province           String?
+  headOfAffiliation  String?
+  note               String?   @db.Text
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
 
   athletes Athlete[]
 }
@@ -173,6 +177,9 @@ model Athlete {
   id            String    @id @default(cuid())
   name          String
   country       String    @default("TH")
+  province      String?
+  club          String?
+  note          String?   @db.Text
   affiliationId String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -186,11 +193,16 @@ model Athlete {
 }
 
 model Judge {
-  id        String    @id @default(cuid())
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id           String    @id @default(cuid())
+  name         String
+  country      String    @default("TH")
+  province     String?
+  department   String?
+  organization String?
+  note         String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   roundOfficials RoundOfficial[]
   cards          Card[]

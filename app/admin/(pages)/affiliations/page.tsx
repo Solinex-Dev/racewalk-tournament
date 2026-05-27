@@ -18,8 +18,11 @@ export default async function AffiliationsPage() {
   const affiliations = rows.map((a) => ({
     id: a.id,
     name: a.name,
-    head_of_affiliation: "",
+    country: a.country,
+    province: a.province ?? "",
+    head_of_affiliation: a.headOfAffiliation ?? "",
     join_at: a.createdAt.toISOString().slice(0, 10),
+    note: a.note ?? "",
   }));
 
   return (

@@ -23,6 +23,8 @@ const RESET_FLAG = process.argv.includes("--reset");
 
 // ─── Auth users ───────────────────────────────────────────────────────────────
 
+const SEED_USER_LAST_ACTIVE = new Date(Date.now() - 2 * 60 * 60 * 1000);
+
 const SEED_USERS = [
   {
     email: "owner@racewalk.local",
@@ -31,6 +33,7 @@ const SEED_USERS = [
     password: "owner1234",
     role: "ADMIN" as const,
     status: "ACTIVE" as const,
+    lastActiveAt: SEED_USER_LAST_ACTIVE,
   },
   {
     email: "events@racewalk.local",
@@ -39,6 +42,7 @@ const SEED_USERS = [
     password: "events1234",
     role: "ADMIN" as const,
     status: "ACTIVE" as const,
+    lastActiveAt: new Date(SEED_USER_LAST_ACTIVE.getTime() - 24 * 60 * 60 * 1000),
   },
   {
     email: "score@racewalk.local",
@@ -47,6 +51,7 @@ const SEED_USERS = [
     password: "score1234",
     role: "ADMIN" as const,
     status: "ACTIVE" as const,
+    lastActiveAt: new Date(SEED_USER_LAST_ACTIVE.getTime() - 3 * 24 * 60 * 60 * 1000),
   },
   {
     email: "suspended@racewalk.local",
@@ -55,48 +60,77 @@ const SEED_USERS = [
     password: "suspended1234",
     role: "ADMIN" as const,
     status: "SUSPENDED" as const,
+    lastActiveAt: new Date("2024-01-15T00:00:00.000Z"),
   },
 ];
 
 // ─── Affiliations ─────────────────────────────────────────────────────────────
 
 const SEED_AFFILIATIONS = [
-  { id: "aff-001", name: "ชมรมเดินทนกรุงเทพฯ" },
-  { id: "aff-002", name: "Bangkok Road Runners" },
-  { id: "aff-003", name: "ChiangMai Striders" },
-  { id: "aff-004", name: "Hat Yai Athletic Club" },
+  {
+    id: "aff-001",
+    name: "ชมรมเดินทนกรุงเทพฯ",
+    country: "TH",
+    province: "กรุงเทพมหานคร",
+    headOfAffiliation: "นายสมชาย ใจดี",
+    note: "สมาชิกหลักภาคกลาง",
+  },
+  {
+    id: "aff-002",
+    name: "Bangkok Road Runners",
+    country: "TH",
+    province: "กรุงเทพมหานคร",
+    headOfAffiliation: "Jane Manager",
+    note: "กลุ่มนักวิ่งและเดินทนกรุงเทพ",
+  },
+  {
+    id: "aff-003",
+    name: "ChiangMai Striders",
+    country: "TH",
+    province: "เชียงใหม่",
+    headOfAffiliation: "คุณชนิดา วิ่งไว",
+    note: "สโมสรภาคเหนือ",
+  },
+  {
+    id: "aff-004",
+    name: "Hat Yai Athletic Club",
+    country: "TH",
+    province: "สงขลา",
+    headOfAffiliation: "Luis Garcia",
+    note: "สโมสรภาคใต้ — รองรับนักกีฬาต่างชาติ",
+  },
 ];
 
 // ─── Athletes (12 total — variety of countries) ──────────────────────────────
 
 const SEED_ATHLETES = [
-  { id: "ath-001", name: "Somchai Rakdee",       country: "THA", affiliationId: "aff-001" },
-  { id: "ath-002", name: "Jane Doe",             country: "THA", affiliationId: "aff-002" },
-  { id: "ath-003", name: "Chanida Runfast",      country: "THA", affiliationId: "aff-003" },
-  { id: "ath-004", name: "Luis Garcia",          country: "ESP", affiliationId: "aff-004" },
-  { id: "ath-005", name: "Siriwan Walkfast",     country: "THA", affiliationId: "aff-001" },
-  { id: "ath-006", name: "John Smith",           country: "GBR", affiliationId: "aff-002" },
-  { id: "ath-007", name: "Nattapong Citywalker", country: "THA", affiliationId: "aff-002" },
-  { id: "ath-008", name: "Mai Tanaka",           country: "JPN", affiliationId: "aff-003" },
-  { id: "ath-009", name: "Peter Schmidt",        country: "GER", affiliationId: "aff-002" },
-  { id: "ath-010", name: "Anna Kowalski",        country: "POL", affiliationId: "aff-004" },
-  { id: "ath-011", name: "Niran Stridefast",     country: "THA", affiliationId: "aff-001" },
-  { id: "ath-012", name: "Maria Lopez",          country: "MEX", affiliationId: "aff-002" },
+  { id: "ath-001", name: "Somchai Rakdee",       country: "TH", province: "กรุงเทพมหานคร", club: "ชมรมเดินทนกรุงเทพฯ", note: "ตัวเต็งรอบชิง", affiliationId: "aff-001" },
+  { id: "ath-002", name: "Jane Doe",             country: "TH", province: "กรุงเทพมหานคร", club: "Bangkok Road Runners", note: "มีใบแดงรอ Head Judge", affiliationId: "aff-002" },
+  { id: "ath-003", name: "Chanida Runfast",      country: "TH", province: "เชียงใหม่",       club: "ChiangMai Striders", note: "ใกล้ครบใบเหลือง", affiliationId: "aff-003" },
+  { id: "ath-004", name: "Luis Garcia",          country: "ES", province: "สงขลา",           club: "Hat Yai Athletic Club", note: "DQ ใน round-2", affiliationId: "aff-004" },
+  { id: "ath-005", name: "Siriwan Walkfast",     country: "TH", province: "กรุงเทพมหานคร", club: "ชมรมเดินทนกรุงเทพฯ", note: "นักกีฬาใหม่รอบชิง", affiliationId: "aff-001" },
+  { id: "ath-006", name: "John Smith",           country: "GB", province: "กรุงเทพมหานคร", club: "Bangkok Road Runners", note: "DQ ประวัติ evt-past", affiliationId: "aff-002" },
+  { id: "ath-007", name: "Nattapong Citywalker", country: "TH", province: "กรุงเทพมหานคร", club: "Bangkok Road Runners", note: "แชมป์ evt-past", affiliationId: "aff-002" },
+  { id: "ath-008", name: "Mai Tanaka",           country: "JP", province: "เชียงใหม่",       club: "ChiangMai Striders", note: "pre-race round-pre", affiliationId: "aff-003" },
+  { id: "ath-009", name: "Peter Schmidt",        country: "DE", province: "กรุงเทพมหานคร", club: "Bangkok Road Runners", note: "DNF evt-past", affiliationId: "aff-002" },
+  { id: "ath-010", name: "Anna Kowalski",        country: "PL", province: "สงขลา",           club: "Hat Yai Athletic Club", affiliationId: "aff-004" },
+  { id: "ath-011", name: "Niran Stridefast",     country: "TH", province: "กรุงเทพมหานคร", club: "ชมรมเดินทนกรุงเทพฯ", affiliationId: "aff-001" },
+  { id: "ath-012", name: "Maria Lopez",          country: "MX", province: "กรุงเทพมหานคร", club: "Bangkok Road Runners", note: "อันดับ 3 evt-past", affiliationId: "aff-002" },
 ];
 
 // ─── Judges (10 total) ────────────────────────────────────────────────────────
 
 const SEED_JUDGES = [
-  { id: "jud-001", name: "Coach A" },
-  { id: "jud-002", name: "Coach B" },
-  { id: "jud-003", name: "Coach C" },
-  { id: "jud-004", name: "Coach D" },
-  { id: "jud-005", name: "Head Judge Ref" },
-  { id: "jud-006", name: "Event Logger 1" },
-  { id: "jud-007", name: "Timekeeper 1" },
-  { id: "jud-008", name: "Coach E" },
-  { id: "jud-009", name: "Head Judge Backup" },
-  { id: "jud-010", name: "Timekeeper Pre-race" },
+  { id: "jud-001", name: "สมศักดิ์ กรรมการ", country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายกรรมการสนาม", organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", note: "Zone A — Coach A" },
+  { id: "jud-002", name: "วิชัย ตัดสิน", country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายกรรมการสนาม", organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", note: "Zone B — Coach B" },
+  { id: "jud-003", name: "ประเสริฐ มองทาง", country: "TH", province: "นนทบุรี",       department: "ฝ่ายกรรมการสนาม", organization: "ชมรมเดินทนกรุงเทพฯ", note: "Zone C — Coach C" },
+  { id: "jud-004", name: "อนุชา ฟ้าใส", country: "TH", province: "ปทุมธานี",     department: "ฝ่ายกรรมการสนาม", organization: "Bangkok Road Runners", note: "Zone D — Coach D" },
+  { id: "jud-005", name: "Head Judge Ref", country: "TH", province: "กรุงเทพมหานคร", department: "หัวหน้ากรรมการ", organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", note: "Head Judge หลัก" },
+  { id: "jud-006", name: "Event Logger 1", country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายบันทึกผล", organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", note: "Event Logger" },
+  { id: "jud-007", name: "Timekeeper 1", country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายจับเวลา", organization: "สมาคมกรีฬาเดินทนแห่งประเทศไทย", note: "Timekeeper" },
+  { id: "jud-008", name: "Coach E", country: "TH", province: "เชียงใหม่",       department: "ฝ่ายกรรมการสนาม", organization: "ChiangMai Striders", note: "pre-race judge" },
+  { id: "jud-009", name: "Head Judge Backup", country: "TH", province: "เชียงใหม่", department: "หัวหน้ากรรมการ", organization: "ChiangMai Striders", note: "Head Judge สำรอง" },
+  { id: "jud-010", name: "Timekeeper Pre-race", country: "TH", province: "กรุงเทพมหานคร", department: "ฝ่ายจับเวลา", organization: "Bangkok Road Runners", note: "pre-race timekeeper" },
 ];
 
 // ─── Events ───────────────────────────────────────────────────────────────────
@@ -561,6 +595,7 @@ async function upsertUser(input: (typeof SEED_USERS)[number]) {
       status: input.status,
       password: passwordHash,
       emailVerified: new Date(),
+      lastActiveAt: input.lastActiveAt,
       suspendedAt: input.status === "SUSPENDED" ? new Date() : null,
     },
     update: {
@@ -568,6 +603,7 @@ async function upsertUser(input: (typeof SEED_USERS)[number]) {
       title: input.title,
       role: input.role,
       status: input.status,
+      lastActiveAt: input.lastActiveAt,
       suspendedAt: input.status === "SUSPENDED" ? new Date() : null,
       ...(RESET_FLAG ? { password: passwordHash } : {}),
     },
@@ -591,7 +627,13 @@ async function main() {
     await prisma.affiliation.upsert({
       where:  { id: a.id },
       create: a,
-      update: { name: a.name },
+      update: {
+        name: a.name,
+        country: a.country,
+        province: a.province ?? null,
+        headOfAffiliation: a.headOfAffiliation ?? null,
+        note: a.note ?? null,
+      },
     });
   }
   console.log(`[seed] affiliations: ${SEED_AFFILIATIONS.length}`);
@@ -601,7 +643,14 @@ async function main() {
     await prisma.athlete.upsert({
       where:  { id: a.id },
       create: a,
-      update: { name: a.name, country: a.country, affiliationId: a.affiliationId },
+      update: {
+        name: a.name,
+        country: a.country,
+        province: a.province ?? null,
+        club: a.club ?? null,
+        note: a.note ?? null,
+        affiliationId: a.affiliationId,
+      },
     });
   }
   console.log(`[seed] athletes:    ${SEED_ATHLETES.length}`);
@@ -611,7 +660,14 @@ async function main() {
     await prisma.judge.upsert({
       where:  { id: j.id },
       create: j,
-      update: { name: j.name },
+      update: {
+        name: j.name,
+        country: j.country,
+        province: j.province ?? null,
+        department: j.department ?? null,
+        organization: j.organization ?? null,
+        note: j.note ?? null,
+      },
     });
   }
   console.log(`[seed] judges:      ${SEED_JUDGES.length}`);
@@ -621,7 +677,14 @@ async function main() {
     await prisma.event.upsert({
       where:  { id: e.id },
       create: e,
-      update: { name: e.name, status: e.status, isCurrent: e.isCurrent, date: e.date },
+      update: {
+        name: e.name,
+        status: e.status,
+        isCurrent: e.isCurrent,
+        date: e.date,
+        location: e.location,
+        distanceKm: e.distanceKm,
+      },
     });
   }
   console.log(`[seed] events:      ${SEED_EVENTS.length}`);

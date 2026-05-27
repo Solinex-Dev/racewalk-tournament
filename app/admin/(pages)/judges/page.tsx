@@ -26,8 +26,11 @@ export default async function JudgesPage() {
       id: j.id,
       first_name,
       last_name,
-      department: "",
-      organization: "",
+      country: j.country,
+      province: j.province ?? "",
+      department: j.department ?? "",
+      organization: j.organization ?? "",
+      note: j.note ?? "",
       status: "active" as const,
     };
   });

@@ -28,8 +28,10 @@ export default async function AthletesPage() {
       first_name,
       last_name,
       affiliation: a.affiliation?.name ?? "",
+      club: a.club ?? "",
       country: a.country,
-      province: "",
+      province: a.province ?? "",
+      note: a.note ?? "",
     };
   });
 

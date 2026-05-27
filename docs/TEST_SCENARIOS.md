@@ -34,10 +34,10 @@
 
 | Position | Judge | Secret Code | Zone | Redirect ไป |
 |----------|-------|-------------|------|-------------|
-| JUDGE | Coach A | **`QR3456`** | Zone A | `/judge/events/evt-001` |
-| JUDGE | Coach B | **`ST7892`** | Zone B | `/judge/events/evt-001` |
-| JUDGE | Coach C | **`UV3467`** | Zone C | `/judge/events/evt-001` |
-| JUDGE | Coach D | **`WX5678`** | Zone D | `/judge/events/evt-001` |
+| JUDGE | สมศักดิ์ กรรมการ | **`QR3456`** | Zone A | `/judge/events/evt-001` |
+| JUDGE | วิชัย ตัดสิน | **`ST7892`** | Zone B | `/judge/events/evt-001` |
+| JUDGE | ประเสริฐ มองทาง | **`UV3467`** | Zone C | `/judge/events/evt-001` |
+| JUDGE | อนุชา ฟ้าใส | **`WX5678`** | Zone D | `/judge/events/evt-001` |
 | HEAD_JUDGE | Head Judge Ref | **`YZ9234`** | – | `/head-judge/events/evt-001` |
 | EVENT_LOGGER | Event Logger 1 | **`HJ4589`** | – | `/event-logger/events/evt-001` |
 | TIMEKEEPER | Timekeeper 1 | **`KL6235`** | – | `/timekeeper/events/evt-001` |
@@ -46,8 +46,8 @@
 
 | Position | Judge | Secret Code |
 |----------|-------|-------------|
-| JUDGE | Coach E | `PA2345` |
-| JUDGE | Coach A | `PB3456` |
+| JUDGE | Coach E (jud-008) | `PA2345` |
+| JUDGE | สมศักดิ์ กรรมการ | `PB3456` |
 | HEAD_JUDGE | Head Judge Backup | `PC4567` |
 | EVENT_LOGGER | Event Logger 1 | `PD5678` |
 | TIMEKEEPER | Timekeeper Pre-race | `PE6789` |
@@ -62,11 +62,11 @@
 
 | BIB | นักกีฬา | สังกัด | Lap | Cards (ของจริง) | Status |
 |-----|---------|--------|-----|----------------|--------|
-| 01 | Somchai Rakdee (THA) | ชมรมเดินทนกรุงเทพฯ | 7/20 | _ไม่มี (clean leader)_ | OK |
-| 02 | Jane Doe (THA) | Bangkok Road Runners | 7/20 | 2 yellow + **1 PENDING red** | OK (รอ Head Judge) |
-| 03 | Chanida Runfast (THA) | ChiangMai Striders | 6/20 | 3 yellow + 1 CONFIRMED red | OK (ใกล้ trouble) |
-| 04 | Luis Garcia (ESP) | Hat Yai Athletic Club | 5/20 | **4 CONFIRMED reds** + 1 yellow | **DQ** |
-| 05 | Siriwan Walkfast (THA) | ชมรมเดินทนกรุงเทพฯ | 6/20 | _ไม่มี (clean)_ | OK |
+| 01 | Somchai Rakdee (TH) | ชมรมเดินทนกรุงเทพฯ | 7/20 | _ไม่มี (clean leader)_ | OK |
+| 02 | Jane Doe (TH) | Bangkok Road Runners | 7/20 | 2 yellow + **1 PENDING red** | OK (รอ Head Judge) |
+| 03 | Chanida Runfast (TH) | ChiangMai Striders | 6/20 | 3 yellow + 1 CONFIRMED red | OK (ใกล้ trouble) |
+| 04 | Luis Garcia (ES) | Hat Yai Athletic Club | 5/20 | **4 CONFIRMED reds** + 1 yellow | **DQ** |
+| 05 | Siriwan Walkfast (TH) | ชมรมเดินทนกรุงเทพฯ | 6/20 | _ไม่มี (clean)_ | OK |
 
 ---
 
