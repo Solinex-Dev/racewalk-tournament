@@ -296,10 +296,6 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
             </div>
           )}
 
-          <p className="border-t border-slate-200 px-4 py-3 text-[11px] text-slate-500">
-            * ข้อมูลในตารางนี้เป็นตัวอย่างเบื้องต้น – จะเชื่อมต่อฐานข้อมูล
-            MySQL ผ่าน Prisma ภายหลัง
-          </p>
         </CardContent>
       </Card>
     </div>

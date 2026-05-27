@@ -1,38 +1,46 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireOfficialSession } from "@/lib/official-session";
+import {
+  assertAthleteActive,
+  assertRoundOngoingForCards,
+  assertRoundOpenForReview,
+  loadOfficialRound,
+} from "@/lib/official-round-guards";
+import { revalidateRaceDayViews } from "@/lib/revalidate-race-day";
 
 const RED_CARDS_TO_DQ = 4;
 
 export type CardSymbol = "LIFTED_FOOT" | "BENT_KNEE";
 
 /**
- * Issue a YELLOW card (note). Max 2 per judge per athlete per round.
+ * Issue a YELLOW card (note). Max 1 per symbol per judge per athlete per round.
  * Yellow cards are immediate (no head-judge confirmation).
  */
 export async function issueYellowCard(athleteId: string, symbol: CardSymbol) {
   const session = await requireOfficialSession(["JUDGE", "HEAD_JUDGE"]);
+  const round = await loadOfficialRound(session.roundId);
+  assertRoundOngoingForCards(round);
 
-  // Verify athlete is in this round
   const ra = await prisma.roundAthlete.findFirst({
     where: { roundId: session.roundId, athleteId, deletedAt: null },
   });
   if (!ra) throw new Error("นักกีฬาไม่อยู่ในรอบนี้");
+  assertAthleteActive(ra);
 
-  // Count existing yellow from this judge to this athlete
-  const existing = await prisma.card.count({
+  const existingSameSymbol = await prisma.card.count({
     where: {
       roundId: session.roundId,
       athleteId,
       judgeId: session.judgeId,
       color: "YELLOW",
+      symbol,
       deletedAt: null,
     },
   });
-  if (existing >= 2) {
-    throw new Error("ให้ใบเหลืองครบ 2 ใบสำหรับนักกีฬาคนนี้แล้ว");
+  if (existingSameSymbol >= 1) {
+    throw new Error("ให้ใบเหลืองสัญลักษณ์นี้แก่นักกีฬาคนนี้แล้ว");
   }
 
   await prisma.card.create({
@@ -58,9 +66,7 @@ export async function issueYellowCard(athleteId: string, symbol: CardSymbol) {
     },
   });
 
-  revalidatePath(`/judge/events/${session.eventId}`);
-  revalidatePath(`/head-judge/events/${session.eventId}`);
-  revalidatePath(`/admin/events/${session.eventId}/moderator`);
+  revalidateRaceDayViews(session.eventId);
   return { ok: true };
 }
 
@@ -70,11 +76,14 @@ export async function issueYellowCard(athleteId: string, symbol: CardSymbol) {
  */
 export async function issueRedCard(athleteId: string, symbol: CardSymbol) {
   const session = await requireOfficialSession(["JUDGE", "HEAD_JUDGE"]);
+  const round = await loadOfficialRound(session.roundId);
+  assertRoundOngoingForCards(round);
 
   const ra = await prisma.roundAthlete.findFirst({
     where: { roundId: session.roundId, athleteId, deletedAt: null },
   });
   if (!ra) throw new Error("นักกีฬาไม่อยู่ในรอบนี้");
+  assertAthleteActive(ra);
 
   const existing = await prisma.card.count({
     where: {
@@ -115,9 +124,7 @@ export async function issueRedCard(athleteId: string, symbol: CardSymbol) {
     },
   });
 
-  revalidatePath(`/judge/events/${session.eventId}`);
-  revalidatePath(`/head-judge/events/${session.eventId}`);
-  revalidatePath(`/admin/events/${session.eventId}/moderator`);
+  revalidateRaceDayViews(session.eventId);
   return { ok: true };
 }
 
@@ -127,6 +134,8 @@ export async function issueRedCard(athleteId: string, symbol: CardSymbol) {
  */
 export async function confirmRedCard(cardId: string) {
   const session = await requireOfficialSession(["HEAD_JUDGE"]);
+  const round = await loadOfficialRound(session.roundId);
+  assertRoundOpenForReview(round);
 
   const card = await prisma.card.findUnique({
     where: { id: cardId },
@@ -147,7 +156,6 @@ export async function confirmRedCard(cardId: string) {
     },
   });
 
-  // Check DQ threshold
   const confirmedRedCount = await prisma.card.count({
     where: {
       roundId: card.roundId,
@@ -188,8 +196,7 @@ export async function confirmRedCard(cardId: string) {
     },
   });
 
-  revalidatePath(`/head-judge/events/${session.eventId}`);
-  revalidatePath(`/admin/events/${session.eventId}/moderator`);
+  revalidateRaceDayViews(session.eventId);
   return { ok: true };
 }
 
@@ -198,6 +205,8 @@ export async function confirmRedCard(cardId: string) {
  */
 export async function rejectRedCard(cardId: string) {
   const session = await requireOfficialSession(["HEAD_JUDGE"]);
+  const round = await loadOfficialRound(session.roundId);
+  assertRoundOpenForReview(round);
 
   const card = await prisma.card.findUnique({
     where: { id: cardId },
@@ -230,7 +239,6 @@ export async function rejectRedCard(cardId: string) {
     },
   });
 
-  revalidatePath(`/head-judge/events/${session.eventId}`);
-  revalidatePath(`/admin/events/${session.eventId}/moderator`);
+  revalidateRaceDayViews(session.eventId);
   return { ok: true };
 }

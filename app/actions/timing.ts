@@ -1,8 +1,13 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireOfficialSession } from "@/lib/official-session";
+import {
+  assertAthleteActive,
+  assertRoundOngoingForTiming,
+  loadOfficialRound,
+} from "@/lib/official-round-guards";
+import { revalidateRaceDayViews } from "@/lib/revalidate-race-day";
 
 /**
  * Record a lap time for an athlete (Event Logger / Timekeeper).
@@ -10,6 +15,8 @@ import { requireOfficialSession } from "@/lib/official-session";
  */
 export async function recordLapTime(athleteId: string, lapNumber: number, timeMs: number) {
   const session = await requireOfficialSession(["EVENT_LOGGER", "TIMEKEEPER"]);
+  const round = await loadOfficialRound(session.roundId);
+  assertRoundOngoingForTiming(round);
 
   if (lapNumber < 1 || timeMs < 0) {
     throw new Error("ค่าไม่ถูกต้อง");
@@ -20,6 +27,19 @@ export async function recordLapTime(athleteId: string, lapNumber: number, timeMs
     include: { athlete: { select: { name: true } } },
   });
   if (!ra) throw new Error("นักกีฬาไม่อยู่ในรอบนี้");
+  assertAthleteActive(ra);
+
+  const duplicateLap = await prisma.lapTime.findFirst({
+    where: {
+      roundId: session.roundId,
+      athleteId,
+      lapNumber,
+      deletedAt: null,
+    },
+  });
+  if (duplicateLap) {
+    throw new Error(`บันทึก Lap ${lapNumber} ของนักกีฬาคนนี้ไปแล้ว`);
+  }
 
   await prisma.lapTime.create({
     data: {
@@ -31,6 +51,13 @@ export async function recordLapTime(athleteId: string, lapNumber: number, timeMs
       source: session.position,
     },
   });
+
+  if (lapNumber > round.currentLap) {
+    await prisma.round.update({
+      where: { id: session.roundId },
+      data: { currentLap: lapNumber },
+    });
+  }
 
   await prisma.roundActivityLog.create({
     data: {
@@ -46,9 +73,7 @@ export async function recordLapTime(athleteId: string, lapNumber: number, timeMs
     },
   });
 
-  revalidatePath(`/event-logger/events/${session.eventId}`);
-  revalidatePath(`/timekeeper/events/${session.eventId}`);
-  revalidatePath(`/admin/events/${session.eventId}/moderator`);
+  revalidateRaceDayViews(session.eventId);
   return { ok: true };
 }
 
@@ -58,6 +83,8 @@ export async function recordLapTime(athleteId: string, lapNumber: number, timeMs
  */
 export async function recordFinishTime(athleteId: string, timeMs: number) {
   const session = await requireOfficialSession(["EVENT_LOGGER", "TIMEKEEPER"]);
+  const round = await loadOfficialRound(session.roundId);
+  assertRoundOngoingForTiming(round);
 
   if (timeMs < 0) throw new Error("ค่าเวลาไม่ถูกต้อง");
 
@@ -66,6 +93,7 @@ export async function recordFinishTime(athleteId: string, timeMs: number) {
     include: { athlete: { select: { name: true } } },
   });
   if (!ra) throw new Error("นักกีฬาไม่อยู่ในรอบนี้");
+  assertAthleteActive(ra);
 
   const existing = await prisma.finishTime.findUnique({
     where: { roundId_athleteId: { roundId: session.roundId, athleteId } },
@@ -86,10 +114,18 @@ export async function recordFinishTime(athleteId: string, timeMs: number) {
     },
   });
 
+  const lapCount = round.lapCount ?? 0;
   await prisma.roundAthlete.update({
     where: { roundId_athleteId: { roundId: session.roundId, athleteId } },
     data: { position },
   });
+
+  if (lapCount > 0 && lapCount > round.currentLap) {
+    await prisma.round.update({
+      where: { id: session.roundId },
+      data: { currentLap: lapCount },
+    });
+  }
 
   await prisma.roundActivityLog.create({
     data: {
@@ -104,10 +140,7 @@ export async function recordFinishTime(athleteId: string, timeMs: number) {
     },
   });
 
-  revalidatePath(`/event-logger/events/${session.eventId}`);
-  revalidatePath(`/timekeeper/events/${session.eventId}`);
-  revalidatePath(`/admin/events/${session.eventId}/moderator`);
-  revalidatePath(`/events/${session.eventId}`);
+  revalidateRaceDayViews(session.eventId);
   return { ok: true };
 }
 
