@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { confirmRedCard, rejectRedCard } from "@/app/actions/cards";
 import { logoutOfficial } from "@/app/actions/officials";
+import { RoundActivityLogLine } from "@/components/common/round-activity-log-line";
 
 export type PendingCard = {
   id: string;
@@ -37,10 +38,11 @@ export type LogItem = {
   time: string;
   actor: string;
   actorRole: string;
-  action: string;
+  actionType: string;
   targetBib?: string;
   targetAthlete?: string;
   details?: string;
+  lapNumber?: number;
 };
 
 type HeadJudgeViewProps = {
@@ -269,34 +271,36 @@ export function HeadJudgeView({
         <Card className="rounded-2xl border-slate-800 bg-slate-900">
           <CardContent className="p-0">
             <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
-              <h2 className="text-sm font-semibold text-slate-100">Activity Log</h2>
+              <h2 className="text-sm font-semibold text-slate-100">บันทึกกิจกรรม</h2>
               <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-300">
-                {logs.length}
+                {logs.length} รายการ
               </span>
             </div>
             <div className="max-h-[400px] overflow-auto">
               {logs.length === 0 ? (
-                <p className="px-6 py-6 text-center text-sm text-slate-500">ยังไม่มี Activity</p>
+                <p className="px-6 py-6 text-center text-sm text-slate-500">
+                  ยังไม่มีกิจกรรมในรอบนี้
+                </p>
               ) : (
                 <ul className="divide-y divide-slate-800">
                   {logs.map((log) => (
                     <li key={log.id} className="flex gap-4 px-6 py-3 hover:bg-slate-800/30">
-                      <span className="font-mono text-[11px] text-slate-400">{log.time}</span>
-                      <div className="flex-1">
-                        <p className="text-xs text-slate-200">
-                          <span className="font-semibold">{log.actor}</span> ({log.actorRole}): {log.action}
-                          {log.targetBib && (
-                            <>
-                              {" "}
-                              –{" "}
-                              <span className="font-medium">
-                                Bib {log.targetBib} {log.targetAthlete}
-                              </span>
-                            </>
-                          )}
-                        </p>
-                        {log.details && <p className="mt-0.5 text-[11px] text-slate-500">{log.details}</p>}
-                      </div>
+                      <span className="shrink-0 font-mono text-[11px] tabular-nums text-slate-400">
+                        {log.time}
+                      </span>
+                      <RoundActivityLogLine
+                        theme="dark"
+                        actorName={log.actor}
+                        log={{
+                          actionType: log.actionType,
+                          actorName: log.actor,
+                          actorRole: log.actorRole,
+                          targetBib: log.targetBib,
+                          targetAthleteName: log.targetAthlete,
+                          details: log.details,
+                          lapNumber: log.lapNumber,
+                        }}
+                      />
                     </li>
                   ))}
                 </ul>

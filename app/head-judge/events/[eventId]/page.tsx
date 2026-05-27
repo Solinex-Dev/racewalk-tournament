@@ -101,14 +101,22 @@ export default async function HeadJudgePage(props: Props) {
     };
   });
 
+  const athleteNameById = new Map(
+    round.roundAthletes.map((ra) => [ra.athleteId, ra.athlete.name]),
+  );
+
   const logs: LogItem[] = round.activityLogs.map((log) => ({
     id: log.id,
     time: formatTime(log.timestamp),
     actor: log.actorName,
     actorRole: log.actorRole,
-    action: log.actionType,
+    actionType: log.actionType,
     targetBib: log.targetBib ?? undefined,
+    targetAthlete: log.targetAthleteId
+      ? athleteNameById.get(log.targetAthleteId)
+      : undefined,
     details: log.details ?? undefined,
+    lapNumber: log.lapNumber ?? undefined,
   }));
 
   return (
