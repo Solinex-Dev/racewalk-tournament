@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { JudgeCardMatrix } from "@/components/judge/card-matrix";
 import { AutoRefresh } from "@/components/common/auto-refresh";
+import { LiveTimer } from "@/components/common/live-timer";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -133,20 +134,14 @@ export default async function EventLivePage(props: Props) {
     });
   }
 
-  const elapsed = (() => {
-    if (!currentRound) return "";
-    // Prefer authoritative startedAt/endedAt set by moderator
-    if (currentRound.startedAt) {
-      const end = currentRound.endedAt?.getTime() ?? Date.now();
-      const ms = Math.max(0, end - currentRound.startedAt.getTime());
-      return formatMs(ms);
-    }
-    // Fallback: use longest finishTime for finished rounds without startedAt
+  // Pre-computed fallback for rounds without startedAt (e.g., legacy finished rounds)
+  const elapsedFallback: string | null = (() => {
+    if (!currentRound || currentRound.startedAt) return null;
     if (currentRound.status === "FINISHED" && currentRound.finishTimes.length > 0) {
       const maxMs = Math.max(...currentRound.finishTimes.map((f) => f.timeMs));
       return formatMs(maxMs);
     }
-    return "";
+    return null;
   })();
 
   return (
@@ -197,10 +192,20 @@ export default async function EventLivePage(props: Props) {
                   / {lapCount}
                 </p>
               )}
-              {elapsed && (
+              {currentRound?.startedAt && (
                 <p className="text-slate-400">
                   เวลาแข่งขัน{" "}
-                  <span className="font-mono font-semibold text-emerald-400">{elapsed}</span>
+                  <LiveTimer
+                    startedAt={currentRound.startedAt.toISOString()}
+                    endedAt={currentRound.endedAt?.toISOString() ?? null}
+                    className="font-mono font-semibold text-emerald-400"
+                  />
+                </p>
+              )}
+              {!currentRound?.startedAt && elapsedFallback && (
+                <p className="text-slate-400">
+                  เวลาแข่งขัน{" "}
+                  <span className="font-mono font-semibold text-emerald-400">{elapsedFallback}</span>
                 </p>
               )}
             </div>
