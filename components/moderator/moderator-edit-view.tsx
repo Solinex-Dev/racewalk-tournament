@@ -14,46 +14,26 @@ import {
   moderatorEditFinishTime,
   moderatorDeleteFinishTime,
 } from "@/app/actions/moderator";
+import {
+  ModeratorEditDialog,
+  type ModeratorEditDialogPayload,
+} from "@/components/moderator/moderator-edit-dialog";
 
-export type EditRoundOption = { id: string; name: string; status: string };
+import type {
+  EditAthlete,
+  EditCard,
+  EditFinish,
+  EditLap,
+  EditRoundOption,
+} from "./moderator-edit-types";
 
-export type EditAthlete = {
-  id: string;
-  bib: string;
-  name: string;
-  status: "OK" | "DQ" | "DNF";
-  position: number | null;
-};
-
-export type EditCard = {
-  id: string;
-  athleteId: string;
-  athleteName: string;
-  bib: string;
-  judgeName: string;
-  color: "YELLOW" | "RED";
-  symbol: "BENT_KNEE" | "LIFTED_FOOT";
-  state: "PENDING" | "CONFIRMED" | "OVERRIDDEN" | null;
-  issuedAt: string;
-};
-
-export type EditLap = {
-  id: string;
-  athleteId: string;
-  athleteName: string;
-  bib: string;
-  lapNumber: number;
-  timeMs: number;
-};
-
-export type EditFinish = {
-  id: string;
-  athleteId: string;
-  athleteName: string;
-  bib: string;
-  timeMs: number;
-  position: number;
-};
+export type {
+  EditRoundOption,
+  EditAthlete,
+  EditCard,
+  EditLap,
+  EditFinish,
+} from "./moderator-edit-types";
 
 export type ModeratorEditViewProps = {
   eventId: string;
@@ -87,128 +67,134 @@ function parseTimeString(str: string): number | null {
 export function ModeratorEditView(props: ModeratorEditViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
+  const [dialogPayload, setDialogPayload] =
+    React.useState<ModeratorEditDialogPayload | null>(null);
+  const dialogOpen = dialogPayload !== null;
 
-  const askReason = (action: string): string | null => {
-    const reason = window.prompt(`เหตุผลของการ${action} (จะถูกบันทึกใน activity log):`);
-    if (!reason || !reason.trim()) {
-      toast.error("ต้องระบุเหตุผล");
-      return null;
+  const openDialog = (payload: ModeratorEditDialogPayload) => {
+    setDialogPayload(payload);
+  };
+
+  const closeDialog = () => setDialogPayload(null);
+
+  const handleDialogConfirm = ({
+    reason,
+    timeInput,
+  }: {
+    reason: string;
+    timeInput?: string;
+  }) => {
+    if (!dialogPayload) return;
+
+    const run = (action: () => Promise<unknown>, successMessage: string) => {
+      startTransition(async () => {
+        try {
+          await action();
+          toast.success(successMessage);
+          closeDialog();
+          router.refresh();
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+        }
+      });
+    };
+
+    switch (dialogPayload.kind) {
+      case "status":
+        run(
+          () =>
+            moderatorOverrideAthleteStatus(
+              props.selectedRoundId,
+              dialogPayload.athlete.id,
+              dialogPayload.newStatus,
+              reason,
+            ),
+          `เปลี่ยนสถานะเป็น ${dialogPayload.newStatus} แล้ว`,
+        );
+        break;
+      case "delete-card":
+        run(
+          () => moderatorDeleteCard(dialogPayload.card.id, reason),
+          "ลบใบเรียบร้อย",
+        );
+        break;
+      case "delete-lap":
+        run(
+          () => moderatorDeleteLapTime(dialogPayload.lap.id, reason),
+          "ลบ Lap เรียบร้อย",
+        );
+        break;
+      case "delete-finish":
+        run(
+          () => moderatorDeleteFinishTime(dialogPayload.finish.id, reason),
+          "ลบเวลาเรียบร้อย",
+        );
+        break;
+      case "edit-lap": {
+        const newMs = parseTimeString(timeInput ?? "");
+        if (newMs === null) {
+          toast.error("รูปแบบเวลาไม่ถูกต้อง");
+          return;
+        }
+        run(
+          () => moderatorEditLapTime(dialogPayload.lap.id, newMs, reason),
+          "แก้ไข Lap เรียบร้อย",
+        );
+        break;
+      }
+      case "edit-finish": {
+        const newMs = parseTimeString(timeInput ?? "");
+        if (newMs === null) {
+          toast.error("รูปแบบเวลาไม่ถูกต้อง");
+          return;
+        }
+        run(
+          () => moderatorEditFinishTime(dialogPayload.finish.id, newMs, reason),
+          "แก้ไขเวลาเรียบร้อย",
+        );
+        break;
+      }
     }
-    return reason.trim();
   };
 
   const handleDeleteCard = (card: EditCard) => {
-    const colorLabel = card.color === "YELLOW" ? "ใบเหลือง" : "ใบแดง";
-    if (!window.confirm(`ลบ${colorLabel}ของ ${card.athleteName}?`)) return;
-    const reason = askReason("ลบใบ");
-    if (!reason) return;
-
-    startTransition(async () => {
-      try {
-        await moderatorDeleteCard(card.id, reason);
-        toast.success("ลบใบเรียบร้อย");
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-      }
-    });
+    openDialog({ kind: "delete-card", card });
   };
 
   const handleStatusChange = (athlete: EditAthlete, newStatus: "OK" | "DQ" | "DNF") => {
     if (athlete.status === newStatus) return;
-    const reason = askReason(`เปลี่ยนสถานะเป็น ${newStatus}`);
-    if (!reason) return;
-
-    startTransition(async () => {
-      try {
-        await moderatorOverrideAthleteStatus(props.selectedRoundId, athlete.id, newStatus, reason);
-        toast.success(`เปลี่ยนสถานะเป็น ${newStatus} แล้ว`);
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-      }
-    });
+    openDialog({ kind: "status", athlete, newStatus });
   };
 
   const handleEditLap = (lap: EditLap) => {
-    const current = formatMs(lap.timeMs);
-    const input = window.prompt(`แก้ไขเวลา Lap ${lap.lapNumber} ของ ${lap.athleteName}\nรูปแบบ HH:MM:SS หรือ MM:SS`, current);
-    if (!input) return;
-    const newMs = parseTimeString(input);
-    if (newMs === null) {
-      toast.error("รูปแบบเวลาไม่ถูกต้อง");
-      return;
-    }
-    const reason = askReason("แก้ไข Lap");
-    if (!reason) return;
-
-    startTransition(async () => {
-      try {
-        await moderatorEditLapTime(lap.id, newMs, reason);
-        toast.success("แก้ไข Lap เรียบร้อย");
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-      }
-    });
+    openDialog({ kind: "edit-lap", lap });
   };
 
   const handleDeleteLap = (lap: EditLap) => {
-    if (!window.confirm(`ลบ Lap ${lap.lapNumber} ของ ${lap.athleteName}?`)) return;
-    const reason = askReason("ลบ Lap");
-    if (!reason) return;
-
-    startTransition(async () => {
-      try {
-        await moderatorDeleteLapTime(lap.id, reason);
-        toast.success("ลบ Lap เรียบร้อย");
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-      }
-    });
+    openDialog({ kind: "delete-lap", lap });
   };
 
   const handleEditFinish = (ft: EditFinish) => {
-    const current = formatMs(ft.timeMs);
-    const input = window.prompt(`แก้ไขเวลาเข้าเส้นชัยของ ${ft.athleteName}\nรูปแบบ HH:MM:SS`, current);
-    if (!input) return;
-    const newMs = parseTimeString(input);
-    if (newMs === null) {
-      toast.error("รูปแบบเวลาไม่ถูกต้อง");
-      return;
-    }
-    const reason = askReason("แก้ไข Finish");
-    if (!reason) return;
-
-    startTransition(async () => {
-      try {
-        await moderatorEditFinishTime(ft.id, newMs, reason);
-        toast.success("แก้ไขเวลาเรียบร้อย");
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-      }
-    });
+    openDialog({ kind: "edit-finish", finish: ft });
   };
 
   const handleDeleteFinish = (ft: EditFinish) => {
-    if (!window.confirm(`ลบเวลาเข้าเส้นชัยของ ${ft.athleteName}? (สามารถบันทึกใหม่ได้)`)) return;
-    const reason = askReason("ลบ Finish");
-    if (!reason) return;
-
-    startTransition(async () => {
-      try {
-        await moderatorDeleteFinishTime(ft.id, reason);
-        toast.success("ลบเวลาเรียบร้อย");
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-      }
-    });
+    openDialog({ kind: "delete-finish", finish: ft });
   };
 
   return (
+    <>
+      <ModeratorEditDialog
+        payload={dialogPayload}
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
+        onConfirm={handleDialogConfirm}
+        isPending={isPending}
+        formatMs={formatMs}
+      />
+
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
         <div className="flex items-center justify-between gap-2">
@@ -522,5 +508,6 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
         </Card>
       </div>
     </main>
+    </>
   );
 }

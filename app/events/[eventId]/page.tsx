@@ -3,7 +3,13 @@ import { notFound } from "next/navigation";
 import { JudgeCardMatrix } from "@/components/judge/card-matrix";
 import { AutoRefresh } from "@/components/common/auto-refresh";
 import { LiveTimer } from "@/components/common/live-timer";
+import { LastUpdated } from "@/components/common/last-updated";
 import { prisma } from "@/lib/prisma";
+
+// Always render at request time — public scoreboard must reflect status changes
+// (race start/end, card issuance, lap recordings) within one poll cycle.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "กระดานคะแนนสดกิจกรรม – การแข่งขันเดินทน",
@@ -144,9 +150,11 @@ export default async function EventLivePage(props: Props) {
     return null;
   })();
 
+  const renderedAt = new Date().toISOString();
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
-      <AutoRefresh intervalMs={10000} />
+      <AutoRefresh intervalMs={5000} />
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-6 lg:py-10">
         <header className="flex flex-col gap-3 border-b border-slate-800 pb-4 md:flex-row md:items-end md:justify-between">
           <div>
@@ -161,22 +169,32 @@ export default async function EventLivePage(props: Props) {
               {event.location}
             </p>
             <p className="text-xs text-slate-400">แข่งขันวันที่ {formatThaiDate(event.date)}</p>
-            {event.rounds.length > 1 && (
+            {event.rounds.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {event.rounds.map((r) => (
-                  <span
-                    key={r.id}
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${
-                      r.id === currentRound?.id
-                        ? "bg-emerald-950 text-emerald-400 ring-emerald-800"
-                        : r.status === "FINISHED"
-                          ? "bg-slate-800 text-slate-400 ring-slate-700"
-                          : "bg-sky-950 text-sky-300 ring-sky-800"
-                    }`}
-                  >
-                    {r.name} • {ROUND_STATUS_LABEL[r.status.toLowerCase()]}
-                  </span>
-                ))}
+                {event.rounds.map((r) => {
+                  // Color reflects ROUND's own status — not whether it's "selected for display".
+                  // The currently-displayed round gets an extra outline ring on top.
+                  const statusStyle =
+                    r.status === "ONGOING"
+                      ? "bg-emerald-950 text-emerald-300 ring-emerald-700"
+                      : r.status === "FINISHED"
+                        ? "bg-slate-800 text-slate-400 ring-slate-600"
+                        : "bg-sky-950 text-sky-300 ring-sky-700";
+                  const isCurrent = r.id === currentRound?.id;
+                  return (
+                    <span
+                      key={r.id}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ${statusStyle} ${
+                        isCurrent ? "outline outline-1 outline-offset-2 outline-emerald-500/60" : ""
+                      }`}
+                    >
+                      {r.status === "ONGOING" && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
+                      )}
+                      {r.name} · {ROUND_STATUS_LABEL[r.status.toLowerCase()]}
+                    </span>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -209,11 +227,22 @@ export default async function EventLivePage(props: Props) {
                 </p>
               )}
             </div>
-            <span
-              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ${STATUS_CLASS[eventStatus]}`}
-            >
-              ● {STATUS_LABEL[eventStatus]}
-            </span>
+            <div className="flex flex-col items-end gap-1.5">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${STATUS_CLASS[eventStatus]}`}
+              >
+                {eventStatus === "ongoing" ? (
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                  </span>
+                ) : (
+                  <span className="h-2 w-2 rounded-full bg-current opacity-60" />
+                )}
+                {STATUS_LABEL[eventStatus]}
+              </span>
+              <LastUpdated time={renderedAt} />
+            </div>
           </div>
         </header>
 
