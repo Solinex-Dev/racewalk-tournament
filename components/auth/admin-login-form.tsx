@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState, type JSX, type SVGProps } from "react";
 
 const Logo = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
@@ -30,16 +30,11 @@ const Logo = (props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) => (
 );
 
 export function AdminLoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(
-    searchParams.get("error") === "AccessDenied"
-      ? "บัญชีนี้ไม่มีสิทธิ์เข้าใช้แดชบอร์ดผู้ดูแล"
-      : null,
-  );
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -61,8 +56,9 @@ export function AdminLoginForm() {
       return;
     }
     const callbackUrl = searchParams.get("callbackUrl");
-    router.push(callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/admin");
-    router.refresh();
+    const target =
+      callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/admin";
+    window.location.assign(target);
   }
 
   return (
