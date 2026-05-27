@@ -229,7 +229,7 @@ export default async function EventLivePage(props: Props) {
               <table className="min-w-full border-collapse text-sm">
                 <thead className="sticky top-0 border-b border-slate-800 bg-slate-900/95 text-[14px] font-medium uppercase text-slate-400 backdrop-blur">
                   <tr>
-                    <th className="px-5 py-4 text-center text-sm">อันดับ</th>
+                    {/* <th className="px-5 py-4 text-center text-sm">อันดับ</th> */}
                     <th className="px-5 py-4 text-center text-sm">รอบ</th>
                     <th className="px-5 py-4 text-center text-sm">BIB</th>
                     <th className="px-5 py-4 text-center text-sm">นักกีฬา</th>
@@ -255,9 +255,9 @@ export default async function EventLivePage(props: Props) {
                             isDQ ? "bg-slate-800/30 opacity-60" : "hover:bg-slate-800/50"
                           }`}
                         >
-                          <td className="px-5 py-4 font-bold text-slate-300">
+                          {/* <td className="px-5 py-4 font-bold text-slate-300">
                             {athlete.isFinished && athlete.position ? athlete.position : isDQ ? "-" : idx + 1}
-                          </td>
+                          </td> */}
                           <td className="px-5 py-4 text-center">
                             <span
                               className={`font-mono text-sm font-semibold ${isDQ ? "text-slate-500" : "text-slate-100"}`}
