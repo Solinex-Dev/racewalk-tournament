@@ -51,6 +51,8 @@ export const ActivityLogAction = {
   MODERATOR_DELETE_LAP: "MODERATOR_DELETE_LAP",
   MODERATOR_EDIT_FINISH: "MODERATOR_EDIT_FINISH",
   MODERATOR_DELETE_FINISH: "MODERATOR_DELETE_FINISH",
+  MODERATOR_CONFIRM_RED: "MODERATOR_CONFIRM_RED",
+  MODERATOR_REJECT_RED: "MODERATOR_REJECT_RED",
 } as const;
 
 export type ActivityLogActionType = (typeof ActivityLogAction)[keyof typeof ActivityLogAction];

@@ -97,6 +97,116 @@ export async function moderatorDeleteCard(cardId: string, reason: string) {
   return { ok: true };
 }
 
+const RED_CARDS_TO_DQ = 4;
+
+/**
+ * Moderator confirms a PENDING red card on the Head Judge's behalf
+ * (fallback when the head judge is unavailable). PENDING → CONFIRMED.
+ * Auto-DQs the athlete when they reach RED_CARDS_TO_DQ confirmed reds.
+ */
+export async function moderatorConfirmRedCard(cardId: string, reason: string) {
+  const user = await requireAdmin();
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    include: {
+      athlete: { select: { name: true } },
+      judge: { select: { name: true } },
+    },
+  });
+  if (!card) throw new Error("ไม่พบใบที่ระบุ");
+  if (card.color !== "RED" || card.state !== "PENDING") {
+    throw new Error("ยืนยันได้เฉพาะใบแดงที่รอยืนยันเท่านั้น");
+  }
+
+  await prisma.card.update({
+    where: { id: cardId },
+    data: { state: "CONFIRMED", decidedBy: user.id, decidedAt: new Date() },
+  });
+
+  const confirmedRed = await prisma.card.count({
+    where: {
+      roundId: card.roundId,
+      athleteId: card.athleteId,
+      color: "RED",
+      state: "CONFIRMED",
+      deletedAt: null,
+    },
+  });
+
+  let dq = false;
+  if (confirmedRed >= RED_CARDS_TO_DQ) {
+    await prisma.roundAthlete.updateMany({
+      where: { roundId: card.roundId, athleteId: card.athleteId },
+      data: { status: "DQ" },
+    });
+    dq = true;
+    await logModeratorAction(
+      card.roundId,
+      user,
+      "athlete_dq",
+      `DQ - ครบใบแดง ${RED_CARDS_TO_DQ} ใบ (ยืนยันโดยผู้ดูแล)`,
+      card.athleteId,
+    );
+  }
+
+  await logModeratorAction(
+    card.roundId,
+    user,
+    "moderator_confirm_red",
+    `ยืนยันใบแดงของ ${card.athlete.name} (ออกโดย ${card.judge.name}) แทนหัวหน้ากรรมการ — เหตุผล: ${reason}`,
+    card.athleteId,
+  );
+  await logCurrentAdmin(ActivityLogAction.MODERATOR_CONFIRM_RED, "Card", cardId, {
+    roundId: card.roundId,
+    athleteId: card.athleteId,
+    reason,
+    autoDq: dq,
+  });
+
+  revalidatePath(`/admin/events`);
+  return { ok: true, dq };
+}
+
+/**
+ * Moderator rejects a PENDING red card on the Head Judge's behalf.
+ * PENDING → OVERRIDDEN (does not count toward DQ).
+ */
+export async function moderatorRejectRedCard(cardId: string, reason: string) {
+  const user = await requireAdmin();
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    include: {
+      athlete: { select: { name: true } },
+      judge: { select: { name: true } },
+    },
+  });
+  if (!card) throw new Error("ไม่พบใบที่ระบุ");
+  if (card.color !== "RED" || card.state !== "PENDING") {
+    throw new Error("ยกเลิกได้เฉพาะใบแดงที่รอยืนยันเท่านั้น");
+  }
+
+  await prisma.card.update({
+    where: { id: cardId },
+    data: { state: "OVERRIDDEN", decidedBy: user.id, decidedAt: new Date() },
+  });
+
+  await logModeratorAction(
+    card.roundId,
+    user,
+    "moderator_reject_red",
+    `ยกเลิกใบแดงของ ${card.athlete.name} (ออกโดย ${card.judge.name}) แทนหัวหน้ากรรมการ — เหตุผล: ${reason}`,
+    card.athleteId,
+  );
+  await logCurrentAdmin(ActivityLogAction.MODERATOR_REJECT_RED, "Card", cardId, {
+    roundId: card.roundId,
+    athleteId: card.athleteId,
+    reason,
+  });
+
+  revalidatePath(`/admin/events`);
+  return { ok: true };
+}
+
 // ─── Athlete status override ─────────────────────────────────────────────────
 
 export async function moderatorOverrideAthleteStatus(

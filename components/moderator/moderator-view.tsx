@@ -982,6 +982,8 @@ function ActionBadge({ actionType }: { actionType: ActivityLogItem["actionType"]
     lap_time:            { label: "Lap",            cls: "bg-sky-50 text-sky-700" },
     finish_time:         { label: "เข้าเส้นชัย",     cls: "bg-emerald-100 text-emerald-800" },
     moderator_delete_card:    { label: "Mod: ลบใบ",     cls: "bg-violet-50 text-violet-700" },
+    moderator_confirm_red:    { label: "Mod: ยืนยันแดง", cls: "bg-violet-50 text-violet-700" },
+    moderator_reject_red:     { label: "Mod: ยกเลิกแดง", cls: "bg-violet-50 text-violet-700" },
     moderator_override_status:{ label: "Mod: สถานะ",    cls: "bg-violet-50 text-violet-700" },
     moderator_edit_lap:       { label: "Mod: แก้ Lap",  cls: "bg-violet-50 text-violet-700" },
     moderator_delete_lap:     { label: "Mod: ลบ Lap",   cls: "bg-violet-50 text-violet-700" },

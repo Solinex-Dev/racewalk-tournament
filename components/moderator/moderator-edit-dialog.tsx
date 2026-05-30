@@ -18,6 +18,8 @@ import type { EditAthlete, EditCard, EditFinish, EditLap } from "./moderator-edi
 export type ModeratorEditDialogPayload =
   | { kind: "status"; athlete: EditAthlete; newStatus: "OK" | "DQ" | "DNF" }
   | { kind: "delete-card"; card: EditCard }
+  | { kind: "confirm-red"; card: EditCard }
+  | { kind: "reject-red"; card: EditCard }
   | { kind: "delete-lap"; lap: EditLap }
   | { kind: "delete-finish"; finish: EditFinish }
   | { kind: "edit-lap"; lap: EditLap }
@@ -115,6 +117,48 @@ function getDialogMeta(
         timeLabel: "",
       };
     }
+    case "confirm-red":
+      return {
+        title: "ยืนยันใบแดง (แทนหัวหน้ากรรมการ)",
+        description: (
+          <>
+            ยืนยันใบแดงของ{" "}
+            <span className="font-medium text-slate-900">{payload.card.athleteName}</span>{" "}
+            (Bib {payload.card.bib}) ที่ออกโดย {payload.card.judgeName}
+            <span className="mt-1 block text-amber-700">
+              ถ้านักกีฬามีใบแดงที่ยืนยันแล้วครบ 4 ใบ ระบบจะตัดสิทธิ์ (DQ) อัตโนมัติ
+            </span>
+          </>
+        ),
+        variant: "default" as const,
+        confirmLabel: "ยืนยันใบแดง",
+        confirmClass: "bg-emerald-600 text-white hover:bg-emerald-700",
+        destructive: false,
+        showTime: false,
+        timeDefault: "",
+        timeLabel: "",
+      };
+    case "reject-red":
+      return {
+        title: "ยกเลิกใบแดง (แทนหัวหน้ากรรมการ)",
+        description: (
+          <>
+            ยกเลิก (ปฏิเสธ) ใบแดงของ{" "}
+            <span className="font-medium text-slate-900">{payload.card.athleteName}</span>{" "}
+            (Bib {payload.card.bib}) ที่ออกโดย {payload.card.judgeName}
+            <span className="mt-1 block text-slate-500">
+              ใบแดงจะถูกตั้งเป็น “ยกเลิก” และไม่นับรวมในการตัดสิทธิ์
+            </span>
+          </>
+        ),
+        variant: "default" as const,
+        confirmLabel: "ยกเลิกใบแดง",
+        confirmClass: "bg-slate-700 text-white hover:bg-slate-800",
+        destructive: false,
+        showTime: false,
+        timeDefault: "",
+        timeLabel: "",
+      };
     case "delete-lap":
       return {
         title: "ลบ Lap time",

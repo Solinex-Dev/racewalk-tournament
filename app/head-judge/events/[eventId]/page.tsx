@@ -7,6 +7,7 @@ import {
   type LogItem,
 } from "@/components/head-judge/head-judge-view";
 import { AutoRefresh } from "@/components/common/auto-refresh";
+import { OfficialEndedDialog } from "@/components/common/official-ended-dialog";
 import { prisma } from "@/lib/prisma";
 import { getOfficialSession } from "@/lib/official-session";
 
@@ -122,6 +123,11 @@ export default async function HeadJudgePage(props: Props) {
   return (
     <>
       <AutoRefresh intervalMs={5000} />
+      <OfficialEndedDialog
+        open={round.status === "FINISHED"}
+        roundName={round.name}
+        roleLabel="หัวหน้ากรรมการ"
+      />
       <HeadJudgeView
         eventId={eventId}
         judgeName={session.judgeName}

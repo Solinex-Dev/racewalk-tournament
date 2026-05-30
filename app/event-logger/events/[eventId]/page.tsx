@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { LapRecorder, type AthleteRecord } from "@/components/timekeeper/lap-recorder";
 import { AutoRefresh } from "@/components/common/auto-refresh";
+import { OfficialEndedDialog } from "@/components/common/official-ended-dialog";
 import { prisma } from "@/lib/prisma";
 import { getOfficialSession } from "@/lib/official-session";
 
@@ -63,6 +64,11 @@ export default async function EventLoggerPage(props: Props) {
   return (
     <>
       <AutoRefresh intervalMs={10000} />
+      <OfficialEndedDialog
+        open={round.status === "FINISHED"}
+        roundName={round.name}
+        roleLabel="ผู้เก็บ Lap Time"
+      />
       <LapRecorder
         eventId={eventId}
         judgeName={session.judgeName}

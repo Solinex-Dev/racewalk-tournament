@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   moderatorDeleteCard,
+  moderatorConfirmRedCard,
+  moderatorRejectRedCard,
   moderatorOverrideAthleteStatus,
   moderatorEditLapTime,
   moderatorDeleteLapTime,
@@ -118,6 +120,30 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
           "ลบใบเรียบร้อย",
         );
         break;
+      case "confirm-red": {
+        const card = dialogPayload.card;
+        startTransition(async () => {
+          try {
+            const res = await moderatorConfirmRedCard(card.id, reason);
+            toast.success(
+              res?.dq
+                ? "ยืนยันใบแดงแล้ว — นักกีฬาถูกตัดสิทธิ์ (DQ)"
+                : "ยืนยันใบแดงเรียบร้อย",
+            );
+            closeDialog();
+            router.refresh();
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+          }
+        });
+        break;
+      }
+      case "reject-red":
+        run(
+          () => moderatorRejectRedCard(dialogPayload.card.id, reason),
+          "ยกเลิกใบแดงเรียบร้อย",
+        );
+        break;
       case "delete-lap":
         run(
           () => moderatorDeleteLapTime(dialogPayload.lap.id, reason),
@@ -159,6 +185,14 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
 
   const handleDeleteCard = (card: EditCard) => {
     openDialog({ kind: "delete-card", card });
+  };
+
+  const handleConfirmRed = (card: EditCard) => {
+    openDialog({ kind: "confirm-red", card });
+  };
+
+  const handleRejectRed = (card: EditCard) => {
+    openDialog({ kind: "reject-red", card });
   };
 
   const handleStatusChange = (athlete: EditAthlete, newStatus: "OK" | "DQ" | "DNF") => {
@@ -303,7 +337,10 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
           <CardContent className="p-0">
             <div className="border-b border-slate-200 px-6 py-4">
               <h2 className="text-sm font-semibold text-slate-900">ใบเหลือง/แดง ที่ออกในรอบนี้ ({props.cards.length})</h2>
-              <p className="text-xs text-slate-500">ลบใบที่ออกผิด — ถ้าเป็นใบแดงยืนยันที่ทำให้ DQ ระบบจะปลด DQ ให้อัตโนมัติ</p>
+              <p className="text-xs text-slate-500">
+                ใบแดงที่ “แดง รอ” สามารถกด <span className="font-medium text-emerald-700">ยืนยัน</span>/
+                <span className="font-medium text-slate-600">ยกเลิก</span> แทนหัวหน้ากรรมการได้ (กรณีไม่สะดวก) — ใบแดงยืนยันครบ 4 ใบจะ DQ อัตโนมัติ • ลบใบที่ออกผิดได้
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-xs">
@@ -357,16 +394,42 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                           </span>
                         </td>
                         <td className="px-4 py-2 text-right">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={isPending}
-                            onClick={() => handleDeleteCard(c)}
-                            className="h-7 rounded-lg border-red-200 px-2 text-[11px] text-red-700 hover:bg-red-50"
-                          >
-                            ลบใบ
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            {c.color === "RED" && c.state === "PENDING" && (
+                              <>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isPending}
+                                  onClick={() => handleConfirmRed(c)}
+                                  className="h-7 rounded-lg border-emerald-300 px-2 text-[11px] text-emerald-700 hover:bg-emerald-50"
+                                >
+                                  ยืนยัน
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isPending}
+                                  onClick={() => handleRejectRed(c)}
+                                  className="h-7 rounded-lg border-slate-300 px-2 text-[11px] text-slate-600 hover:bg-slate-50"
+                                >
+                                  ยกเลิก
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={isPending}
+                              onClick={() => handleDeleteCard(c)}
+                              className="h-7 rounded-lg border-red-200 px-2 text-[11px] text-red-700 hover:bg-red-50"
+                            >
+                              ลบใบ
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))

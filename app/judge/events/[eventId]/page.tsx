@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { JudgeWorkspace, type JudgeAthleteRow } from "@/components/judge/judge-workspace";
 import { AutoRefresh } from "@/components/common/auto-refresh";
+import { OfficialEndedDialog } from "@/components/common/official-ended-dialog";
 import { prisma } from "@/lib/prisma";
 import { getOfficialSession } from "@/lib/official-session";
 
@@ -69,6 +70,11 @@ export default async function JudgePage(props: Props) {
   return (
     <>
       <AutoRefresh intervalMs={15000} />
+      <OfficialEndedDialog
+        open={round.status === "FINISHED"}
+        roundName={round.name}
+        roleLabel="กรรมการ"
+      />
       <JudgeWorkspace
         eventId={eventId}
         judgeName={session.judgeName}
