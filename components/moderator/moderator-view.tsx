@@ -120,6 +120,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
   const [selectedExportRound, setSelectedExportRound] = useState<string | null>(null);
   const [selectedExportAthlete, setSelectedExportAthlete] = useState<string>("all");
   const [showEditConfirm, setShowEditConfirm] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [isPending, startTransition] = useTransition();
 
@@ -378,7 +379,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                         <button
                           type="button"
                           disabled={isPending}
-                          onClick={() => handleEndRound(displayRound.id)}
+                          onClick={() => setShowEndConfirm(true)}
                           className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
                         >
                           ■ จบการแข่งขัน
@@ -864,6 +865,72 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                   ยืนยัน
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEndConfirm && displayRound && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-lg text-red-600">
+                ■
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-semibold text-slate-900">ยืนยันจบการแข่งขัน</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  รอบ <span className="font-medium text-slate-900">{displayRound.name}</span>
+                  {displayRound.started_at && (
+                    <>
+                      {" "}• เวลาที่ใช้{" "}
+                      <span className="font-mono font-semibold text-emerald-700">
+                        {formatElapsed(displayRound.started_at, displayRound.ended_at)}
+                      </span>
+                    </>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => setShowEndConfirm(false)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 disabled:opacity-50"
+                aria-label="ปิด"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-800 ring-1 ring-amber-100">
+              เมื่อจบการแข่งขัน:
+              <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                <li>รอบนี้จะถูกปิด และหยุดบันทึกผลใหม่</li>
+                <li>กรรมการทุกคนจะได้รับแจ้งให้ออกจากระบบ</li>
+                <li>ยังแก้ไขย้อนหลังได้ในโหมด Correction</li>
+              </ul>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => setShowEndConfirm(false)}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  setShowEndConfirm(false);
+                  handleEndRound(displayRound.id);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                ■ ยืนยันจบการแข่งขัน
+              </button>
             </div>
           </div>
         </div>
