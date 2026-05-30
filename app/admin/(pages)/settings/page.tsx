@@ -2,23 +2,35 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
+import { isAdminSession } from "@/lib/admin-auth-redirect";
 import { prisma } from "@/lib/prisma";
 import { ProfileForm } from "@/components/admins/profile-form";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "การตั้งค่า – การแข่งขันเดินทน",
   description: "ตั้งค่าโปรไฟล์ผู้ดูแลระบบและเปลี่ยนรหัสผ่าน",
 };
 
+const settingsPath = "/admin/settings";
+
 export default async function AdminSettingsPage() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) redirect("/admin/login");
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const userId = session?.user?.id;
+
+  if (!isAdminSession(role, userId)) {
+    redirect(`/admin/login?callbackUrl=${encodeURIComponent(settingsPath)}`);
+  }
 
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: userId },
     select: { name: true, email: true, title: true },
   });
-  if (!user) redirect("/admin/login");
+  if (!user) {
+    redirect(`/admin/login?callbackUrl=${encodeURIComponent(settingsPath)}`);
+  }
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">

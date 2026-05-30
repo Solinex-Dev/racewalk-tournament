@@ -11,22 +11,32 @@ import {
   validatePasswordLength,
 } from "@/lib/validation";
 import { createActivityLog, ActivityLogAction } from "@/lib/activity-log";
+import { isAdminSession } from "@/lib/admin-auth-redirect";
+
+function requireAdminUserId(session: Awaited<ReturnType<typeof getServerSession>>) {
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const userId = session?.user?.id;
+  if (!isAdminSession(role, userId)) {
+    throw new Error("ไม่ได้เข้าสู่ระบบ");
+  }
+  return userId!;
+}
 
 export async function updateMyProfile(data: { name: string; email: string; title: string }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new Error("ไม่ได้เข้าสู่ระบบ");
+  const userId = requireAdminUserId(session);
 
   const email = normalizeEmail(data.email);
   if (!isValidEmailFormat(email)) throw new Error("รูปแบบอีเมลไม่ถูกต้อง");
 
   // Check email uniqueness if changed
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing && existing.id !== session.user.id) {
+  if (existing && existing.id !== userId) {
     throw new Error("อีเมลนี้ถูกใช้แล้ว");
   }
 
   await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: userId },
     data: {
       name: data.name.trim(),
       email,
@@ -35,10 +45,10 @@ export async function updateMyProfile(data: { name: string; email: string; title
   });
 
   await createActivityLog({
-    userId: session.user.id,
+    userId,
     action: ActivityLogAction.USER_PROFILE_UPDATED,
     entityType: "User",
-    entityId: session.user.id,
+    entityId: userId,
     details: { email, title: data.title },
   });
 
@@ -48,12 +58,12 @@ export async function updateMyProfile(data: { name: string; email: string; title
 
 export async function changeMyPassword(currentPassword: string, newPassword: string) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new Error("ไม่ได้เข้าสู่ระบบ");
+  const userId = requireAdminUserId(session);
 
   const pwResult = validatePasswordLength(newPassword);
   if (!pwResult.ok) throw new Error(pwResult.error ?? "รหัสผ่านไม่ถูกต้อง");
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user || !user.password) {
     throw new Error("ไม่พบบัญชีหรือบัญชีนี้ไม่ใช้รหัสผ่าน");
   }
@@ -66,15 +76,15 @@ export async function changeMyPassword(currentPassword: string, newPassword: str
 
   const newHash = await bcrypt.hash(newPassword, 10);
   await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: userId },
     data: { password: newHash },
   });
 
   await createActivityLog({
-    userId: session.user.id,
+    userId,
     action: ActivityLogAction.USER_PASSWORD_CHANGED,
     entityType: "User",
-    entityId: session.user.id,
+    entityId: userId,
   });
 
   return { ok: true };

@@ -178,21 +178,32 @@ export const authOptions: AuthOptions = {
           where: { id: row.userId },
           select: { role: true, status: true, deleteAfter: true },
         });
-        if (dbUser) {
-          const status = resolveUserStatus(dbUser);
-          if (status === "SUSPENDED" || status === "DELETED") {
-            await prisma.userSession.update({
-              where: { sessionId: t.sessionId },
-              data: { revokedAt: new Date() },
-            });
-            delete t.sub;
-            delete t.id;
-            delete t.sessionId;
-            delete t.role;
-            return t as typeof token;
-          }
+        if (!dbUser) {
+          await prisma.userSession.update({
+            where: { sessionId: t.sessionId },
+            data: { revokedAt: new Date() },
+          });
+          delete t.sub;
+          delete t.id;
+          delete t.sessionId;
+          delete t.role;
+          return t as typeof token;
         }
-        t.role = dbUser?.role ?? "USER";
+        const status = resolveUserStatus(dbUser);
+        if (status === "SUSPENDED" || status === "DELETED") {
+          await prisma.userSession.update({
+            where: { sessionId: t.sessionId },
+            data: { revokedAt: new Date() },
+          });
+          delete t.sub;
+          delete t.id;
+          delete t.sessionId;
+          delete t.role;
+          return t as typeof token;
+        }
+        t.id = row.userId;
+        t.sub = row.userId;
+        t.role = dbUser.role;
       }
       return token as typeof token;
     },
