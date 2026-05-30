@@ -7,6 +7,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { startRound, endRound } from "@/app/actions/round-timing";
+import { SectionToc, type TocItem } from "@/components/common/section-toc";
+
+const MAIN_TOC: TocItem[] = [
+  { id: "m-control", label: "ควบคุมการแข่งขัน" },
+  { id: "m-athletes", label: "นักกีฬาในรอบนี้" },
+  { id: "m-judges", label: "กรรมการในรอบนี้" },
+  { id: "m-log", label: "Activity Log" },
+];
 
 export type EventStatus = "scheduled" | "ongoing" | "finished";
 export type RoundStatus = "scheduled" | "ongoing" | "finished";
@@ -198,6 +206,15 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
   const roundAthletes = displayData?.athletes ?? [];
   const roundJudges = displayData?.judges ?? [];
   const roundPendingCards = displayData?.pendingRedCards ?? [];
+
+  // Athletes still on the course — no finish position yet, and not DQ/DNF.
+  // `position` is set when an athlete crosses the line; DQ/DNF are resolved
+  // outcomes. Used to warn (but never block) the moderator when ending early.
+  const unfinishedAthletes = roundAthletes.filter(
+    (a) => a.position == null && a.status !== "DQ" && a.status !== "DNF",
+  );
+  const finishedCount = roundAthletes.length - unfinishedAthletes.length;
+
   const roundLogs = (displayData?.logs ?? [])
     .slice()
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -244,7 +261,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
   return (
     <>
       <main className="flex-1 overflow-auto p-6 lg:p-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -310,8 +327,12 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
           )}
 
           {displayRound && (
-            <>
-              <Card className="rounded-2xl border-slate-200">
+            <div className="flex gap-6">
+              <aside className="sticky top-0 hidden h-fit w-44 shrink-0 self-start lg:block">
+                <SectionToc items={MAIN_TOC} />
+              </aside>
+              <div className="flex min-w-0 flex-1 flex-col gap-8">
+              <Card id="m-control" className="scroll-mt-4 rounded-2xl border-slate-200">
                 <CardContent className="p-6">
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
@@ -387,7 +408,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
               </Card>
 
               {/* Athletes summary */}
-              <Card className="rounded-2xl border-slate-200">
+              <Card id="m-athletes" className="scroll-mt-4 rounded-2xl border-slate-200">
                 <CardContent className="p-0">
                   <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
                     <div>
@@ -514,7 +535,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
               </Card>
 
               {/* Judges overview */}
-              <Card className="rounded-2xl border-slate-200">
+              <Card id="m-judges" className="scroll-mt-4 rounded-2xl border-slate-200">
                 <CardContent className="p-0">
                   <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
                     <div>
@@ -642,7 +663,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
               </Card>
 
               {/* Activity log */}
-              <Card className="rounded-2xl border-slate-200">
+              <Card id="m-log" className="scroll-mt-4 rounded-2xl border-slate-200">
                 <CardContent className="p-0">
                   <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
                     <div>
@@ -725,7 +746,8 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                   </div>
                 </CardContent>
               </Card>
-            </>
+              </div>
+            </div>
           )}
         </div>
 
@@ -776,7 +798,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
 
       {showEndConfirm && displayRound && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-lg text-red-600">
                 ■
@@ -805,6 +827,49 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                 ✕
               </button>
             </div>
+
+            {unfinishedAthletes.length > 0 ? (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3">
+                <p className="flex flex-wrap items-center gap-x-1.5 text-xs font-semibold text-red-700">
+                  <span aria-hidden>⚠</span>
+                  ยังมีนักกีฬาที่ยังไม่เข้าเส้นชัย {unfinishedAthletes.length} คน
+                  <span className="font-normal text-red-500">
+                    (เข้าเส้นแล้ว {finishedCount}/{roundAthletes.length})
+                  </span>
+                </p>
+                <p className="mt-0.5 text-[11px] text-red-600/80">
+                  หากจบตอนนี้ นักกีฬาเหล่านี้จะไม่มีเวลาเข้าเส้นชัย/อันดับ — ตรวจสอบรายชื่อก่อนยืนยัน
+                </p>
+                <ul className="mt-2 max-h-48 space-y-1 overflow-auto pr-0.5">
+                  {unfinishedAthletes.map((a) => (
+                    <li
+                      key={a.bib}
+                      className="flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 text-xs ring-1 ring-red-100"
+                    >
+                      <span className="w-9 shrink-0 font-mono font-semibold text-slate-900">
+                        #{a.bib}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-slate-700">{a.name}</span>
+                      {a.affiliation && (
+                        <span className="hidden max-w-[40%] truncate text-[10px] text-slate-400 sm:block">
+                          {a.affiliation}
+                        </span>
+                      )}
+                      <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-medium text-amber-700">
+                        ยังไม่เข้าเส้น
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              roundAthletes.length > 0 && (
+                <div className="mt-4 flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium text-emerald-700">
+                  <span aria-hidden>✓</span>
+                  นักกีฬาเข้าเส้นชัยครบทุกคนแล้ว ({roundAthletes.length} คน)
+                </div>
+              )
+            )}
 
             <div className="mt-4 rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-800 ring-1 ring-amber-100">
               เมื่อจบการแข่งขัน:

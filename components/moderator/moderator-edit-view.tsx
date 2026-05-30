@@ -27,6 +27,16 @@ import {
 } from "@/components/moderator/moderator-edit-dialog";
 import { CardEditDialog } from "@/components/moderator/card-edit-dialog";
 import { RoundInfoDialog } from "@/components/moderator/round-info-dialog";
+import { SectionToc, type TocItem } from "@/components/common/section-toc";
+
+const EDIT_TOC: TocItem[] = [
+  { id: "sec-round", label: "ข้อมูลรอบ / เวลา" },
+  { id: "sec-athletes", label: "สถานะนักกีฬา" },
+  { id: "sec-judges", label: "กรรมการ & ใบ" },
+  { id: "sec-laps", label: "เวลา Lap" },
+  { id: "sec-finish", label: "เวลาเข้าเส้นชัย" },
+  { id: "sec-log", label: "ประวัติการแก้ไข" },
+];
 
 import type {
   EditAthlete,
@@ -364,7 +374,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
       />
 
       <main className="flex-1 overflow-auto p-6 lg:p-8">
-        <div className="mx-auto flex max-w-5xl flex-col gap-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6">
           <div className="flex items-center justify-between gap-2">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
@@ -404,9 +414,14 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
             </CardContent>
           </Card>
 
+          <div className="flex gap-6">
+            <aside className="sticky top-0 hidden h-fit w-44 shrink-0 self-start lg:block">
+              <SectionToc items={EDIT_TOC} />
+            </aside>
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
           {/* Round info / timing */}
           {props.roundInfo && (
-            <Card className="rounded-2xl border-slate-200">
+            <Card id="sec-round" className="scroll-mt-4 rounded-2xl border-slate-200">
               <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="min-w-0 space-y-1">
                   <p className="text-sm font-semibold text-slate-900">{props.roundInfo.name}</p>
@@ -435,7 +450,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
           )}
 
           {/* Athlete status */}
-          <Card className="rounded-2xl border-slate-200">
+          <Card id="sec-athletes" className="scroll-mt-4 rounded-2xl border-slate-200">
             <CardContent className="p-0">
               <div className="border-b border-slate-200 px-6 py-4">
                 <h2 className="text-sm font-semibold text-slate-900">
@@ -502,7 +517,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
           </Card>
 
           {/* ── Judges accordion ──────────────────────────────────────────────── */}
-          <Card className="rounded-2xl border-slate-200">
+          <Card id="sec-judges" className="scroll-mt-4 rounded-2xl border-slate-200">
             <CardContent className="p-0">
               <div className="border-b border-slate-200 px-6 py-4">
                 <div className="flex items-center gap-2">
@@ -692,7 +707,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
           </Card>
 
           {/* ── Lap times accordion ───────────────────────────────────────────── */}
-          <Card className="rounded-2xl border-slate-200">
+          <Card id="sec-laps" className="scroll-mt-4 rounded-2xl border-slate-200">
             <CardContent className="p-0">
               <div className="border-b border-slate-200 px-6 py-4">
                 <div className="flex items-center gap-2">
@@ -786,7 +801,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
           </Card>
 
           {/* ── Finish times (table — keeps the original style) ───────────────── */}
-          <Card className="rounded-2xl border-slate-200">
+          <Card id="sec-finish" className="scroll-mt-4 rounded-2xl border-slate-200">
             <CardContent className="p-0">
               <div className="flex items-center gap-2 border-b border-slate-200 px-6 py-4">
                 <Flag className="h-4 w-4 text-slate-500" />
@@ -868,7 +883,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
           </Card>
 
           {/* ── Activity log timeline ─────────────────────────────────────────── */}
-          <Card className="rounded-2xl border-slate-200">
+          <Card id="sec-log" className="scroll-mt-4 rounded-2xl border-slate-200">
             <CardContent className="p-0">
               <div className="flex items-center gap-2 border-b border-slate-200 px-6 py-4">
                 <History className="h-4 w-4 text-slate-500" />
@@ -911,6 +926,8 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
               )}
             </CardContent>
           </Card>
+            </div>
+          </div>
         </div>
       </main>
     </>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import {
   Search,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ArrowUpRight,
@@ -24,11 +25,22 @@ import {
   Radio,
 } from "lucide-react";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type AdminEvent = {
   id: string;
@@ -53,6 +65,23 @@ const STATUS_LABEL: Record<AdminEvent["status"], string> = {
   finished: "เสร็จสิ้น",
 };
 
+function ActionIconTooltip({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="top" sideOffset={4}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function EventsList({ events }: EventsListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -62,6 +91,24 @@ export function EventsList({ events }: EventsListProps) {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const hasActiveFilters =
+    Boolean(searchQuery) ||
+    statusFilter !== "all" ||
+    locationFilter !== "all" ||
+    dateFilterMode !== "none";
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setLocationFilter("all");
+    setDateFilterMode("none");
+    setSingleDate("");
+    setStartDate("");
+    setEndDate("");
+    setCurrentPage(1);
+  };
 
   // Extract unique values for filters
   const locations = useMemo(() => {
@@ -131,231 +178,215 @@ export function EventsList({ events }: EventsListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Search and Filters */}
-      <Card className="rounded-2xl border-slate-200">
-        <CardContent className="p-4">
-          <div className="space-y-3">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                type="text"
-                placeholder="ค้นหาด้วย ชื่อ Event, สถานที่, วันที่, ระยะทาง..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-9 rounded-xl"
+      {/* Search and Filters — compact trigger, panel expands below */}
+      <Collapsible
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        className="space-y-2"
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="relative h-8 shrink-0 gap-1 rounded-lg border-slate-200 px-2.5 text-xs font-medium text-slate-700 shadow-none"
+              aria-expanded={filtersOpen}
+              aria-label="ค้นหาและกรองขั้นสูง"
+            >
+              <Search className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>กรอง</span>
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 opacity-50 transition-transform",
+                  filtersOpen && "rotate-180"
+                )}
+                aria-hidden="true"
               />
-            </div>
+              {hasActiveFilters && (
+                <span
+                  className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white"
+                  aria-hidden="true"
+                />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          <p className="text-xs text-slate-500">
+            แสดง {filteredEvents.length} จาก {events.length} รายการ
+          </p>
+        </div>
 
-            {/* Filters */}
-            <div className="grid gap-3 sm:grid-cols-2">
-              {/* Status Filter */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">
-                  สถานะ
-                </label>
-                <Select
-                  value={statusFilter}
-                  onValueChange={(value) =>
-                    handleFilterChange(setStatusFilter, value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="ทั้งหมด" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">ทั้งหมด</SelectItem>
-                    <SelectItem value="draft">ร่าง</SelectItem>
-                    <SelectItem value="scheduled">กำหนดการ</SelectItem>
-                    <SelectItem value="ongoing">กำลังดำเนินการ</SelectItem>
-                    <SelectItem value="finished">เสร็จสิ้น</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        <CollapsibleContent>
+          <Card className="max-w-full rounded-xl border-slate-200 shadow-sm">
+            <CardContent className="space-y-2.5 p-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="ชื่อ Event, สถานที่, วันที่, ระยะทาง..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="h-8 rounded-lg pl-8 text-sm"
+                  />
+                </div>
 
-              {/* Location Filter */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">
-                  สถานที่
-                </label>
-                <Select
-                  value={locationFilter}
-                  onValueChange={(value) =>
-                    handleFilterChange(setLocationFilter, value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="ทั้งหมด" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">ทั้งหมด</SelectItem>
-                    {locations.map((location) => (
-                      <SelectItem key={location} value={location}>
-                        {location}
-                      </SelectItem>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-slate-600">
+                      สถานะ
+                    </label>
+                    <Select
+                      value={statusFilter}
+                      onValueChange={(value) =>
+                        handleFilterChange(setStatusFilter, value)
+                      }
+                    >
+                      <SelectTrigger className="h-8 rounded-lg text-sm">
+                        <SelectValue placeholder="ทั้งหมด" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">ทั้งหมด</SelectItem>
+                        <SelectItem value="draft">ร่าง</SelectItem>
+                        <SelectItem value="scheduled">กำหนดการ</SelectItem>
+                        <SelectItem value="ongoing">กำลังดำเนินการ</SelectItem>
+                        <SelectItem value="finished">เสร็จสิ้น</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-slate-600">
+                      สถานที่
+                    </label>
+                    <Select
+                      value={locationFilter}
+                      onValueChange={(value) =>
+                        handleFilterChange(setLocationFilter, value)
+                      }
+                    >
+                      <SelectTrigger className="h-8 rounded-lg text-sm">
+                        <SelectValue placeholder="ทั้งหมด" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">ทั้งหมด</SelectItem>
+                        {locations.map((location) => (
+                          <SelectItem key={location} value={location}>
+                            {location}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/80 p-2.5">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <span className="text-[11px] font-semibold text-slate-600">
+                      วันที่
+                    </span>
+                    {(
+                      [
+                        ["none", "ไม่กรอง"],
+                        ["single", "เจาะจง"],
+                        ["range", "ช่วง"],
+                      ] as const
+                    ).map(([mode, label]) => (
+                      <label
+                        key={mode}
+                        className="flex cursor-pointer items-center gap-1.5 text-[11px] text-slate-700"
+                      >
+                        <input
+                          type="radio"
+                          name="dateFilterMode"
+                          value={mode}
+                          checked={dateFilterMode === mode}
+                          onChange={() => {
+                            setDateFilterMode(mode);
+                            if (mode === "none") {
+                              setSingleDate("");
+                              setStartDate("");
+                              setEndDate("");
+                            } else if (mode === "single") {
+                              setStartDate("");
+                              setEndDate("");
+                            } else {
+                              setSingleDate("");
+                            }
+                            setCurrentPage(1);
+                          }}
+                          className="h-3.5 w-3.5 text-blue-600"
+                        />
+                        <span>{label}</span>
+                      </label>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Date Filter Section */}
-            <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <div className="flex items-center gap-4">
-                <label className="text-xs font-semibold text-slate-700">
-                  กรองตามวันที่:
-                </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="dateFilterMode"
-                      value="none"
-                      checked={dateFilterMode === "none"}
-                      onChange={() => {
-                        setDateFilterMode("none");
-                        setSingleDate("");
-                        setStartDate("");
-                        setEndDate("");
-                        setCurrentPage(1);
-                      }}
-                      className="h-4 w-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span>ไม่กรอง</span>
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="dateFilterMode"
-                      value="single"
-                      checked={dateFilterMode === "single"}
-                      onChange={() => {
-                        setDateFilterMode("single");
-                        setStartDate("");
-                        setEndDate("");
-                        setCurrentPage(1);
-                      }}
-                      className="h-4 w-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span>วันที่เจาะจง</span>
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="dateFilterMode"
-                      value="range"
-                      checked={dateFilterMode === "range"}
-                      onChange={() => {
-                        setDateFilterMode("range");
-                        setSingleDate("");
-                        setCurrentPage(1);
-                      }}
-                      className="h-4 w-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span>ช่วงวันที่</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Single Date Input */}
-              {dateFilterMode === "single" && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-700">
-                    เลือกวันที่
-                  </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    <Input
-                      type="date"
-                      value={singleDate}
-                      onChange={(e) => {
-                        setSingleDate(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      className="pl-9 rounded-xl text-sm bg-white"
-                    />
                   </div>
-                </div>
-              )}
 
-              {/* Date Range Inputs */}
-              {dateFilterMode === "range" && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-700">
-                      วันที่เริ่มต้น
-                    </label>
+                  {dateFilterMode === "single" && (
                     <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       <Input
                         type="date"
-                        value={startDate}
+                        value={singleDate}
                         onChange={(e) => {
-                          setStartDate(e.target.value);
+                          setSingleDate(e.target.value);
                           setCurrentPage(1);
                         }}
-                        className="pl-9 rounded-xl text-sm bg-white"
+                        className="h-8 rounded-lg bg-white pl-8 text-sm"
                       />
                     </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-700">
-                      วันที่สิ้นสุด
-                    </label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      <Input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => {
-                          setEndDate(e.target.value);
-                          setCurrentPage(1);
-                        }}
-                        className="pl-9 rounded-xl text-sm bg-white"
-                      />
+                  )}
+
+                  {dateFilterMode === "range" && (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="relative">
+                        <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                        <Input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => {
+                            setStartDate(e.target.value);
+                            setCurrentPage(1);
+                          }}
+                          className="h-8 rounded-lg bg-white pl-8 text-sm"
+                          aria-label="วันที่เริ่มต้น"
+                        />
+                      </div>
+                      <div className="relative">
+                        <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                        <Input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => {
+                            setEndDate(e.target.value);
+                            setCurrentPage(1);
+                          }}
+                          className="h-8 rounded-lg bg-white pl-8 text-sm"
+                          aria-label="วันที่สิ้นสุด"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
+                </div>
+
+              {hasActiveFilters && (
+                <div className="flex justify-end pt-0.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="h-7 rounded-lg px-2 text-[11px]"
+                  >
+                    ล้างตัวกรอง
+                  </Button>
                 </div>
               )}
-            </div>
-
-            {/* Results count */}
-            <div className="flex items-center justify-between border-t border-slate-200 pt-3">
-              <p className="text-xs text-slate-600">
-                แสดง {paginatedEvents.length} จาก {filteredEvents.length}{" "}
-                รายการ
-                {filteredEvents.length !== events.length &&
-                  ` (กรองจากทั้งหมด ${events.length} รายการ)`}
-              </p>
-              {(searchQuery ||
-                statusFilter !== "all" ||
-                locationFilter !== "all" ||
-                dateFilterMode !== "none") && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setStatusFilter("all");
-                    setLocationFilter("all");
-                    setDateFilterMode("none");
-                    setSingleDate("");
-                    setStartDate("");
-                    setEndDate("");
-                    setCurrentPage(1);
-                  }}
-                  className="h-7 rounded-lg text-xs"
-                >
-                  ล้างตัวกรอง
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Events Table */}
       <Card className="overflow-hidden rounded-2xl border-slate-200">
@@ -446,16 +477,18 @@ export function EventsList({ events }: EventsListProps) {
                           {/* 3-dot menu for scheduled / finished (not draft, not ongoing) */}
                           {event.status !== "ongoing" && event.status !== "draft" && (
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 w-8 rounded-full border-slate-200 p-0 text-slate-500 hover:text-slate-700"
-                                  aria-label="เมนูเพิ่มเติมของ Event นี้"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
+                              <ActionIconTooltip label="เมนูเพิ่มเติม">
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 rounded-full border-slate-200 p-0 text-slate-500 hover:text-slate-700"
+                                    aria-label="เมนูเพิ่มเติมของ Event นี้"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                              </ActionIconTooltip>
                               <DropdownMenuContent align="end" className="w-44 text-xs">
                                 <DropdownMenuItem asChild>
                                   <Link
@@ -482,37 +515,43 @@ export function EventsList({ events }: EventsListProps) {
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}
-                          <Link href={`/admin/events/${event.id}`}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
-                              aria-label="รายละเอียด / แก้ไข"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Link href={`/admin/events/${event.id}/report`}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
-                              aria-label="รายงาน"
-                            >
-                              <FileText className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          {event.status !== "draft" && (
-                            <Link href={`/admin/events/${event.id}/moderator`}>
+                          <ActionIconTooltip label="รายละเอียด/แก้ไข">
+                            <Link href={`/admin/events/${event.id}`}>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 w-8 rounded-lg border-emerald-200 p-0 text-emerald-700 hover:bg-emerald-50"
-                                aria-label="Moderator"
+                                className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
+                                aria-label="รายละเอียด/แก้ไข"
                               >
-                                <Radio className="h-4 w-4" />
+                                <Pencil className="h-4 w-4" />
                               </Button>
                             </Link>
+                          </ActionIconTooltip>
+                          <ActionIconTooltip label="Export Report">
+                            <Link href={`/admin/events/${event.id}/report`}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
+                                aria-label="Export Report"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                          </ActionIconTooltip>
+                          {event.status !== "draft" && (
+                            <ActionIconTooltip label="Moderator">
+                              <Link href={`/admin/events/${event.id}/moderator`}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 rounded-lg border-emerald-200 p-0 text-emerald-700 hover:bg-emerald-50"
+                                  aria-label="Moderator"
+                                >
+                                  <Radio className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            </ActionIconTooltip>
                           )}
                         </div>
                       </td>

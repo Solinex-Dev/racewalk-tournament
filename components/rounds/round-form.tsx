@@ -63,8 +63,16 @@ const EMPTY: RoundFormValues = {
 
 const SECRET_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-// Max judges (position JUDGE) per round — head judge & event logger don't count.
+// Per-round official caps — 8 judges + 1 head judge + 1 event logger = 10 max.
 const MAX_JUDGES = 8;
+const MAX_HEAD_JUDGE = 1;
+const MAX_EVENT_LOGGER = 1;
+
+function countChipCls(over: boolean): string {
+  return `inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${
+    over ? "bg-red-100 text-red-700" : "bg-slate-200 text-slate-700"
+  }`;
+}
 
 function generateSecretCode() {
   let code = "";
@@ -108,6 +116,11 @@ export function RoundForm({
   const [judgePickerSelected, setJudgePickerSelected] = React.useState<string[]>([]);
   const [resetSecretIndex, setResetSecretIndex] = React.useState<number | null>(null);
   const [copiedSecretIndex, setCopiedSecretIndex] = React.useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<{
+    kind: "athlete" | "official";
+    index: number;
+    name: string;
+  } | null>(null);
 
   const isEdit = mode === "edit";
 
@@ -156,6 +169,13 @@ export function RoundForm({
   const handleRemoveOfficial = (index: number) =>
     setForm((p) => ({ ...p, officials: p.officials.filter((_, i) => i !== index) }));
 
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.kind === "athlete") handleRemoveAthlete(deleteTarget.index);
+    else handleRemoveOfficial(deleteTarget.index);
+    setDeleteTarget(null);
+  };
+
   const handleZoneChange = (index: number, zone: string) =>
     setForm((p) => ({
       ...p,
@@ -163,14 +183,18 @@ export function RoundForm({
     }));
 
   const judgeCount = form.officials.filter((o) => o.position === "JUDGE").length;
+  const headCount = form.officials.filter((o) => o.position === "HEAD_JUDGE").length;
+  const loggerCount = form.officials.filter((o) => o.position === "EVENT_LOGGER").length;
+
+  const maxForPosition = (pos: OfficialEntry["position"]) =>
+    pos === "JUDGE" ? MAX_JUDGES : pos === "HEAD_JUDGE" ? MAX_HEAD_JUDGE : MAX_EVENT_LOGGER;
 
   const handlePositionChange = (index: number, position: OfficialEntry["position"]) => {
-    if (position === "JUDGE") {
-      const others = form.officials.filter((o, i) => o.position === "JUDGE" && i !== index).length;
-      if (others >= MAX_JUDGES) {
-        setError(`กรรมการ (Judge) ต้องไม่เกิน ${MAX_JUDGES} คนต่อรอบ`);
-        return;
-      }
+    const max = maxForPosition(position);
+    const others = form.officials.filter((o, i) => o.position === position && i !== index).length;
+    if (others >= max) {
+      setError(`${POSITION_LABEL[position]} เลือกได้สูงสุด ${max} คนต่อรอบ`);
+      return;
     }
     setError(null);
     setForm((p) => ({
@@ -212,14 +236,27 @@ export function RoundForm({
     if (toAdd.length > 0) {
       setForm((p) => {
         let judges = p.officials.filter((o) => o.position === "JUDGE").length;
-        // New people default to JUDGE; once the 8-judge cap is reached, extras are
-        // added as ผู้เก็บ Lap Time (the admin can re-assign their position after).
-        const added = toAdd.map((id) => {
-          const position: OfficialEntry["position"] =
-            judges < MAX_JUDGES ? "JUDGE" : "EVENT_LOGGER";
-          if (position === "JUDGE") judges += 1;
-          return { judgeId: id, zone: "", secretCode: generateSecretCode(), position };
-        });
+        let heads = p.officials.filter((o) => o.position === "HEAD_JUDGE").length;
+        let loggers = p.officials.filter((o) => o.position === "EVENT_LOGGER").length;
+        // Fill open slots in order: กรรมการ (≤8) → หัวหน้ากรรมการ (≤1) → ผู้เก็บ Lap Time (≤1).
+        // Extras beyond 10 are skipped (the admin can re-assign positions afterwards).
+        const added: OfficialEntry[] = [];
+        for (const id of toAdd) {
+          let position: OfficialEntry["position"] | null = null;
+          if (judges < MAX_JUDGES) {
+            position = "JUDGE";
+            judges += 1;
+          } else if (heads < MAX_HEAD_JUDGE) {
+            position = "HEAD_JUDGE";
+            heads += 1;
+          } else if (loggers < MAX_EVENT_LOGGER) {
+            position = "EVENT_LOGGER";
+            loggers += 1;
+          }
+          if (position) {
+            added.push({ judgeId: id, zone: "", secretCode: generateSecretCode(), position });
+          }
+        }
         return { ...p, officials: [...p.officials, ...added] };
       });
     }
@@ -231,9 +268,15 @@ export function RoundForm({
     e.preventDefault();
     setError(null);
     if (judgeCount > MAX_JUDGES) {
-      setError(
-        `กรรมการ (Judge) ต้องไม่เกิน ${MAX_JUDGES} คนต่อรอบ — ปัจจุบัน ${judgeCount} คน (เปลี่ยนตำแหน่งหรือลบออกบางคน)`,
-      );
+      setError(`กรรมการ (Judge) ต้องไม่เกิน ${MAX_JUDGES} คนต่อรอบ — ปัจจุบัน ${judgeCount} คน`);
+      return;
+    }
+    if (headCount > MAX_HEAD_JUDGE) {
+      setError(`หัวหน้ากรรมการ เลือกได้สูงสุด ${MAX_HEAD_JUDGE} คนต่อรอบ — ปัจจุบัน ${headCount} คน`);
+      return;
+    }
+    if (loggerCount > MAX_EVENT_LOGGER) {
+      setError(`ผู้เก็บ Lap Time เลือกได้สูงสุด ${MAX_EVENT_LOGGER} คนต่อรอบ — ปัจจุบัน ${loggerCount} คน`);
       return;
     }
     startTransition(async () => {
@@ -287,6 +330,44 @@ export function RoundForm({
               onClick={confirmResetSecret}
             >
               ยืนยันรีเซ็ต
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <DialogContent className="border-slate-200 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900">ยืนยันการลบ?</DialogTitle>
+            <DialogDescription className="text-left text-slate-600">
+              ลบ{deleteTarget?.kind === "athlete" ? "นักกีฬา" : "เจ้าหน้าที่"}{" "}
+              <span className="font-medium text-slate-900">{deleteTarget?.name}</span>{" "}
+              ออกจากรายการในรอบนี้
+              <span className="mt-1 block text-xs text-slate-500">
+                (ยังไม่บันทึกลงฐานข้อมูลจนกว่าจะกด{isEdit ? "บันทึก" : "สร้างรอบ"})
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl border-slate-200"
+              onClick={() => setDeleteTarget(null)}
+            >
+              ยกเลิก
+            </Button>
+            <Button
+              type="button"
+              className="rounded-xl bg-red-600 text-white hover:bg-red-700"
+              onClick={confirmDelete}
+            >
+              ยืนยันลบ
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -432,8 +513,16 @@ export function RoundForm({
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-7 rounded-lg border-slate-200 px-2 text-[11px]"
-                            onClick={() => handleRemoveAthlete(i)}
+                            className="h-7 rounded-lg border-red-200 px-2 text-[11px] text-red-700 hover:bg-red-50"
+                            onClick={() =>
+                              setDeleteTarget({
+                                kind: "athlete",
+                                index: i,
+                                name:
+                                  athleteOptions.find((a) => a.id === row.athleteId)?.name ??
+                                  row.athleteId,
+                              })
+                            }
                           >
                             ลบ
                           </Button>
@@ -454,20 +543,20 @@ export function RoundForm({
                   กรรมการ / เจ้าหน้าที่ในรอบนี้
                 </h2>
                 <p className="mt-0.5 text-[11px] text-slate-600">
-                  เลือกกรรมการ กำหนดตำแหน่ง โซน และรหัสลับสำหรับ join — กรรมการสูงสุด {MAX_JUDGES} คน
-                  (หัวหน้ากรรมการ &amp; ผู้เก็บ Lap Time ไม่นับรวม)
+                  เลือกกรรมการ กำหนดตำแหน่ง โซน และรหัสลับสำหรับ join — สูงสุด {MAX_JUDGES} กรรมการ +{" "}
+                  {MAX_HEAD_JUDGE} หัวหน้ากรรมการ + {MAX_EVENT_LOGGER} ผู้เก็บ Lap Time (รวม{" "}
+                  {MAX_JUDGES + MAX_HEAD_JUDGE + MAX_EVENT_LOGGER} คน)
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                    judgeCount > MAX_JUDGES
-                      ? "bg-red-100 text-red-700"
-                      : "bg-slate-200 text-slate-700"
-                  }`}
-                  title="หัวหน้ากรรมการและผู้เก็บ Lap Time ไม่นับรวมในจำนวนนี้"
-                >
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className={countChipCls(judgeCount > MAX_JUDGES)}>
                   กรรมการ {judgeCount}/{MAX_JUDGES}
+                </span>
+                <span className={countChipCls(headCount > MAX_HEAD_JUDGE)}>
+                  หัวหน้า {headCount}/{MAX_HEAD_JUDGE}
+                </span>
+                <span className={countChipCls(loggerCount > MAX_EVENT_LOGGER)}>
+                  Lap {loggerCount}/{MAX_EVENT_LOGGER}
                 </span>
                 <Button
                   type="button"
@@ -479,7 +568,7 @@ export function RoundForm({
                     setJudgePickerOpen(true);
                   }}
                 >
-                  + เพิ่มกรรมการ
+                  + เพิ่มเจ้าหน้าที่
                 </Button>
               </div>
             </div>
@@ -572,8 +661,15 @@ export function RoundForm({
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-7 rounded-lg border-slate-200 px-2 text-[11px]"
-                            onClick={() => handleRemoveOfficial(i)}
+                            className="h-7 rounded-lg border-red-200 px-2 text-[11px] text-red-700 hover:bg-red-50"
+                            onClick={() =>
+                              setDeleteTarget({
+                                kind: "official",
+                                index: i,
+                                name:
+                                  judgeOptions.find((j) => j.id === row.judgeId)?.name ?? row.judgeId,
+                              })
+                            }
                           >
                             ลบ
                           </Button>
