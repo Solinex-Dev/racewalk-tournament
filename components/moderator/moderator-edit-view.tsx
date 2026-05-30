@@ -394,7 +394,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
       />
 
       <main className="flex-1 overflow-auto p-6 lg:p-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        <div className="mx-auto flex max-w-full flex-col gap-6">
           <PageBreadcrumb
             items={[
               { label: "แดชบอร์ด", href: "/admin" },

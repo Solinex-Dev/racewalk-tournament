@@ -262,7 +262,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
   return (
     <>
       <main className="flex-1 overflow-auto p-6 lg:p-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-8">
+        <div className="mx-auto flex max-w-full flex-col gap-8">
           <PageBreadcrumb
             items={[
               { label: "แดชบอร์ด", href: "/admin" },
