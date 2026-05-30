@@ -9,6 +9,8 @@ import {
   type EditLap,
   type EditFinish,
   type EditRoundOption,
+  type EditRoundInfo,
+  type EditLogItem,
 } from "@/components/moderator/moderator-edit-view";
 
 export const metadata: Metadata = {
@@ -19,6 +21,38 @@ export const metadata: Metadata = {
 type Props = {
   params: Promise<{ eventId: string }>;
   searchParams: Promise<{ round?: string }>;
+};
+
+const ACTION_LABEL: Record<string, string> = {
+  round_start: "เริ่มรอบการแข่งขัน",
+  round_end: "จบรอบการแข่งขัน",
+  athlete_dq: "ตัดสิทธิ์ (DQ)",
+  athlete_dnf: "ไม่จบการแข่งขัน (DNF)",
+  lap_time: "บันทึกเวลา Lap",
+  finish_time: "บันทึกเวลาเข้าเส้นชัย",
+  yellow_card: "ให้ใบเหลือง",
+  red_card: "ให้ใบแดง",
+  red_card_confirm: "ยืนยันใบแดง",
+  red_card_override: "ยกเลิกใบแดง",
+  moderator_delete_card: "ลบใบ (แก้ไข)",
+  moderator_confirm_red: "ยืนยันใบแดง (แก้ไข)",
+  moderator_reject_red: "ยกเลิกใบแดง (แก้ไข)",
+  moderator_edit_card: "แก้ไขใบ (แก้ไข)",
+  moderator_override_status: "แก้สถานะนักกีฬา (แก้ไข)",
+  moderator_edit_lap: "แก้เวลา Lap (แก้ไข)",
+  moderator_delete_lap: "ลบ Lap (แก้ไข)",
+  moderator_edit_finish: "แก้เวลาเข้าเส้นชัย (แก้ไข)",
+  moderator_delete_finish: "ลบเวลาเข้าเส้นชัย (แก้ไข)",
+  moderator_edit_finish_position: "แก้อันดับ (แก้ไข)",
+  moderator_edit_round: "แก้ข้อมูลรอบ (แก้ไข)",
+};
+
+const ACTOR_ROLE_LABEL: Record<string, string> = {
+  JUDGE: "กรรมการ",
+  HEAD_JUDGE: "หัวหน้ากรรมการ",
+  EVENT_LOGGER: "ผู้เก็บ Lap Time",
+  MODERATOR: "ผู้ดูแล",
+  ADMIN: "ผู้ดูแลระบบ",
 };
 
 export default async function ModeratorEditPage(props: Props) {
@@ -64,6 +98,8 @@ export default async function ModeratorEditPage(props: Props) {
         cards={[]}
         laps={[]}
         finishes={[]}
+        logs={[]}
+        roundInfo={null}
       />
     );
   }
@@ -97,6 +133,11 @@ export default async function ModeratorEditPage(props: Props) {
         where: { deletedAt: null },
         include: { athlete: { select: { id: true, name: true } } },
         orderBy: { position: "asc" },
+      },
+      activityLogs: {
+        where: { deletedAt: null },
+        orderBy: { timestamp: "desc" },
+        take: 100,
       },
     },
   });
@@ -163,6 +204,40 @@ export default async function ModeratorEditPage(props: Props) {
     position: ft.position,
   }));
 
+  const athleteNameById = new Map(
+    round.roundAthletes.map((ra) => [ra.athleteId, ra.athlete.name]),
+  );
+
+  const logs: EditLogItem[] = round.activityLogs.map((log) => {
+    const label = ACTION_LABEL[log.actionType] ?? log.actionType;
+    return {
+      id: log.id,
+      time: log.timestamp.toTimeString().slice(0, 8),
+      date: log.timestamp.toLocaleDateString("th-TH", {
+        day: "2-digit",
+        month: "short",
+      }),
+      actorName: log.actorName,
+      actorRoleLabel: ACTOR_ROLE_LABEL[log.actorRole] ?? log.actorRole,
+      actionLabel: label,
+      targetBib: log.targetBib ?? undefined,
+      targetAthlete: log.targetAthleteId
+        ? athleteNameById.get(log.targetAthleteId)
+        : undefined,
+      details: log.details && log.details.trim() !== label ? log.details : undefined,
+    };
+  });
+
+  const roundInfo: EditRoundInfo = {
+    name: round.name,
+    distanceKm: round.distanceKm ?? "",
+    lapCount: round.lapCount,
+    startedAt: round.startedAt?.toISOString() ?? null,
+    endedAt: round.endedAt?.toISOString() ?? null,
+    scheduledTime: round.scheduledTime?.toISOString() ?? null,
+    status: round.status,
+  };
+
   return (
     <ModeratorEditView
       eventId={eventId}
@@ -174,6 +249,8 @@ export default async function ModeratorEditPage(props: Props) {
       cards={cards}
       laps={laps}
       finishes={finishes}
+      logs={logs}
+      roundInfo={roundInfo}
     />
   );
 }

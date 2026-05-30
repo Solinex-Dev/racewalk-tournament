@@ -46,3 +46,25 @@ export type EditFinish = {
   timeMs: number;
   position: number;
 };
+
+export type EditRoundInfo = {
+  name: string;
+  distanceKm: string;
+  lapCount: number | null;
+  startedAt: string | null; // ISO
+  endedAt: string | null; // ISO
+  scheduledTime: string | null; // ISO
+  status: "SCHEDULED" | "ONGOING" | "FINISHED";
+};
+
+export type EditLogItem = {
+  id: string;
+  time: string; // HH:MM:SS
+  date: string; // formatted (th)
+  actorName: string;
+  actorRoleLabel: string;
+  actionLabel: string;
+  targetBib?: string;
+  targetAthlete?: string;
+  details?: string;
+};

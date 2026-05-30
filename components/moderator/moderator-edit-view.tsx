@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ChevronDown, Gavel, Timer, Flag } from "lucide-react";
+import { ChevronDown, Gavel, Timer, Flag, History, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -12,18 +12,21 @@ import {
   moderatorDeleteCard,
   moderatorConfirmRedCard,
   moderatorRejectRedCard,
-  moderatorEditCardSymbol,
+  moderatorEditCard,
   moderatorOverrideAthleteStatus,
   moderatorEditLapTime,
   moderatorDeleteLapTime,
   moderatorEditFinishTime,
   moderatorEditFinishPosition,
   moderatorDeleteFinishTime,
+  moderatorEditRoundInfo,
 } from "@/app/actions/moderator";
 import {
   ModeratorEditDialog,
   type ModeratorEditDialogPayload,
 } from "@/components/moderator/moderator-edit-dialog";
+import { CardEditDialog } from "@/components/moderator/card-edit-dialog";
+import { RoundInfoDialog } from "@/components/moderator/round-info-dialog";
 
 import type {
   EditAthlete,
@@ -32,6 +35,8 @@ import type {
   EditFinish,
   EditLap,
   EditRoundOption,
+  EditRoundInfo,
+  EditLogItem,
 } from "./moderator-edit-types";
 
 export type {
@@ -41,6 +46,8 @@ export type {
   EditJudge,
   EditLap,
   EditFinish,
+  EditRoundInfo,
+  EditLogItem,
 } from "./moderator-edit-types";
 
 export type ModeratorEditViewProps = {
@@ -53,6 +60,8 @@ export type ModeratorEditViewProps = {
   cards: EditCard[];
   laps: EditLap[];
   finishes: EditFinish[];
+  logs: EditLogItem[];
+  roundInfo: EditRoundInfo | null;
 };
 
 function formatMs(ms: number): string {
@@ -70,6 +79,23 @@ function parseTimeString(str: string): number | null {
   if (parts.length === 2) return (parts[0]! * 60 + parts[1]!) * 1000;
   if (parts.length === 3) return (parts[0]! * 3600 + parts[1]! * 60 + parts[2]!) * 1000;
   return null;
+}
+
+function fmtDateTime(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("th-TH", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function elapsed(startIso: string | null, endIso: string | null): string {
+  if (!startIso) return "—";
+  if (!endIso) return "กำลังแข่งขัน";
+  return formatMs(Math.max(0, new Date(endIso).getTime() - new Date(startIso).getTime()));
 }
 
 const SYMBOL_CHAR = { LIFTED_FOOT: "~", BENT_KNEE: ">" } as const;
@@ -101,9 +127,66 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
   const dialogOpen = dialogPayload !== null;
   const [expandedJudges, setExpandedJudges] = React.useState<Set<string>>(new Set());
   const [expandedLapAthletes, setExpandedLapAthletes] = React.useState<Set<string>>(new Set());
+  const [cardToEdit, setCardToEdit] = React.useState<EditCard | null>(null);
+  const [roundInfoOpen, setRoundInfoOpen] = React.useState(false);
 
   const openDialog = (payload: ModeratorEditDialogPayload) => setDialogPayload(payload);
   const closeDialog = () => setDialogPayload(null);
+
+  const handleCardEditConfirm = (data: {
+    judgeId: string;
+    color: "YELLOW" | "RED";
+    symbol: "LIFTED_FOOT" | "BENT_KNEE";
+    issuedAtMs: number;
+    reason: string;
+  }) => {
+    if (!cardToEdit) return;
+    const id = cardToEdit.id;
+    startTransition(async () => {
+      try {
+        await moderatorEditCard(
+          id,
+          { judgeId: data.judgeId, color: data.color, symbol: data.symbol, issuedAtMs: data.issuedAtMs },
+          data.reason,
+        );
+        toast.success("แก้ไขใบเรียบร้อย");
+        setCardToEdit(null);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+      }
+    });
+  };
+
+  const handleRoundInfoConfirm = (data: {
+    name: string;
+    distanceKm: string;
+    lapCount: number | null;
+    startedAtMs: number | null;
+    endedAtMs: number | null;
+    reason: string;
+  }) => {
+    startTransition(async () => {
+      try {
+        await moderatorEditRoundInfo(
+          props.selectedRoundId,
+          {
+            name: data.name,
+            distanceKm: data.distanceKm,
+            lapCount: data.lapCount ?? undefined,
+            startedAtMs: data.startedAtMs,
+            endedAtMs: data.endedAtMs,
+          },
+          data.reason,
+        );
+        toast.success("แก้ไขข้อมูลรอบเรียบร้อย");
+        setRoundInfoOpen(false);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+      }
+    });
+  };
 
   // ── grouping ────────────────────────────────────────────────────────────────
   const cardsByJudge = React.useMemo(() => {
@@ -145,16 +228,10 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
       return n;
     });
 
-  const allJudgesExpanded =
-    props.judges.length > 0 && expandedJudges.size === props.judges.length;
-  const allLapsExpanded =
-    lapAthletes.length > 0 && expandedLapAthletes.size === lapAthletes.length;
-
   // ── dialog dispatch ────────────────────────────────────────────────────────────
   const handleDialogConfirm = ({
     reason,
     timeInput,
-    symbolValue,
   }: {
     reason: string;
     timeInput?: string;
@@ -212,17 +289,6 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
       case "reject-red":
         run(() => moderatorRejectRedCard(dialogPayload.card.id, reason), "ยกเลิกใบแดงเรียบร้อย");
         break;
-      case "edit-card-symbol": {
-        if (!symbolValue) {
-          toast.error("กรุณาเลือกสัญลักษณ์");
-          return;
-        }
-        run(
-          () => moderatorEditCardSymbol(dialogPayload.card.id, symbolValue, reason),
-          "แก้สัญลักษณ์เรียบร้อย",
-        );
-        break;
-      }
       case "delete-lap":
         run(() => moderatorDeleteLapTime(dialogPayload.lap.id, reason), "ลบ Lap เรียบร้อย");
         break;
@@ -278,6 +344,25 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
         formatMs={formatMs}
       />
 
+      <CardEditDialog
+        card={cardToEdit}
+        judges={props.judges}
+        open={cardToEdit !== null}
+        onOpenChange={(open) => {
+          if (!open) setCardToEdit(null);
+        }}
+        onConfirm={handleCardEditConfirm}
+        isPending={isPending}
+      />
+
+      <RoundInfoDialog
+        roundInfo={props.roundInfo}
+        open={roundInfoOpen}
+        onOpenChange={setRoundInfoOpen}
+        onConfirm={handleRoundInfoConfirm}
+        isPending={isPending}
+      />
+
       <main className="flex-1 overflow-auto p-6 lg:p-8">
         <div className="mx-auto flex max-w-5xl flex-col gap-6">
           <div className="flex items-center justify-between gap-2">
@@ -318,6 +403,36 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Round info / timing */}
+          {props.roundInfo && (
+            <Card className="rounded-2xl border-slate-200">
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-sm font-semibold text-slate-900">{props.roundInfo.name}</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                    <span>ระยะ {props.roundInfo.distanceKm || "—"} กม.</span>
+                    <span>Lap {props.roundInfo.lapCount ?? "—"}</span>
+                    <span>เริ่ม {fmtDateTime(props.roundInfo.startedAt)}</span>
+                    <span>จบ {fmtDateTime(props.roundInfo.endedAt)}</span>
+                    <span className="font-medium text-emerald-700">
+                      เวลาที่ใช้ {elapsed(props.roundInfo.startedAt, props.roundInfo.endedAt)}
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => setRoundInfoOpen(true)}
+                  className="h-8 shrink-0 rounded-lg text-xs"
+                >
+                  แก้ไขข้อมูลรอบ / เวลา
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Athlete status */}
           <Card className="rounded-2xl border-slate-200">
@@ -389,7 +504,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
           {/* ── Judges accordion ──────────────────────────────────────────────── */}
           <Card className="rounded-2xl border-slate-200">
             <CardContent className="p-0">
-              <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-6 py-4">
+              <div className="border-b border-slate-200 px-6 py-4">
                 <div className="flex items-center gap-2">
                   <Gavel className="h-4 w-4 text-slate-500" />
                   <div>
@@ -397,19 +512,6 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                     <p className="text-xs text-slate-500">กดเพื่อขยายดูใบของกรรมการแต่ละคน</p>
                   </div>
                 </div>
-                {props.judges.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedJudges(
-                        allJudgesExpanded ? new Set() : new Set(props.judges.map((j) => j.id)),
-                      )
-                    }
-                    className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
-                  >
-                    {allJudgesExpanded ? "หุบทั้งหมด" : "ขยายทั้งหมด"}
-                  </button>
-                )}
               </div>
 
               {props.judges.length === 0 ? (
@@ -559,10 +661,10 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                                         variant="outline"
                                         size="sm"
                                         disabled={isPending}
-                                        onClick={() => openDialog({ kind: "edit-card-symbol", card: c })}
+                                        onClick={() => setCardToEdit(c)}
                                         className="h-7 rounded-lg px-2 text-[11px]"
                                       >
-                                        แก้สัญลักษณ์
+                                        แก้ไข
                                       </Button>
                                       <Button
                                         type="button"
@@ -592,7 +694,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
           {/* ── Lap times accordion ───────────────────────────────────────────── */}
           <Card className="rounded-2xl border-slate-200">
             <CardContent className="p-0">
-              <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-6 py-4">
+              <div className="border-b border-slate-200 px-6 py-4">
                 <div className="flex items-center gap-2">
                   <Timer className="h-4 w-4 text-slate-500" />
                   <div>
@@ -600,19 +702,6 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                     <p className="text-xs text-slate-500">กดเพื่อขยายดูและแก้เวลาแต่ละรอบ</p>
                   </div>
                 </div>
-                {lapAthletes.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedLapAthletes(
-                        allLapsExpanded ? new Set() : new Set(lapAthletes.map((a) => a.id)),
-                      )
-                    }
-                    className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
-                  >
-                    {allLapsExpanded ? "หุบทั้งหมด" : "ขยายทั้งหมด"}
-                  </button>
-                )}
               </div>
 
               {lapAthletes.length === 0 ? (
@@ -775,6 +864,51 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                   </tbody>
                 </table>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Activity log timeline ─────────────────────────────────────────── */}
+          <Card className="rounded-2xl border-slate-200">
+            <CardContent className="p-0">
+              <div className="flex items-center gap-2 border-b border-slate-200 px-6 py-4">
+                <History className="h-4 w-4 text-slate-500" />
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    ประวัติการแก้ไข &amp; เหตุการณ์ ({props.logs.length})
+                  </h2>
+                  <p className="text-xs text-slate-500">บันทึกทุกการแก้ไขและเหตุการณ์ในรอบนี้ (ใหม่สุดบนสุด)</p>
+                </div>
+              </div>
+              {props.logs.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 px-6 py-8 text-center">
+                  <ClipboardList className="h-6 w-6 text-slate-300" />
+                  <p className="text-xs text-slate-500">ยังไม่มีบันทึกในรอบนี้</p>
+                </div>
+              ) : (
+                <div className="max-h-[440px] divide-y divide-slate-100 overflow-auto">
+                  {props.logs.map((log) => (
+                    <div key={log.id} className="flex items-start gap-3 px-6 py-2.5 hover:bg-slate-50/60">
+                      <span className="mt-0.5 shrink-0 font-mono text-[11px] text-slate-400">{log.time}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-slate-800">
+                          <span className="font-medium text-slate-900">{log.actionLabel}</span>
+                          {(log.targetBib || log.targetAthlete) && (
+                            <span className="text-slate-600">
+                              {" — "}
+                              {log.targetBib && <span className="font-mono">{log.targetBib}</span>}
+                              {log.targetAthlete ? ` ${log.targetAthlete}` : ""}
+                            </span>
+                          )}
+                        </p>
+                        {log.details && <p className="mt-0.5 text-[11px] text-slate-500">{log.details}</p>}
+                        <p className="mt-0.5 text-[10px] text-slate-400">
+                          {log.actorRoleLabel} · {log.actorName} · {log.date}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

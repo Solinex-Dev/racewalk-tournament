@@ -487,3 +487,135 @@ export async function moderatorDeleteFinishTime(finishTimeId: string, reason: st
   revalidatePath(`/admin/events`);
   return { ok: true };
 }
+
+// ─── Full card edit (judge / color / symbol / time) ───────────────────────────
+
+/**
+ * Moderator edits all editable fields of a card at once. Handles state when the
+ * color changes (yellow has no state; yellow→red starts PENDING; red→red keeps
+ * its state) and recomputes DQ if a CONFIRMED red is converted away.
+ */
+export async function moderatorEditCard(
+  cardId: string,
+  data: {
+    judgeId: string;
+    color: "YELLOW" | "RED";
+    symbol: "LIFTED_FOOT" | "BENT_KNEE";
+    issuedAtMs?: number;
+  },
+  reason: string,
+) {
+  const user = await requireAdmin();
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    include: { athlete: { select: { name: true } }, judge: { select: { name: true } } },
+  });
+  if (!card) throw new Error("ไม่พบใบที่ระบุ");
+
+  const wasConfirmedRed = card.color === "RED" && card.state === "CONFIRMED";
+  // New state for the (possibly) changed colour.
+  const newState: "PENDING" | "CONFIRMED" | "OVERRIDDEN" | null =
+    data.color === "YELLOW"
+      ? null
+      : card.color === "RED"
+        ? (card.state ?? "PENDING")
+        : "PENDING";
+
+  await prisma.card.update({
+    where: { id: cardId },
+    data: {
+      judgeId: data.judgeId,
+      color: data.color,
+      symbol: data.symbol,
+      state: newState,
+      ...(data.issuedAtMs ? { issuedAt: new Date(data.issuedAtMs) } : {}),
+    },
+  });
+
+  // If a confirmed red was converted to yellow / non-confirmed, recompute DQ.
+  if (wasConfirmedRed && newState !== "CONFIRMED") {
+    const confirmedRed = await prisma.card.count({
+      where: {
+        roundId: card.roundId,
+        athleteId: card.athleteId,
+        color: "RED",
+        state: "CONFIRMED",
+        deletedAt: null,
+      },
+    });
+    if (confirmedRed < RED_CARDS_TO_DQ) {
+      await prisma.roundAthlete.updateMany({
+        where: { roundId: card.roundId, athleteId: card.athleteId, status: "DQ" },
+        data: { status: "OK" },
+      });
+    }
+  }
+
+  const symLabel = (s: string) => (s === "LIFTED_FOOT" ? "ยกเท้า" : "เข่างอ");
+  await logModeratorAction(
+    card.roundId,
+    user,
+    "moderator_edit_card",
+    `แก้ไขใบของ ${card.athlete.name}: ${card.color === "YELLOW" ? "เหลือง" : "แดง"}/${symLabel(card.symbol)} (${card.judge.name}) → ${data.color === "YELLOW" ? "เหลือง" : "แดง"}/${symLabel(data.symbol)} — เหตุผล: ${reason}`,
+    card.athleteId,
+  );
+  await logCurrentAdmin(ActivityLogAction.MODERATOR_EDIT_CARD, "Card", cardId, {
+    roundId: card.roundId,
+    athleteId: card.athleteId,
+    reason,
+  });
+
+  revalidatePath(`/admin/events`);
+  return { ok: true };
+}
+
+// ─── Round info / timing edit ─────────────────────────────────────────────────
+
+/**
+ * Moderator corrects round metadata — name, distance, lap count, and the actual
+ * start/end timestamps (the single source of truth for elapsed time).
+ */
+export async function moderatorEditRoundInfo(
+  roundId: string,
+  data: {
+    name: string;
+    distanceKm?: string;
+    lapCount?: number;
+    startedAtMs?: number | null;
+    endedAtMs?: number | null;
+  },
+  reason: string,
+) {
+  const user = await requireAdmin();
+  const round = await prisma.round.findUnique({ where: { id: roundId } });
+  if (!round) throw new Error("ไม่พบรอบการแข่งขัน");
+  if (!data.name.trim()) throw new Error("ต้องระบุชื่อรอบ");
+  if (data.startedAtMs && data.endedAtMs && data.endedAtMs < data.startedAtMs) {
+    throw new Error("เวลาจบต้องไม่น้อยกว่าเวลาเริ่ม");
+  }
+
+  await prisma.round.update({
+    where: { id: roundId },
+    data: {
+      name: data.name.trim(),
+      distanceKm: data.distanceKm?.trim() || null,
+      lapCount: data.lapCount ? Math.max(1, Math.floor(data.lapCount)) : null,
+      startedAt: data.startedAtMs ? new Date(data.startedAtMs) : null,
+      endedAt: data.endedAtMs ? new Date(data.endedAtMs) : null,
+    },
+  });
+
+  await logModeratorAction(
+    roundId,
+    user,
+    "moderator_edit_round",
+    `แก้ไขข้อมูลรอบ "${round.name}" — เหตุผล: ${reason}`,
+  );
+  await logCurrentAdmin(ActivityLogAction.MODERATOR_EDIT_ROUND, "Round", roundId, {
+    name: data.name,
+    reason,
+  });
+
+  revalidatePath(`/admin/events`);
+  return { ok: true };
+}

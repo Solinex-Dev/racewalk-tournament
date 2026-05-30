@@ -116,9 +116,6 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
   const [expandedJudgeIds, setExpandedJudgeIds] = useState<Set<string>>(new Set());
   const [expandedAthleteBibs, setExpandedAthleteBibs] = useState<Set<string>>(new Set());
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [selectedExportRound, setSelectedExportRound] = useState<string | null>(null);
-  const [selectedExportAthlete, setSelectedExportAthlete] = useState<string>("all");
   const [showEditConfirm, setShowEditConfirm] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -270,16 +267,6 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedExportRound(displayRoundId);
-                  setIsExportModalOpen(true);
-                }}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100"
-              >
-                ส่งออกข้อมูล
-              </button>
               <Link href={`/admin/events/${eventId}`}>
                 <Button variant="outline" size="sm" className="rounded-lg border-slate-200 text-xs">
                   กลับไปหน้า Event
@@ -287,7 +274,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
               </Link>
               <Link href={`/events/${eventId}`}>
                 <Button variant="outline" size="sm" className="rounded-lg border-slate-200 text-xs">
-                  ดูหน้า Public
+                  เปิดหน้า Event Leaderboard
                 </Button>
               </Link>
             </div>
@@ -410,33 +397,9 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                         (ขยายได้หลายคนพร้อมกันเพื่อเทียบ)
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {(() => {
-                        const bibsWithCards = roundAthletes
-                          .filter((a) => a.cardDetails.length > 0)
-                          .map((a) => a.bib);
-                        if (bibsWithCards.length === 0) return null;
-                        const allExpanded = bibsWithCards.every((b) =>
-                          expandedAthleteBibs.has(b),
-                        );
-                        return (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setExpandedAthleteBibs(
-                                allExpanded ? new Set() : new Set(bibsWithCards),
-                              )
-                            }
-                            className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
-                          >
-                            {allExpanded ? "หุบทั้งหมด" : "ขยายทั้งหมด"}
-                          </button>
-                        );
-                      })()}
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                        {roundAthletes.length} คน
-                      </span>
-                    </div>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                      {roundAthletes.length} คน
+                    </span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-full border-collapse text-xs">
@@ -766,65 +729,6 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
           )}
         </div>
 
-        {isExportModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="mx-4 max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">ส่งออกข้อมูล</h2>
-                <button
-                  type="button"
-                  onClick={() => setIsExportModalOpen(false)}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="mt-4 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-700">เลือกรอบการแข่งขัน</label>
-                  <select
-                    value={selectedExportRound || ""}
-                    onChange={(e) => setSelectedExportRound(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900"
-                  >
-                    {rounds.map((r) => (
-                      <option key={r.info.id} value={r.info.id}>
-                        {r.info.name}
-                        {r.info.distance_km && ` (${r.info.distance_km} กม.)`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-700">เลือกข้อมูล</label>
-                  <select
-                    value={selectedExportAthlete}
-                    onChange={(e) => setSelectedExportAthlete(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900"
-                  >
-                    <option value="all">นักกีฬาทั้งหมด</option>
-                  </select>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    disabled
-                    className="flex-1 rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700 opacity-50"
-                  >
-                    PDF (เร็ว ๆ นี้)
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="flex-1 rounded-lg border border-green-300 bg-green-50 px-3 py-2.5 text-sm font-semibold text-green-700 opacity-50"
-                  >
-                    Excel (เร็ว ๆ นี้)
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </main>
 
       {showEditConfirm && (
@@ -1053,6 +957,7 @@ function ActionBadge({ actionType }: { actionType: ActivityLogItem["actionType"]
     moderator_reject_red:     { label: "Mod: ยกเลิกแดง", cls: "bg-violet-50 text-violet-700" },
     moderator_edit_card:      { label: "Mod: แก้ใบ",    cls: "bg-violet-50 text-violet-700" },
     moderator_edit_finish_position: { label: "Mod: แก้อันดับ", cls: "bg-violet-50 text-violet-700" },
+    moderator_edit_round:     { label: "Mod: แก้รอบ",   cls: "bg-violet-50 text-violet-700" },
     moderator_override_status:{ label: "Mod: สถานะ",    cls: "bg-violet-50 text-violet-700" },
     moderator_edit_lap:       { label: "Mod: แก้ Lap",  cls: "bg-violet-50 text-violet-700" },
     moderator_delete_lap:     { label: "Mod: ลบ Lap",   cls: "bg-violet-50 text-violet-700" },

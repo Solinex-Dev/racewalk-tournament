@@ -55,6 +55,7 @@ export const ActivityLogAction = {
   MODERATOR_REJECT_RED: "MODERATOR_REJECT_RED",
   MODERATOR_EDIT_CARD: "MODERATOR_EDIT_CARD",
   MODERATOR_EDIT_FINISH_POSITION: "MODERATOR_EDIT_FINISH_POSITION",
+  MODERATOR_EDIT_ROUND: "MODERATOR_EDIT_ROUND",
 } as const;
 
 export type ActivityLogActionType = (typeof ActivityLogAction)[keyof typeof ActivityLogAction];

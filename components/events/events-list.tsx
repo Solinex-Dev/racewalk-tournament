@@ -12,7 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, ChevronLeft, ChevronRight, ArrowUpRight, Calendar, MoreHorizontal } from "lucide-react";
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpRight,
+  Calendar,
+  MoreHorizontal,
+  Pencil,
+  FileText,
+  Radio,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -427,6 +437,7 @@ export function EventsList({ events }: EventsListProps) {
                                   className="rounded-lg border-indigo-200 bg-indigo-500/5 text-xs font-medium text-indigo-700 hover:bg-indigo-500/15"
                                 >
                                   ลิงก์กรรมการ
+                                  <ArrowUpRight className="h-3 w-3" />
                                 </Button>
                               </Link>
                             </>
@@ -461,9 +472,10 @@ export function EventsList({ events }: EventsListProps) {
                                     <Link
                                       href={`/judge/events/${event.id}/join`}
                                       target="_blank"
-                                      className="flex w-full items-center"
+                                      className="flex w-full items-center justify-between"
                                     >
                                       <span>ลิงก์กรรมการ</span>
+                                      <ArrowUpRight className="h-3 w-3" />
                                     </Link>
                                   </DropdownMenuItem>
                                 )}
@@ -474,18 +486,20 @@ export function EventsList({ events }: EventsListProps) {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="rounded-lg border-slate-200 text-xs"
+                              className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
+                              aria-label="รายละเอียด / แก้ไข"
                             >
-                              รายละเอียด / แก้ไข
+                              <Pencil className="h-4 w-4" />
                             </Button>
                           </Link>
                           <Link href={`/admin/events/${event.id}/report`}>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="rounded-lg border-slate-200 text-xs"
+                              className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
+                              aria-label="รายงาน"
                             >
-                              รายงาน
+                              <FileText className="h-4 w-4" />
                             </Button>
                           </Link>
                           {event.status !== "draft" && (
@@ -493,9 +507,10 @@ export function EventsList({ events }: EventsListProps) {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="rounded-lg border-emerald-200 text-xs text-emerald-700 hover:bg-emerald-50"
+                                className="h-8 w-8 rounded-lg border-emerald-200 p-0 text-emerald-700 hover:bg-emerald-50"
+                                aria-label="Moderator"
                               >
-                                Moderator
+                                <Radio className="h-4 w-4" />
                               </Button>
                             </Link>
                           )}
