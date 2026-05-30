@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { AffiliationForm } from "@/components/affiliations/affiliation-form";
 import { Button } from "@/components/ui/button";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 
 export const metadata: Metadata = {
   title: "เพิ่มสังกัด / สโมสรใหม่ – การแข่งขันเดินทน",
@@ -13,6 +14,13 @@ export default function NewAffiliationPage() {
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-4">
+        <PageBreadcrumb
+          items={[
+            { label: "แดชบอร์ด", href: "/admin" },
+            { label: "สังกัด", href: "/admin/affiliations" },
+            { label: "เพิ่มสังกัด" },
+          ]}
+        />
         <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">

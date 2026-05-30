@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AthletesList } from "@/components/athletes/athletes-list";
 import { CsvImportButton } from "@/components/common/csv-import-button";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { bulkImportAthletes } from "@/app/actions/import";
 import { prisma } from "@/lib/prisma";
 
@@ -38,6 +39,12 @@ export default async function AthletesPage() {
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-6">
+        <PageBreadcrumb
+          items={[
+            { label: "แดชบอร์ด", href: "/admin" },
+            { label: "นักกีฬา" },
+          ]}
+        />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">

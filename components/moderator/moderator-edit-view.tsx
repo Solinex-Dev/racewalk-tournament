@@ -28,6 +28,7 @@ import {
 import { CardEditDialog } from "@/components/moderator/card-edit-dialog";
 import { RoundInfoDialog } from "@/components/moderator/round-info-dialog";
 import { SectionToc, type TocItem } from "@/components/common/section-toc";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 
 const EDIT_TOC: TocItem[] = [
   { id: "sec-round", label: "ข้อมูลรอบ / เวลา" },
@@ -220,7 +221,26 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
     return m;
   }, [props.laps]);
 
-  const lapAthletes = props.athletes.filter((a) => lapsByAthlete.has(a.id));
+  const finishByAthleteId = React.useMemo(
+    () => new Map(props.finishes.map((f) => [f.athleteId, f])),
+    [props.finishes],
+  );
+
+  const roundLapCount = props.roundInfo?.lapCount ?? 0;
+
+  /** Lap rows in DB + finish-only final crossing (legacy) → display lapCount. */
+  const displayedLapCount = (athleteId: string, laps: EditLap[]) => {
+    const hasFinish = finishByAthleteId.has(athleteId);
+    const maxLap = laps.reduce((max, l) => Math.max(max, l.lapNumber), 0);
+    if (hasFinish && roundLapCount > 0 && maxLap < roundLapCount) {
+      return laps.length + 1;
+    }
+    return laps.length;
+  };
+
+  const lapAthletes = props.athletes.filter(
+    (a) => lapsByAthlete.has(a.id) || finishByAthleteId.has(a.id),
+  );
 
   // ── expand helpers ────────────────────────────────────────────────────────────
   const toggleJudge = (id: string) =>
@@ -375,6 +395,15 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
 
       <main className="flex-1 overflow-auto p-6 lg:p-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-6">
+          <PageBreadcrumb
+            items={[
+              { label: "แดชบอร์ด", href: "/admin" },
+              { label: "Events", href: "/admin/events" },
+              { label: props.eventName, href: `/admin/events/${props.eventId}` },
+              { label: "Moderator", href: `/admin/events/${props.eventId}/moderator` },
+              { label: "แก้ไขข้อมูล" },
+            ]}
+          />
           <div className="flex items-center justify-between gap-2">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
@@ -727,7 +756,12 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                 <div className="divide-y divide-slate-100">
                   {lapAthletes.map((a) => {
                     const laps = lapsByAthlete.get(a.id) ?? [];
+                    const finish = finishByAthleteId.get(a.id);
                     const expanded = expandedLapAthletes.has(a.id);
+                    const missingFinalLap =
+                      finish &&
+                      roundLapCount > 0 &&
+                      !laps.some((l) => l.lapNumber === roundLapCount);
                     return (
                       <div key={a.id}>
                         <button
@@ -747,7 +781,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                             </p>
                           </div>
                           <span className="shrink-0 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700">
-                            {laps.length} รอบ
+                            {displayedLapCount(a.id, laps)} รอบ
                           </span>
                         </button>
 
@@ -790,6 +824,29 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                                 </div>
                               </div>
                             ))}
+                            {missingFinalLap && finish && (
+                              <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2">
+                                <div className="flex items-center gap-3">
+                                  <span className="flex h-7 min-w-[3.5rem] items-center justify-center rounded-md bg-emerald-100 px-2 text-[11px] font-semibold text-emerald-800">
+                                    รอบ {roundLapCount}
+                                  </span>
+                                  <span className="font-mono text-sm text-slate-800">
+                                    {formatMs(finish.timeMs)}
+                                  </span>
+                                  <span className="text-[11px] text-emerald-700">เส้นชัย</span>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isPending}
+                                  onClick={() => openDialog({ kind: "edit-finish", finish })}
+                                  className="h-7 rounded-lg px-2 text-[11px]"
+                                >
+                                  แก้เวลา
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

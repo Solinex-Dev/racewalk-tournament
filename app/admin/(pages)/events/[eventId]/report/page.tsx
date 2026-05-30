@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -52,6 +53,14 @@ export default async function EventReportPage(props: Props) {
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
+        <PageBreadcrumb
+          items={[
+            { label: "แดชบอร์ด", href: "/admin" },
+            { label: "Events", href: "/admin/events" },
+            { label: event.name, href: `/admin/events/${eventId}` },
+            { label: "รายงานผล" },
+          ]}
+        />
         <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Export รายงาน</h1>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { EventsList } from "@/components/events/events-list";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -29,6 +30,7 @@ export default async function EventsPage() {
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-6">
+        <PageBreadcrumb items={[{ label: "แดชบอร์ด", href: "/admin" }, { label: "Events" }]} />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">

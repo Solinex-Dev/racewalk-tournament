@@ -5,6 +5,7 @@ import { authOptions } from "@/auth";
 import { isAdminSession } from "@/lib/admin-auth-redirect";
 import { prisma } from "@/lib/prisma";
 import { ProfileForm } from "@/components/admins/profile-form";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,12 @@ export default async function AdminSettingsPage() {
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
+        <PageBreadcrumb
+          items={[
+            { label: "แดชบอร์ด", href: "/admin" },
+            { label: "ตั้งค่า" },
+          ]}
+        />
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">การตั้งค่า</h1>
           <p className="text-sm text-slate-600">

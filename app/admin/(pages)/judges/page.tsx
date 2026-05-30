@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { JudgesList } from "@/components/judges/judges-list";
 import { CsvImportButton } from "@/components/common/csv-import-button";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { bulkImportJudges } from "@/app/actions/import";
 import { prisma } from "@/lib/prisma";
 
@@ -38,6 +39,12 @@ export default async function JudgesPage() {
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-6">
+        <PageBreadcrumb
+          items={[
+            { label: "แดชบอร์ด", href: "/admin" },
+            { label: "กรรมการ" },
+          ]}
+        />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">

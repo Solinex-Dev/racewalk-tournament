@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { RoundForm, type RoundFormValues } from "@/components/rounds/round-form";
 import { Button } from "@/components/ui/button";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -25,6 +26,7 @@ export default async function RoundDetailPage(props: Props) {
     prisma.round.findUnique({
       where: { id: roundId, deletedAt: null },
       include: {
+        event: { select: { name: true } },
         roundAthletes: { where: { deletedAt: null } },
         roundOfficials: { where: { deletedAt: null } },
       },
@@ -64,6 +66,14 @@ export default async function RoundDetailPage(props: Props) {
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-4">
+        <PageBreadcrumb
+          items={[
+            { label: "แดชบอร์ด", href: "/admin" },
+            { label: "Events", href: "/admin/events" },
+            { label: round.event.name, href: `/admin/events/${eventId}` },
+            { label: round.name },
+          ]}
+        />
         <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">

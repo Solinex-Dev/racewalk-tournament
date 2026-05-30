@@ -105,40 +105,81 @@ export async function recordFinishTime(athleteId: string, timeMs: number) {
     where: { roundId: session.roundId, deletedAt: null },
   });
   const position = finishedCount + 1;
-
-  await prisma.finishTime.create({
-    data: {
-      roundId: session.roundId,
-      athleteId,
-      timeMs,
-      position,
-    },
-  });
-
   const lapCount = round.lapCount ?? 0;
-  await prisma.roundAthlete.update({
-    where: { roundId_athleteId: { roundId: session.roundId, athleteId } },
-    data: { position },
-  });
 
-  if (lapCount > 0 && lapCount > round.currentLap) {
-    await prisma.round.update({
-      where: { id: session.roundId },
-      data: { currentLap: lapCount },
+  await prisma.$transaction(async (tx) => {
+    await tx.finishTime.create({
+      data: {
+        roundId: session.roundId,
+        athleteId,
+        timeMs,
+        position,
+      },
     });
-  }
 
-  await prisma.roundActivityLog.create({
-    data: {
-      roundId: session.roundId,
-      actorId: session.judgeId,
-      actorName: session.judgeName,
-      actorRole: session.position,
-      actionType: "finish_time",
-      targetAthleteId: athleteId,
-      targetBib: ra.bib,
-      details: `เข้าเส้นชัยอันดับ ${position} - ${formatMs(timeMs)}`,
-    },
+    // Final lap crossing is stored as finish — also persist LapTime for lap N so
+    // lap lists match lapCount (e.g. 10/10 shows 10 rows, not 9 + finish only).
+    if (lapCount > 0) {
+      const finalLap = await tx.lapTime.findFirst({
+        where: {
+          roundId: session.roundId,
+          athleteId,
+          lapNumber: lapCount,
+          deletedAt: null,
+        },
+      });
+      if (!finalLap) {
+        await tx.lapTime.create({
+          data: {
+            roundId: session.roundId,
+            athleteId,
+            lapNumber: lapCount,
+            timeMs,
+            recordedBy: session.judgeId,
+            source: session.position,
+          },
+        });
+        await tx.roundActivityLog.create({
+          data: {
+            roundId: session.roundId,
+            actorId: session.judgeId,
+            actorName: session.judgeName,
+            actorRole: session.position,
+            actionType: "lap_time",
+            targetAthleteId: athleteId,
+            targetBib: ra.bib,
+            lapNumber: lapCount,
+            details: `Lap ${lapCount} - ${formatMs(timeMs)}`,
+          },
+        });
+      }
+    }
+
+    await tx.roundAthlete.update({
+      where: { roundId_athleteId: { roundId: session.roundId, athleteId } },
+      data: { position },
+    });
+
+    if (lapCount > 0 && lapCount > round.currentLap) {
+      await tx.round.update({
+        where: { id: session.roundId },
+        data: { currentLap: lapCount },
+      });
+    }
+
+    await tx.roundActivityLog.create({
+      data: {
+        roundId: session.roundId,
+        actorId: session.judgeId,
+        actorName: session.judgeName,
+        actorRole: session.position,
+        actionType: "finish_time",
+        targetAthleteId: athleteId,
+        targetBib: ra.bib,
+        lapNumber: lapCount > 0 ? lapCount : undefined,
+        details: `เข้าเส้นชัยอันดับ ${position} - ${formatMs(timeMs)}`,
+      },
+    });
   });
 
   // Auto-finish the round once every in-standing (OK) athlete has crossed the

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { startRound, endRound } from "@/app/actions/round-timing";
 import { SectionToc, type TocItem } from "@/components/common/section-toc";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 
 const MAIN_TOC: TocItem[] = [
   { id: "m-control", label: "ควบคุมการแข่งขัน" },
@@ -262,6 +263,14 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
     <>
       <main className="flex-1 overflow-auto p-6 lg:p-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-8">
+          <PageBreadcrumb
+            items={[
+              { label: "แดชบอร์ด", href: "/admin" },
+              { label: "Events", href: "/admin/events" },
+              { label: event.name, href: `/admin/events/${eventId}` },
+              { label: "Moderator" },
+            ]}
+          />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">

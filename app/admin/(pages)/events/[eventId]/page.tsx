@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { EventForm, type EventFormValues } from "@/components/events/event-form";
 import { RoundsList, type Round } from "@/components/rounds/rounds-list";
 import { Button } from "@/components/ui/button";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -64,6 +65,13 @@ export default async function EventDetailPage(props: Props) {
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-6">
+        <PageBreadcrumb
+          items={[
+            { label: "แดชบอร์ด", href: "/admin" },
+            { label: "Events", href: "/admin/events" },
+            { label: event.name },
+          ]}
+        />
         <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">

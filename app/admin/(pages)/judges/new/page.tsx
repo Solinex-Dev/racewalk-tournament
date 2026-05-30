@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { JudgeForm } from "@/components/judges/judge-form";
 import { Button } from "@/components/ui/button";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 
 export const metadata: Metadata = {
   title: "เพิ่มกรรมการใหม่ – การแข่งขันเดินทน",
@@ -13,6 +14,13 @@ export default function NewJudgePage() {
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-4">
+        <PageBreadcrumb
+          items={[
+            { label: "แดชบอร์ด", href: "/admin" },
+            { label: "กรรมการ", href: "/admin/judges" },
+            { label: "เพิ่มกรรมการ" },
+          ]}
+        />
         <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
