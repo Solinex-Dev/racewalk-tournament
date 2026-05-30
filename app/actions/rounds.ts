@@ -22,7 +22,20 @@ export type RoundActionData = {
   officials: OfficialInput[];
 };
 
+/** Max judges (position JUDGE) per round — head judge & event logger don't count. */
+const MAX_JUDGES_PER_ROUND = 8;
+
+function assertJudgeLimit(officials: OfficialInput[]) {
+  const judges = officials.filter((o) => o.position === "JUDGE").length;
+  if (judges > MAX_JUDGES_PER_ROUND) {
+    throw new Error(
+      `กรรมการ (Judge) ต้องไม่เกิน ${MAX_JUDGES_PER_ROUND} คนต่อรอบ — ปัจจุบัน ${judges} คน (หัวหน้ากรรมการและผู้เก็บ Lap Time ไม่นับรวม)`,
+    );
+  }
+}
+
 export async function createRound(eventId: string, data: RoundActionData) {
+  assertJudgeLimit(data.officials);
   let createdId = "";
   await prisma.$transaction(async (tx) => {
     const round = await tx.round.create({
@@ -76,6 +89,7 @@ export async function updateRound(
   roundId: string,
   data: RoundActionData,
 ) {
+  assertJudgeLimit(data.officials);
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {

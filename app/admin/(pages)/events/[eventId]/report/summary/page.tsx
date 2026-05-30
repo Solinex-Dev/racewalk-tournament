@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { PrintButton } from "@/components/report/print-button";
 import {
   loadEventSummary,
-  formatMs,
   type RoundSummary,
   type EventSummary,
 } from "@/lib/report/summary-sheet";
@@ -20,8 +19,10 @@ type Props = {
   searchParams: Promise<{ round?: string }>;
 };
 
+const JUDGE_SLOTS = 8;
 const SYM_LIFT = "~";
 const SYM_BENT = "<";
+const TICK = "✓";
 
 const ROUND_STATUS_TH: Record<RoundSummary["status"], string> = {
   SCHEDULED: "กำหนดการ",
@@ -33,34 +34,28 @@ function thaiDate(d: Date): string {
   return d.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
 }
 
-// Relative column weights → identical proportions across every round's table.
-const W = {
-  bib: 30,
-  name: 150,
-  country: 46,
-  jSub: 22, // each of ~ / < / RC per judge
-  tSub: 24, // each of the three totals columns
-  rank: 40,
-  finish: 80,
-  status: 48,
-  dqTime: 52,
-  offence: 72,
-} as const;
-
 function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
-  const judges = round.judges;
-  const total =
-    W.bib +
-    W.name +
-    W.country +
-    judges.length * 3 * W.jSub +
-    3 * W.tSub +
-    W.rank +
-    W.finish +
-    W.status +
-    W.dqTime +
-    W.offence;
-  const pc = (w: number) => `${((w / total) * 100).toFixed(3)}%`;
+  const J = Math.max(JUDGE_SLOTS, round.judges.length);
+  const slots = Array.from({ length: J }, (_, i) => round.judges[i] ?? null);
+
+  // per-judge column tallies for the CHECK·TOTAL row
+  const tally = slots.map((j) => {
+    if (!j) return { lift: 0, bent: 0, rc: 0 };
+    return {
+      lift: round.athletes.filter((a) => a.marks[j.id]?.yellowLifted).length,
+      bent: round.athletes.filter((a) => a.marks[j.id]?.yellowBent).length,
+      rc: round.athletes.filter(
+        (a) => a.marks[j.id]?.red && a.marks[j.id]!.red!.state !== "OVERRIDDEN",
+      ).length,
+    };
+  });
+  const grand = {
+    lift: round.athletes.reduce((n, a) => n + a.totals.lifted, 0),
+    bent: round.athletes.reduce((n, a) => n + a.totals.bent, 0),
+    rc: round.athletes.reduce((n, a) => n + a.totals.red, 0),
+  };
+
+  const totalCols = 1 + J * 3 + 2 + 2 + 1 + 3;
 
   return (
     <section className="sheet">
@@ -69,120 +64,122 @@ function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
 
       <table className="info">
         <colgroup>
-          <col style={{ width: "15%" }} />
-          <col style={{ width: "18.5%" }} />
-          <col style={{ width: "15%" }} />
-          <col style={{ width: "18.5%" }} />
-          <col style={{ width: "13%" }} />
-          <col style={{ width: "20%" }} />
+          <col style={{ width: "16%" }} />
+          <col style={{ width: "18%" }} />
+          <col style={{ width: "14%" }} />
+          <col style={{ width: "18%" }} />
+          <col style={{ width: "16%" }} />
+          <col style={{ width: "18%" }} />
         </colgroup>
         <tbody>
           <tr>
-            <td className="k">รายการ / EVENT</td>
-            <td colSpan={5}>
+            <td className="k">DATE / วันที่</td>
+            <td>{thaiDate(ev.date)}</td>
+            <td className="k">START TIME</td>
+            <td>{round.startTime || "—"}</td>
+            <td className="k">CHIEF JUDGE</td>
+            <td>{round.chiefJudge || "—"}</td>
+          </tr>
+          <tr>
+            <td className="k">EVENT / รายการ</td>
+            <td colSpan={3}>
               {ev.name} — {round.name}
               {round.heatName ? ` (${round.heatName})` : ""}
             </td>
-          </tr>
-          <tr>
-            <td className="k">วันที่ / DATE</td>
-            <td>{thaiDate(ev.date)}</td>
-            <td className="k">เวลาเริ่ม / START</td>
-            <td>{round.startTime || "—"}</td>
-            <td className="k">ระยะ / DISTANCE</td>
-            <td>{round.distanceKm ? `${round.distanceKm} กม.` : "—"}</td>
-          </tr>
-          <tr>
-            <td className="k">สถานที่ / VENUE</td>
-            <td>{ev.location}</td>
-            <td className="k">หัวหน้ากรรมการ / CHIEF</td>
-            <td>{round.chiefJudge || "—"}</td>
-            <td className="k">สถานะ / STATUS</td>
-            <td>{ROUND_STATUS_TH[round.status]}</td>
-          </tr>
-          <tr>
-            <td className="k">ผู้บันทึกเวลา / RECORDERS</td>
-            <td colSpan={5}>{round.recorders.join(", ") || "—"}</td>
+            <td className="k">STATUS</td>
+            <td>
+              {ROUND_STATUS_TH[round.status]}
+              {round.distanceKm ? ` • ${round.distanceKm} กม.` : ""}
+            </td>
           </tr>
         </tbody>
       </table>
 
       <table className="rwjs-grid">
         <colgroup>
-          <col style={{ width: pc(W.bib) }} />
-          <col style={{ width: pc(W.name) }} />
-          <col style={{ width: pc(W.country) }} />
-          {judges.map((j) => (
-            <Fragment key={j.id}>
-              <col style={{ width: pc(W.jSub) }} />
-              <col style={{ width: pc(W.jSub) }} />
-              <col style={{ width: pc(W.jSub) }} />
+          <col style={{ width: "13%" }} />
+          {slots.map((_, i) => (
+            <Fragment key={i}>
+              <col style={{ width: "2.3%" }} />
+              <col style={{ width: "2.3%" }} />
+              <col style={{ width: "2.6%" }} />
             </Fragment>
           ))}
-          <col style={{ width: pc(W.tSub) }} />
-          <col style={{ width: pc(W.tSub) }} />
-          <col style={{ width: pc(W.tSub) }} />
-          <col style={{ width: pc(W.rank) }} />
-          <col style={{ width: pc(W.finish) }} />
-          <col style={{ width: pc(W.status) }} />
-          <col style={{ width: pc(W.dqTime) }} />
-          <col style={{ width: pc(W.offence) }} />
+          <col style={{ width: "4%" }} />
+          <col style={{ width: "4%" }} />
+          <col style={{ width: "4.5%" }} />
+          <col style={{ width: "5.5%" }} />
+          <col style={{ width: "5%" }} />
+          <col style={{ width: "3.2%" }} />
+          <col style={{ width: "3.2%" }} />
+          <col style={{ width: "3.6%" }} />
         </colgroup>
         <thead>
           <tr>
-            <th rowSpan={2}>
-              หมายเลข
+            <th rowSpan={3}>
+              หมายเลข / นักกีฬา
               <br />
-              BIB
+              Athlete
             </th>
-            <th rowSpan={2}>นักกีฬา / ATHLETE</th>
-            <th rowSpan={2}>ประเทศ</th>
-            {judges.map((j, idx) => (
-              <th key={j.id} colSpan={3} className="jhead">
-                <span className="jname">
-                  {idx + 1}. {j.name}
-                </span>
-                {j.zone ? <span className="zone">{j.zone}</span> : null}
+            {slots.map((j, i) => (
+              <th key={i} colSpan={3} className="jhead">
+                <span className="jnum">{i + 1}</span>
+                {j ? (
+                  <>
+                    <br />
+                    <span className="jname">{j.name}</span>
+                  </>
+                ) : null}
               </th>
             ))}
-            <th colSpan={3}>
-              รวม
+            <th colSpan={2}>Penalty Zone</th>
+            <th colSpan={2}>Chief Judge</th>
+            <th rowSpan={3}>
+              DQ notif.
               <br />
-              TOTALS
+              Time
             </th>
-            <th rowSpan={2}>
-              อันดับ
+            <th rowSpan={3}>
+              CHECK OF
               <br />
-              RANK
+              {SYM_LIFT}
             </th>
-            <th rowSpan={2}>
-              เวลาเข้าเส้นชัย
+            <th rowSpan={3}>
+              YELLOW PADDLES
               <br />
-              FINISH
+              {SYM_BENT}
             </th>
-            <th rowSpan={2}>สถานะ</th>
-            <th rowSpan={2}>
-              เวลา
+            <th rowSpan={3}>
+              DISQUAL.
               <br />
-              DQ
-            </th>
-            <th rowSpan={2}>
-              ความผิด
-              <br />
-              OFFENCE
+              RC
             </th>
           </tr>
-          <tr className="subhead">
-            {judges.map((j) => (
-              <ThSymbols key={j.id} />
+          <tr>
+            {slots.map((_, i) => (
+              <Fragment key={i}>
+                <th colSpan={2}>Yellow Paddle</th>
+                <th rowSpan={2}>RC</th>
+              </Fragment>
             ))}
-            <ThSymbols />
+            <th rowSpan={2}>Entrance</th>
+            <th rowSpan={2}>Exit</th>
+            <th rowSpan={2}>Time</th>
+            <th rowSpan={2}>Offence</th>
+          </tr>
+          <tr>
+            {slots.map((_, i) => (
+              <Fragment key={i}>
+                <th>{SYM_LIFT}</th>
+                <th>{SYM_BENT}</th>
+              </Fragment>
+            ))}
           </tr>
         </thead>
         <tbody>
           {round.athletes.length === 0 ? (
             <tr>
-              <td colSpan={3 + judges.length * 3 + 8} className="empty">
+              <td colSpan={totalCols} className="empty">
                 — ไม่มีนักกีฬาในรอบนี้ —
               </td>
             </tr>
@@ -191,12 +188,12 @@ function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
               const cls = a.status === "DQ" ? "dq" : a.status === "DNF" ? "dnf" : "";
               return (
                 <tr key={a.bib} className={cls}>
-                  <td className="bib">{a.bib}</td>
-                  <td className="name">{a.name}</td>
-                  <td>{a.country}</td>
-                  {judges.map((j) => {
-                    const m = a.marks[j.id] ?? { yellowLifted: false, yellowBent: false, red: null };
-                    const rcCls = m.red
+                  <td className="name">
+                    <span className="mono">{a.bib}</span> {a.name}
+                  </td>
+                  {slots.map((j, i) => {
+                    const m = j ? a.marks[j.id] : undefined;
+                    const rcCls = m?.red
                       ? m.red.state === "OVERRIDDEN"
                         ? "rc overridden"
                         : m.red.state === "PENDING"
@@ -204,86 +201,67 @@ function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
                           : "rc"
                       : "";
                     return (
-                      <RedCells
-                        key={j.id}
-                        lift={m.yellowLifted}
-                        bent={m.yellowBent}
-                        rc={
-                          m.red
+                      <Fragment key={i}>
+                        <td>{m?.yellowLifted ? TICK : ""}</td>
+                        <td>{m?.yellowBent ? TICK : ""}</td>
+                        <td className={rcCls}>
+                          {m?.red
                             ? m.red.state === "OVERRIDDEN"
                               ? `(${m.red.symbol})`
                               : m.red.symbol
-                            : ""
-                        }
-                        rcCls={rcCls}
-                      />
+                            : ""}
+                        </td>
+                      </Fragment>
                     );
                   })}
-                  <td className="tot">{a.totals.lifted || ""}</td>
-                  <td className="tot">{a.totals.bent || ""}</td>
-                  <td className={a.totals.red > 0 ? "tot rc" : "tot"}>{a.totals.red || ""}</td>
-                  <td className="rank">{a.status === "OK" ? a.position ?? "" : ""}</td>
-                  <td className="mono">{formatMs(a.finishMs)}</td>
-                  <td>{a.status === "DQ" ? "DQ" : a.status === "DNF" ? "DNF" : a.finishMs ? "จบ" : ""}</td>
-                  <td className="mono">{a.dq?.time ?? ""}</td>
-                  <td className="offence">{a.dq?.offence ?? ""}</td>
+                  <td />
+                  <td />
+                  <td className="mono">{a.status === "DQ" ? a.dq?.time ?? "" : ""}</td>
+                  <td>{a.status === "DQ" ? a.dq?.offence ?? "" : ""}</td>
+                  <td className="mono">{a.status === "DQ" ? a.dq?.time ?? "" : ""}</td>
+                  <td>{a.totals.lifted || ""}</td>
+                  <td>{a.totals.bent || ""}</td>
+                  <td className={a.totals.red > 0 ? "rc" : ""}>{a.totals.red || ""}</td>
                 </tr>
               );
             })
           )}
         </tbody>
+        {round.athletes.length > 0 && (
+          <tfoot>
+            <tr className="total">
+              <td className="name">CHECK · TOTAL</td>
+              {tally.map((t, i) => (
+                <Fragment key={i}>
+                  <td>{t.lift || ""}</td>
+                  <td>{t.bent || ""}</td>
+                  <td>{t.rc || ""}</td>
+                </Fragment>
+              ))}
+              <td />
+              <td />
+              <td />
+              <td />
+              <td />
+              <td>{grand.lift || ""}</td>
+              <td>{grand.bent || ""}</td>
+              <td>{grand.rc || ""}</td>
+            </tr>
+          </tfoot>
+        )}
       </table>
-
-      <div className="legend">
-        <strong>สัญลักษณ์:</strong>&nbsp; {SYM_LIFT} = ยกเท้า (loss of contact) &nbsp;|&nbsp; {SYM_BENT} =
-        เข่างอ (bent knee) &nbsp;|&nbsp; RC = ใบแดง (Red Card) &nbsp;|&nbsp; ( ) = ใบแดงที่ถูกยกเลิก
-      </div>
 
       <div className="signs">
         <div className="sign">
           <div className="line" />
-          หัวหน้ากรรมการ / CHIEF JUDGE
+          ASSISTANTS CHIEF JUDGE / ผู้ช่วยหัวหน้ากรรมการ
         </div>
         <div className="sign">
           <div className="line" />
-          ผู้ช่วยหัวหน้ากรรมการ / ASSISTANT CHIEF JUDGE
-        </div>
-        <div className="sign">
-          <div className="line" />
-          ผู้บันทึก / RECORDERS
+          RECORDERS / ผู้บันทึก
         </div>
       </div>
     </section>
-  );
-}
-
-function ThSymbols() {
-  return (
-    <>
-      <th className="sym">{SYM_LIFT}</th>
-      <th className="sym">{SYM_BENT}</th>
-      <th className="sym">RC</th>
-    </>
-  );
-}
-
-function RedCells({
-  lift,
-  bent,
-  rc,
-  rcCls,
-}: {
-  lift: boolean;
-  bent: boolean;
-  rc: string;
-  rcCls: string;
-}) {
-  return (
-    <>
-      <td className="mk">{lift ? SYM_LIFT : ""}</td>
-      <td className="mk">{bent ? SYM_BENT : ""}</td>
-      <td className={`mk ${rcCls}`}>{rc}</td>
-    </>
   );
 }
 
@@ -341,58 +319,76 @@ const CSS = `
 .toolbar .tlink:hover { text-decoration:underline; }
 .toolbar .thint { color:#64748b; font-size:12px; }
 
-.title { background:#0f172a; color:#fff; text-align:center; font-weight:700; font-size:15pt; padding:8px 6px; letter-spacing:.6px; }
-.subtitle { text-align:center; font-weight:600; padding:5px; background:#eef2f7; font-size:11pt; border-bottom:1px solid #cbd5e1; }
+.title { text-align:center; font-weight:700; font-size:15pt; padding:6px; letter-spacing:.4px; border:1.5px solid #000; border-bottom:none; }
+.subtitle { text-align:center; font-weight:600; padding:4px; font-size:10.5pt; border:1.5px solid #000; border-top:none; }
 
-table.info { width:100%; border-collapse:collapse; margin:8px 0 10px; font-size:9pt; table-layout:fixed; }
-table.info td { border:1px solid #cbd5e1; padding:4px 8px; vertical-align:middle; overflow:hidden; text-overflow:ellipsis; }
-table.info td.k { background:#f1f5f9; font-weight:700; color:#334155; }
+table.info { width:100%; border-collapse:collapse; margin:6px 0 8px; font-size:9pt; table-layout:fixed; }
+table.info td { border:1px solid #000; padding:3px 7px; vertical-align:middle; overflow:hidden; text-overflow:ellipsis; }
+table.info td.k { background:#f2f2f2; font-weight:700; }
 
-table.rwjs-grid { display:table; width:100%; border-collapse:collapse; table-layout:fixed; font-size:8pt; }
-table.rwjs-grid th, table.rwjs-grid td { border:1px solid #94a3b8; padding:3px 2px; text-align:center; vertical-align:middle; overflow:hidden; line-height:1.25; }
-table.rwjs-grid thead th { background:#e8edf3; font-weight:700; font-size:7.6pt; }
-table.rwjs-grid thead tr:first-child th { height:36px; padding:2px 3px; }
-table.rwjs-grid thead tr.subhead th { height:15px; }
-table.rwjs-grid th.sym { font-size:8.5pt; }
-table.rwjs-grid th.jhead { line-height:1.15; }
-table.rwjs-grid th.jhead .jname { display:block; font-size:7.4pt; }
-table.rwjs-grid th.jhead .zone { display:block; font-weight:500; font-size:6.8pt; color:#475569; margin-top:1px; }
-table.rwjs-grid tbody td { height:23px; }
-table.rwjs-grid tbody tr:nth-child(even) td { background:#f8fafc; }
-table.rwjs-grid td.name { text-align:left; padding-left:7px; font-weight:600; white-space:nowrap; text-overflow:ellipsis; }
-table.rwjs-grid td.bib { font-weight:700; }
-table.rwjs-grid td.mono { font-variant-numeric:tabular-nums; letter-spacing:.2px; }
-table.rwjs-grid td.mk { font-size:8.6pt; }
-table.rwjs-grid td.tot { font-weight:600; background:#fbfdff; }
-table.rwjs-grid td.offence { font-size:7.6pt; letter-spacing:1px; }
-table.rwjs-grid tbody tr.dq td { background:#fef2f2; color:#b91c1c; }
-table.rwjs-grid tbody tr.dnf td { background:#fffbeb; color:#b45309; }
+table.rwjs-grid { display:table; width:100%; border-collapse:collapse; table-layout:fixed; font-size:7pt; }
+table.rwjs-grid th, table.rwjs-grid td { border:1px solid #000; padding:1.5px 1px; text-align:center; vertical-align:middle; overflow:hidden; line-height:1.15; }
+table.rwjs-grid thead th { background:#f2f2f2; font-weight:700; font-size:6.6pt; }
+table.rwjs-grid thead { display:table-header-group; }
+table.rwjs-grid th.jhead .jnum { font-size:8pt; }
+table.rwjs-grid th.jhead .jname { font-weight:500; font-size:6pt; }
+table.rwjs-grid th.hide { border:none; background:transparent; padding:0; }
+table.rwjs-grid td.name { text-align:left; white-space:nowrap; font-weight:600; padding-left:4px; font-size:7pt; }
+table.rwjs-grid td.mono, table.rwjs-grid .mono { font-variant-numeric:tabular-nums; }
+table.rwjs-grid tbody tr.dq td { color:#c00000; }
+table.rwjs-grid tbody tr.dnf td { color:#b45309; }
 table.rwjs-grid td.empty, p.empty { color:#94a3b8; font-style:italic; }
-.rc { font-weight:700; color:#b91c1c; }
-.rc.pending { color:#c2410c; }
+table.rwjs-grid tfoot td { background:#f2f2f2; font-weight:700; }
+.rc { font-weight:700; color:#c00000; font-size:8pt; }
+.rc.pending { color:#c55a11; }
 .rc.overridden { color:#94a3b8; text-decoration:line-through; font-weight:400; }
-table.rwjs-grid tbody tr.dq td.rc { color:#991b1b; }
 
-.legend { font-size:8pt; color:#475569; margin-top:8px; padding:5px 8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; }
-.signs { display:flex; gap:36px; margin-top:30px; padding:0 10px; }
-.sign { flex:1; text-align:center; font-size:8.6pt; font-weight:600; color:#334155; }
-.sign .line { border-top:1px solid #475569; margin:0 6px 6px; padding-top:24px; }
+.signs { display:flex; gap:48px; margin-top:46px; padding:0 10px; }
+.sign { flex:1; text-align:center; font-size:8.2pt; font-weight:600; color:#334155; }
+/* empty signing space above, the line at the bottom, caption right beneath it */
+.sign .line { border-bottom:1px solid #000; margin:0 8px 3px; padding-top:30px; }
 
 @media screen {
   .summary-root { background:#eef2f7; min-height:100vh; padding-bottom:24px; }
-  .sheet { background:#fff; max-width:1180px; margin:0 auto 24px; padding:22px 26px 26px; box-shadow:0 1px 10px rgba(15,23,42,.14); border-radius:8px; }
+  .sheet { background:#fff; max-width:1200px; margin:0 auto 22px; padding:20px 22px 24px; box-shadow:0 1px 10px rgba(15,23,42,.14); border-radius:6px; }
 }
 
-@page { size: A4 landscape; margin: 9mm; }
+/* Explicit landscape A4 (297×210mm) — more reliable than the "A4 landscape"
+   keyword, so the wide table is never squeezed into portrait width. */
+@page { size: 297mm 210mm; margin: 6mm; }
 
 @media print {
+  html, body { background:#fff !important; }
   body * { visibility:hidden; }
+  /* The admin sidebar is hidden via visibility but still reserves ~16rem of layout
+     width, which pushed the absolutely-positioned sheet to the right. Remove it
+     from layout so the sheet sits flush against the page's left margin. */
+  [data-slot="sidebar"] { display:none !important; }
   #summary-print, #summary-print * { visibility:visible; }
-  #summary-print { position:absolute; left:0; top:0; width:100%; }
+  /* force backgrounds + borders to print even when "Background graphics" is off */
+  #summary-print {
+    position:absolute; left:0; top:0; width:100%;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
   .no-print { display:none !important; }
   .sheet { page-break-after:always; box-shadow:none; margin:0; padding:0; max-width:none; }
   .sheet:last-child { page-break-after:auto; }
+
+  /* Shrink so the whole table fits the landscape page width WITHOUT the browser
+     down-scaling it (down-scaling is what makes the 1px gridlines disappear). */
+  .title { font-size:13pt; }
+  .subtitle { font-size:9pt; }
+  table.info { font-size:7.5pt; }
+  table.rwjs-grid { font-size:5.6pt; }
+  table.rwjs-grid thead th { font-size:5.2pt; }
+  table.rwjs-grid th, table.rwjs-grid td { padding:0.5px 0.5px; }
+  table.rwjs-grid th.jhead .jname { font-size:4.8pt; }
+  .rc, .rc.pending { font-size:6.4pt; }
+  /* keep gridlines crisp & black */
+  table.rwjs-grid th, table.rwjs-grid td, table.info td { border:0.5pt solid #000 !important; }
+
   table.rwjs-grid thead { display:table-header-group; }
   table.rwjs-grid tbody tr { page-break-inside:avoid; }
+  .signs { margin-top:36px; }
 }
 `;

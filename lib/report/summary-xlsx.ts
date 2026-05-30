@@ -1,30 +1,29 @@
 /**
  * Excel (.xlsx) generator for the official Race Walking Judges Summary Sheet.
- * One worksheet per round (mirrors the sample workbook which has a sheet per race).
+ * One worksheet per round — reproduces the World Athletics RWJS form layout
+ * (plain title, judge columns with Yellow Paddle ~/</RC, Penalty Zone, Chief
+ * Judge, DQ notification, CHECK OF / YELLOW PADDLES / DISQUALIFICATIONS totals,
+ * CHECK·TOTAL row and signatures). White fills, black borders — no dark labels.
  *
  * Server-only — imports exceljs (Node runtime).
  */
 import ExcelJS from "exceljs";
 import {
-  formatMs,
   type EventSummary,
   type RoundSummary,
 } from "@/lib/report/summary-sheet";
 
 const BASE_FONT = "Tahoma"; // ships with Windows, renders Thai cleanly
+const JUDGE_SLOTS = 8; // the official form has 8 judge columns
 
 const COLOR = {
-  ink: "FF0F172A",
-  muted: "FF475569",
-  label: "FF334155",
-  headFill: "FFE2E8F0",
-  titleFill: "FF0F172A",
-  subFill: "FFF1F5F9",
-  border: "FF94A3B8",
-  red: "FFB91C1C",
+  ink: "FF000000",
+  muted: "FF595959",
+  headFill: "FFF2F2F2",
+  border: "FF000000",
+  red: "FFC00000",
   amber: "FFB45309",
-  pending: "FFC2410C",
-  zebra: "FFF8FAFC",
+  pending: "FFC55A11",
 } as const;
 
 const ROUND_STATUS_TH: Record<RoundSummary["status"], string> = {
@@ -40,7 +39,6 @@ function thaiDate(d: Date): string {
   return d.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
 }
 
-/** Excel sheet names: ≤31 chars, no []*?/\ ; deduped by caller via `used`. */
 function safeSheetName(name: string, used: Set<string>): string {
   const base = name.replace(/[[\]*?/\\:]/g, " ").trim().slice(0, 28) || "Round";
   let candidate = base;
@@ -52,204 +50,219 @@ function safeSheetName(name: string, used: Set<string>): string {
   return candidate;
 }
 
-/** Distribute labelled key/value segments evenly across the full table width. */
-function infoBand(
-  ws: ExcelJS.Worksheet,
-  row: number,
-  lastCol: number,
-  segments: { label: string; value: string }[],
-) {
-  const per = Math.max(1, Math.floor(lastCol / segments.length));
-  let start = 1;
-  segments.forEach((seg, i) => {
-    const end = i === segments.length - 1 ? lastCol : start + per - 1;
-    const cell = ws.getCell(row, start);
-    cell.value = {
-      richText: [
-        { text: `${seg.label}:  `, font: { name: BASE_FONT, bold: true, size: 9, color: { argb: COLOR.label } } },
-        { text: seg.value || "—", font: { name: BASE_FONT, size: 10, color: { argb: COLOR.ink } } },
-      ],
-    };
-    cell.alignment = { vertical: "middle", horizontal: "left", indent: 1, wrapText: true };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR.subFill } };
-    cell.border = ALL_BORDER;
-    if (end > start) ws.mergeCells(row, start, row, end);
-    start = end + 1;
-  });
-  ws.getRow(row).height = 20;
-}
-
-/**
- * Renders one round onto `ws` in the official Summary-Sheet layout and returns
- * the index of the last column used.
- */
 export function buildRoundWorksheet(
   ws: ExcelJS.Worksheet,
   ev: Pick<EventSummary, "name" | "date" | "location">,
   round: RoundSummary,
 ): void {
   const judges = round.judges;
+  const J = Math.max(JUDGE_SLOTS, judges.length);
 
   // ── column map ─────────────────────────────────────────────────────────────
   let c = 1;
-  const C = {
-    bib: c++,
-    name: c++,
-    country: c++,
-    judgeStart: c,
-  };
-  c = C.judgeStart + judges.length * 3;
-  const COLS = {
-    ...C,
-    sumLifted: c++,
-    sumBent: c++,
-    sumRed: c++,
-    rank: c++,
-    finish: c++,
-    status: c++,
-    dqTime: c++,
-    offence: c++,
-  };
-  const LAST = COLS.offence;
-  const judgeCol = (j: number) => COLS.judgeStart + j * 3; // → lifted; +1 bent; +2 rc
+  const C_ATH = c++;
+  const C_JUDGE0 = c;
+  c = C_JUDGE0 + J * 3;
+  const C_PEN_IN = c++;
+  const C_PEN_OUT = c++;
+  const C_CHIEF_T = c++;
+  const C_CHIEF_O = c++;
+  const C_DQ_T = c++;
+  const C_TOT_LIFT = c++;
+  const C_TOT_BENT = c++;
+  const C_TOT_RC = c++;
+  const LAST = c - 1;
+  const jcol = (j: number) => C_JUDGE0 + j * 3; // ~ ; +1 < ; +2 RC
 
-  // ── column widths ────────────────────────────────────────────────────────────
-  ws.getColumn(COLS.bib).width = 6;
-  ws.getColumn(COLS.name).width = 24;
-  ws.getColumn(COLS.country).width = 8;
-  for (let j = 0; j < judges.length; j++) {
-    ws.getColumn(judgeCol(j)).width = 4.5;
-    ws.getColumn(judgeCol(j) + 1).width = 4.5;
-    ws.getColumn(judgeCol(j) + 2).width = 5;
+  // ── widths ───────────────────────────────────────────────────────────────────
+  ws.getColumn(C_ATH).width = 26;
+  for (let j = 0; j < J; j++) {
+    ws.getColumn(jcol(j)).width = 4;
+    ws.getColumn(jcol(j) + 1).width = 4;
+    ws.getColumn(jcol(j) + 2).width = 4.5;
   }
-  ws.getColumn(COLS.sumLifted).width = 5;
-  ws.getColumn(COLS.sumBent).width = 5;
-  ws.getColumn(COLS.sumRed).width = 5;
-  ws.getColumn(COLS.rank).width = 6;
-  ws.getColumn(COLS.finish).width = 12;
-  ws.getColumn(COLS.status).width = 8;
-  ws.getColumn(COLS.dqTime).width = 9;
-  ws.getColumn(COLS.offence).width = 12;
+  ws.getColumn(C_PEN_IN).width = 7;
+  ws.getColumn(C_PEN_OUT).width = 7;
+  ws.getColumn(C_CHIEF_T).width = 8;
+  ws.getColumn(C_CHIEF_O).width = 9;
+  ws.getColumn(C_DQ_T).width = 8;
+  ws.getColumn(C_TOT_LIFT).width = 5;
+  ws.getColumn(C_TOT_BENT).width = 5;
+  ws.getColumn(C_TOT_RC).width = 5.5;
 
-  // ── title ────────────────────────────────────────────────────────────────────
+  // ── helpers ──────────────────────────────────────────────────────────────────
+  const head = (
+    row: number,
+    col: number,
+    text: ExcelJS.CellValue,
+    opts: { size?: number; fill?: boolean; rotate?: number } = {},
+  ) => {
+    const cell = ws.getCell(row, col);
+    cell.value = text;
+    cell.font = { name: BASE_FONT, bold: true, size: opts.size ?? 8, color: { argb: COLOR.ink } };
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true,
+      textRotation: opts.rotate,
+    };
+    if (opts.fill !== false) {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR.headFill } };
+    }
+    cell.border = ALL_BORDER;
+    return cell;
+  };
+
+  // ── title (plain — no dark fill) ───────────────────────────────────────────────
   ws.mergeCells(1, 1, 1, LAST);
   const title = ws.getCell(1, 1);
   title.value = "RACE WALKING JUDGES SUMMARY SHEET";
-  title.font = { name: BASE_FONT, bold: true, size: 16, color: { argb: "FFFFFFFF" } };
+  title.font = { name: BASE_FONT, bold: true, size: 16, color: { argb: COLOR.ink } };
   title.alignment = { vertical: "middle", horizontal: "center" };
-  title.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR.titleFill } };
+  title.border = ALL_BORDER;
   ws.getRow(1).height = 26;
 
   ws.mergeCells(2, 1, 2, LAST);
   const sub = ws.getCell(2, 1);
   sub.value = "ใบสรุปผลการตัดสินของกรรมการ — การแข่งขันเดินทน";
-  sub.font = { name: BASE_FONT, bold: true, size: 11, color: { argb: COLOR.ink } };
+  sub.font = { name: BASE_FONT, bold: true, size: 10, color: { argb: COLOR.ink } };
   sub.alignment = { vertical: "middle", horizontal: "center" };
-  sub.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR.subFill } };
-  ws.getRow(2).height = 18;
+  sub.border = ALL_BORDER;
+  ws.getRow(2).height = 16;
 
-  // ── info bands ───────────────────────────────────────────────────────────────
-  infoBand(ws, 3, LAST, [
-    { label: "รายการ / EVENT", value: `${ev.name} — ${round.name}${round.heatName ? ` (${round.heatName})` : ""}` },
-  ]);
-  infoBand(ws, 4, LAST, [
-    { label: "วันที่ / DATE", value: thaiDate(ev.date) },
-    { label: "เวลาเริ่ม / START", value: round.startTime || "—" },
-    { label: "ระยะ / DISTANCE", value: round.distanceKm ? `${round.distanceKm} กม.` : "—" },
-    { label: "สถานะ / STATUS", value: ROUND_STATUS_TH[round.status] },
-  ]);
-  infoBand(ws, 5, LAST, [
-    { label: "สถานที่ / VENUE", value: ev.location },
-    { label: "หัวหน้ากรรมการ / CHIEF JUDGE", value: round.chiefJudge },
-    { label: "ผู้บันทึกเวลา / RECORDERS", value: round.recorders.join(", ") },
-  ]);
+  // ── info band (DATE | START TIME | EVENT | CHIEF JUDGE) ─────────────────────────
+  const dateEnd = Math.min(6, LAST);
+  const startEnd = Math.min(dateEnd + 4, LAST);
+  const chiefStart = Math.max(startEnd + 2, LAST - 6);
+  const eventEnd = chiefStart - 1;
+  const eventStart = startEnd + 1;
 
-  // ── table header (rows 6–7) ──────────────────────────────────────────────────
-  const H1 = 6;
-  const H2 = 7;
-  ws.getRow(H1).height = 30;
-  ws.getRow(H2).height = 16;
-
-  const setHead = (cell: ExcelJS.Cell, text: string, opts: { size?: number; color?: string } = {}) => {
+  const infoLabel = (col1: number, col2: number, text: string) => {
+    ws.mergeCells(3, col1, 3, col2);
+    const cell = ws.getCell(3, col1);
     cell.value = text;
-    cell.font = { name: BASE_FONT, bold: true, size: opts.size ?? 9, color: { argb: opts.color ?? COLOR.ink } };
-    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    cell.font = { name: BASE_FONT, bold: true, size: 8, color: { argb: COLOR.ink } };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR.headFill } };
     cell.border = ALL_BORDER;
   };
-
-  // left identity columns span both header rows
-  ws.mergeCells(H1, COLS.bib, H2, COLS.bib);
-  setHead(ws.getCell(H1, COLS.bib), "หมายเลข\nBIB");
-  ws.mergeCells(H1, COLS.name, H2, COLS.name);
-  setHead(ws.getCell(H1, COLS.name), "นักกีฬา / ATHLETE");
-  ws.mergeCells(H1, COLS.country, H2, COLS.country);
-  setHead(ws.getCell(H1, COLS.country), "ประเทศ");
-
-  // judge group headers
-  judges.forEach((j, idx) => {
-    const start = judgeCol(idx);
-    ws.mergeCells(H1, start, H1, start + 2);
-    const label = `${idx + 1}. ${j.name}${j.zone ? `\n(${j.zone})` : ""}`;
-    setHead(ws.getCell(H1, start), label, { size: 8 });
-    setHead(ws.getCell(H2, start), "~");
-    setHead(ws.getCell(H2, start + 1), "<");
-    setHead(ws.getCell(H2, start + 2), "RC");
-  });
-
-  // totals group
-  ws.mergeCells(H1, COLS.sumLifted, H1, COLS.sumRed);
-  setHead(ws.getCell(H1, COLS.sumLifted), "รวม / TOTALS", { size: 8 });
-  setHead(ws.getCell(H2, COLS.sumLifted), "~");
-  setHead(ws.getCell(H2, COLS.sumBent), "<");
-  setHead(ws.getCell(H2, COLS.sumRed), "RC");
-
-  // result columns span both header rows
-  const spanHead = (col: number, text: string) => {
-    ws.mergeCells(H1, col, H2, col);
-    setHead(ws.getCell(H1, col), text, { size: 8 });
+  const infoValue = (col1: number, col2: number, text: string, mono = false) => {
+    ws.mergeCells(4, col1, 4, col2);
+    const cell = ws.getCell(4, col1);
+    cell.value = text;
+    cell.font = { name: BASE_FONT, size: mono ? 10 : 9, color: { argb: COLOR.ink } };
+    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    cell.border = ALL_BORDER;
   };
-  spanHead(COLS.rank, "อันดับ\nRANK");
-  spanHead(COLS.finish, "เวลาเข้าเส้นชัย\nFINISH");
-  spanHead(COLS.status, "สถานะ");
-  spanHead(COLS.dqTime, "เวลา DQ");
-  spanHead(COLS.offence, "ความผิด\nOFFENCE");
+
+  infoLabel(C_ATH, dateEnd, "DATE / วันที่");
+  infoLabel(dateEnd + 1, startEnd, "START TIME");
+  infoLabel(eventStart, eventEnd, "EVENT / รายการ");
+  infoLabel(chiefStart, LAST, "CHIEF JUDGE / หัวหน้ากรรมการ");
+  infoValue(C_ATH, dateEnd, thaiDate(ev.date));
+  infoValue(dateEnd + 1, startEnd, round.startTime || "—", true);
+  infoValue(
+    eventStart,
+    eventEnd,
+    `${ev.name} — ${round.name}${round.heatName ? ` (${round.heatName})` : ""}  •  ${ROUND_STATUS_TH[round.status]}`,
+  );
+  infoValue(chiefStart, LAST, round.chiefJudge || "—");
+  ws.getRow(3).height = 16;
+  ws.getRow(4).height = 18;
+
+  // ── column headers (rows 5–8) ───────────────────────────────────────────────────
+  const H1 = 5;
+  const H4 = 8;
+  ws.getRow(H1).height = 40;
+  ws.getRow(6).height = 16;
+  ws.getRow(7).height = 16;
+  ws.getRow(8).height = 14;
+
+  // Athlete identity column
+  ws.mergeCells(H1, C_ATH, H4, C_ATH);
+  head(H1, C_ATH, "หมายเลข / นักกีฬา\nAthlete", { size: 8 });
+  ws.getCell(H1, C_ATH).alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+
+  // Judge columns
+  for (let j = 0; j < J; j++) {
+    const start = jcol(j);
+    // name (row 5, tall)
+    ws.mergeCells(H1, start, H1, start + 2);
+    head(H1, start, judges[j]?.name ?? "", { size: 8 });
+    ws.getCell(H1, start).alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true,
+    };
+    // number (row 6)
+    ws.mergeCells(6, start, 6, start + 2);
+    head(6, start, j + 1, { size: 9 });
+    // Yellow Paddle (row 7, over ~/<) + RC (rows 7–8)
+    ws.mergeCells(7, start, 7, start + 1);
+    head(7, start, "Yellow Paddle", { size: 7 });
+    ws.mergeCells(7, start + 2, 8, start + 2);
+    head(7, start + 2, "RC", { size: 8 });
+    // ~ / < (row 8)
+    head(8, start, "~", { size: 9 });
+    head(8, start + 1, "<", { size: 9 });
+  }
+
+  // Right-side groups: label spans rows 5–6, sub spans rows 7–8.
+  const group2 = (col1: number, col2: number, label: string) => {
+    ws.mergeCells(H1, col1, 6, col2);
+    head(H1, col1, label, { size: 7 });
+  };
+  const sub2 = (col: number, label: string, size = 8) => {
+    ws.mergeCells(7, col, 8, col);
+    head(7, col, label, { size });
+  };
+  group2(C_PEN_IN, C_PEN_OUT, "Penalty Zone");
+  sub2(C_PEN_IN, "Entrance");
+  sub2(C_PEN_OUT, "Exit");
+  group2(C_CHIEF_T, C_CHIEF_O, "Chief Judge");
+  sub2(C_CHIEF_T, "Time");
+  sub2(C_CHIEF_O, "Offence");
+  group2(C_DQ_T, C_DQ_T, "DQ notification");
+  sub2(C_DQ_T, "Time");
+  group2(C_TOT_LIFT, C_TOT_LIFT, "CHECK OF");
+  sub2(C_TOT_LIFT, "~", 9);
+  group2(C_TOT_BENT, C_TOT_BENT, "YELLOW PADDLES");
+  sub2(C_TOT_BENT, "<", 9);
+  group2(C_TOT_RC, C_TOT_RC, "DISQUAL.");
+  sub2(C_TOT_RC, "RC", 8);
 
   // ── athlete rows ─────────────────────────────────────────────────────────────
-  let r = H2 + 1;
+  let r = H4 + 1;
   for (const a of round.athletes) {
-    const row = ws.getRow(r);
-    row.height = 16;
+    ws.getRow(r).height = 16;
     const isDq = a.status === "DQ";
     const isDnf = a.status === "DNF";
-    const rowInk = isDq ? COLOR.red : isDnf ? COLOR.amber : COLOR.ink;
+    const ink = isDq ? COLOR.red : isDnf ? COLOR.amber : COLOR.ink;
 
-    const base = (col: number, value: ExcelJS.CellValue, align: "left" | "center" = "center", bold = false) => {
-      const cell = ws.getCell(r, col);
-      cell.value = value;
-      cell.font = { name: BASE_FONT, size: 9, bold, color: { argb: rowInk } };
-      cell.alignment = { vertical: "middle", horizontal: align };
-      cell.border = ALL_BORDER;
-      if (r % 2 === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR.zebra } };
-      return cell;
+    const cell = (col: number, value: ExcelJS.CellValue, align: "left" | "center" = "center") => {
+      const cc = ws.getCell(r, col);
+      cc.value = value;
+      cc.font = { name: BASE_FONT, size: 9, color: { argb: ink } };
+      cc.alignment = { vertical: "middle", horizontal: align };
+      cc.border = ALL_BORDER;
+      return cc;
     };
 
-    base(COLS.bib, a.bib, "center", true);
-    base(COLS.name, a.name, "left");
-    ws.getCell(r, COLS.name).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
-    base(COLS.country, a.country);
+    const ath = cell(C_ATH, `${a.bib}  ${a.name}`, "left");
+    ath.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+    ath.font = { name: BASE_FONT, size: 9, bold: true, color: { argb: ink } };
 
-    judges.forEach((j, idx) => {
-      const start = judgeCol(idx);
-      const m = a.marks[j.id] ?? { yellowLifted: false, yellowBent: false, red: null };
-      base(start, m.yellowLifted ? "~" : "");
-      base(start + 1, m.yellowBent ? "<" : "");
-      const rc = base(start + 2, "");
-      if (m.red) {
+    for (let j = 0; j < J; j++) {
+      const start = jcol(j);
+      const m = judges[j] ? a.marks[judges[j]!.id] : undefined;
+      cell(start, m?.yellowLifted ? "✓" : "");
+      cell(start + 1, m?.yellowBent ? "✓" : "");
+      const rc = cell(start + 2, "");
+      if (m?.red) {
         const { symbol, state } = m.red;
         if (state === "OVERRIDDEN") {
           rc.value = `(${symbol})`;
-          rc.font = { name: BASE_FONT, size: 9, color: { argb: COLOR.muted }, strike: true };
+          rc.font = { name: BASE_FONT, size: 8, color: { argb: COLOR.muted }, strike: true };
         } else {
           rc.value = symbol;
           rc.font = {
@@ -260,18 +273,18 @@ export function buildRoundWorksheet(
           };
         }
       }
-    });
+    }
 
-    base(COLS.sumLifted, a.totals.lifted || "");
-    base(COLS.sumBent, a.totals.bent || "");
-    const redTotal = base(COLS.sumRed, a.totals.red || "");
-    if (a.totals.red > 0) redTotal.font = { name: BASE_FONT, size: 10, bold: true, color: { argb: COLOR.red } };
-
-    base(COLS.rank, isDq || isDnf ? "" : a.position ?? "", "center", true);
-    base(COLS.finish, formatMs(a.finishMs));
-    base(COLS.status, isDq ? "DQ" : isDnf ? "DNF" : a.finishMs ? "จบ" : "", "center", isDq || isDnf);
-    base(COLS.dqTime, a.dq?.time ?? "");
-    base(COLS.offence, a.dq?.offence ?? "");
+    cell(C_PEN_IN, "");
+    cell(C_PEN_OUT, "");
+    cell(C_CHIEF_T, isDq ? a.dq?.time ?? "" : "");
+    cell(C_CHIEF_O, isDq ? a.dq?.offence ?? "" : "");
+    cell(C_DQ_T, isDq ? a.dq?.time ?? "" : "");
+    cell(C_TOT_LIFT, a.totals.lifted || "");
+    cell(C_TOT_BENT, a.totals.bent || "");
+    const rcTot = cell(C_TOT_RC, a.totals.red || "");
+    if (a.totals.red > 0)
+      rcTot.font = { name: BASE_FONT, size: 10, bold: true, color: { argb: COLOR.red } };
 
     r++;
   }
@@ -286,36 +299,64 @@ export function buildRoundWorksheet(
     r++;
   }
 
-  // ── legend + signatures ──────────────────────────────────────────────────────
-  r += 1;
-  ws.mergeCells(r, 1, r, LAST);
-  const legend = ws.getCell(r, 1);
-  legend.value =
-    'สัญลักษณ์:  ~ = ยกเท้า (loss of contact)   |   < = เข่างอ (bent knee)   |   RC = ใบแดง (Red Card)   |   ( ) = ใบแดงที่ถูกยกเลิก';
-  legend.font = { name: BASE_FONT, size: 8, italic: true, color: { argb: COLOR.muted } };
-  legend.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
-  r += 2;
+  // ── CHECK / TOTAL row (per-judge column tallies + grand totals) ──────────────────
+  const totalRow = r;
+  ws.getRow(totalRow).height = 18;
+  const totCell = (col: number, value: ExcelJS.CellValue) => {
+    const cc = ws.getCell(totalRow, col);
+    cc.value = value;
+    cc.font = { name: BASE_FONT, bold: true, size: 9, color: { argb: COLOR.ink } };
+    cc.alignment = { vertical: "middle", horizontal: "center" };
+    cc.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR.headFill } };
+    cc.border = ALL_BORDER;
+    return cc;
+  };
+  totCell(C_ATH, "CHECK · TOTAL");
+  ws.getCell(totalRow, C_ATH).alignment = { vertical: "middle", horizontal: "center" };
+  for (let j = 0; j < J; j++) {
+    const jd = judges[j];
+    const lift = jd ? round.athletes.filter((a) => a.marks[jd.id]?.yellowLifted).length : 0;
+    const bent = jd ? round.athletes.filter((a) => a.marks[jd.id]?.yellowBent).length : 0;
+    const rc = jd
+      ? round.athletes.filter((a) => a.marks[jd.id]?.red && a.marks[jd.id]!.red!.state !== "OVERRIDDEN").length
+      : 0;
+    totCell(jcol(j), lift || "");
+    totCell(jcol(j) + 1, bent || "");
+    totCell(jcol(j) + 2, rc || "");
+  }
+  totCell(C_PEN_IN, "");
+  totCell(C_PEN_OUT, "");
+  totCell(C_CHIEF_T, "");
+  totCell(C_CHIEF_O, "");
+  totCell(C_DQ_T, "");
+  totCell(C_TOT_LIFT, round.athletes.reduce((n, a) => n + a.totals.lifted, 0) || "");
+  totCell(C_TOT_BENT, round.athletes.reduce((n, a) => n + a.totals.bent, 0) || "");
+  totCell(C_TOT_RC, round.athletes.reduce((n, a) => n + a.totals.red, 0) || "");
+  r = totalRow + 1;
 
-  const sigCols = Math.max(1, Math.floor(LAST / 3));
-  const sigs = ["หัวหน้ากรรมการ\nCHIEF JUDGE", "ผู้ช่วยหัวหน้ากรรมการ\nASSISTANT CHIEF JUDGE", "ผู้บันทึก\nRECORDERS"];
-  sigs.forEach((label, i) => {
-    const start = 1 + i * sigCols;
-    const end = i === 2 ? LAST : start + sigCols - 1;
-    const line = ws.getCell(r, start);
+  // ── signatures ────────────────────────────────────────────────────────────────
+  r += 2;
+  const half = Math.floor(LAST / 2);
+  const sigBlocks = [
+    { label: "ASSISTANTS CHIEF JUDGE\nผู้ช่วยหัวหน้ากรรมการ", start: 1, end: half - 1 },
+    { label: "RECORDERS\nผู้บันทึก", start: half + 1, end: LAST },
+  ];
+  for (const blk of sigBlocks) {
+    const line = ws.getCell(r, blk.start);
     line.value = "____________________________";
     line.font = { name: BASE_FONT, size: 9, color: { argb: COLOR.muted } };
     line.alignment = { horizontal: "center" };
-    if (end > start) ws.mergeCells(r, start, r, end);
-    const cap = ws.getCell(r + 1, start);
-    cap.value = label;
-    cap.font = { name: BASE_FONT, size: 8, bold: true, color: { argb: COLOR.label } };
+    if (blk.end > blk.start) ws.mergeCells(r, blk.start, r, blk.end);
+    const cap = ws.getCell(r + 1, blk.start);
+    cap.value = blk.label;
+    cap.font = { name: BASE_FONT, size: 8, bold: true, color: { argb: COLOR.ink } };
     cap.alignment = { horizontal: "center", wrapText: true, vertical: "top" };
-    if (end > start) ws.mergeCells(r + 1, start, r + 1, end);
-  });
-  ws.getRow(r + 1).height = 26;
+    if (blk.end > blk.start) ws.mergeCells(r + 1, blk.start, r + 1, blk.end);
+  }
+  ws.getRow(r + 1).height = 28;
 
-  // ── view + print setup ───────────────────────────────────────────────────────
-  ws.views = [{ state: "frozen", xSplit: COLS.country, ySplit: H2 }];
+  // ── view + print ───────────────────────────────────────────────────────────────
+  ws.views = [{ state: "frozen", xSplit: C_ATH, ySplit: H4 }];
   ws.pageSetup = {
     orientation: "landscape",
     fitToPage: true,
@@ -323,7 +364,7 @@ export function buildRoundWorksheet(
     fitToHeight: 0,
     horizontalCentered: true,
     margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
-    printTitlesRow: `${H1}:${H2}`,
+    printTitlesRow: `1:${H4}`,
   };
 }
 

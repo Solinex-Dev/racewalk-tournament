@@ -422,6 +422,9 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                     const red = myCards.filter(
                       (c) => c.color === "RED" && c.state !== "OVERRIDDEN",
                     ).length;
+                    const redOverridden = myCards.filter(
+                      (c) => c.color === "RED" && c.state === "OVERRIDDEN",
+                    ).length;
                     const expanded = expandedJudges.has(j.id);
                     return (
                       <div key={j.id}>
@@ -456,7 +459,12 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                                 แดง {red}
                               </span>
                             )}
-                            {yellow === 0 && red === 0 && (
+                            {yellow === 0 && red === 0 && redOverridden > 0 && (
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-500">
+                                ยกเลิกแล้ว {redOverridden}
+                              </span>
+                            )}
+                            {yellow === 0 && red === 0 && redOverridden === 0 && (
                               <span className="text-slate-400">ไม่มีใบ</span>
                             )}
                           </div>
@@ -471,6 +479,8 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                             ) : (
                               myCards.map((c) => {
                                 const isYellow = c.color === "YELLOW";
+                                const isOverriddenRed =
+                                  c.color === "RED" && c.state === "OVERRIDDEN";
                                 const st = redStateBadge(c.state);
                                 const isPendingRed =
                                   c.color === "RED" && c.state === "PENDING";
@@ -481,14 +491,20 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                                       "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2",
                                       isYellow
                                         ? "border-amber-200 bg-amber-50/60"
-                                        : "border-red-200 bg-red-50/60",
+                                        : isOverriddenRed
+                                          ? "border-slate-200 bg-slate-50/80"
+                                          : "border-red-200 bg-red-50/60",
                                     )}
                                   >
                                     <div className="flex items-center gap-2.5">
                                       <span
                                         className={cn(
                                           "flex h-7 w-7 items-center justify-center rounded-full font-mono text-sm font-bold text-white",
-                                          isYellow ? "bg-amber-400" : "bg-red-500",
+                                          isYellow
+                                            ? "bg-amber-400"
+                                            : isOverriddenRed
+                                              ? "bg-slate-400"
+                                              : "bg-red-500",
                                         )}
                                       >
                                         {SYMBOL_CHAR[c.symbol]}

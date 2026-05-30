@@ -63,6 +63,9 @@ const EMPTY: RoundFormValues = {
 
 const SECRET_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+// Max judges (position JUDGE) per round — head judge & event logger don't count.
+const MAX_JUDGES = 8;
+
 function generateSecretCode() {
   let code = "";
   for (let i = 0; i < 6; i++) {
@@ -159,11 +162,22 @@ export function RoundForm({
       officials: p.officials.map((o, i) => (i === index ? { ...o, zone } : o)),
     }));
 
-  const handlePositionChange = (index: number, position: OfficialEntry["position"]) =>
+  const judgeCount = form.officials.filter((o) => o.position === "JUDGE").length;
+
+  const handlePositionChange = (index: number, position: OfficialEntry["position"]) => {
+    if (position === "JUDGE") {
+      const others = form.officials.filter((o, i) => o.position === "JUDGE" && i !== index).length;
+      if (others >= MAX_JUDGES) {
+        setError(`กรรมการ (Judge) ต้องไม่เกิน ${MAX_JUDGES} คนต่อรอบ`);
+        return;
+      }
+    }
+    setError(null);
     setForm((p) => ({
       ...p,
       officials: p.officials.map((o, i) => (i === index ? { ...o, position } : o)),
     }));
+  };
 
   const handleRegenerateSecret = (index: number) =>
     setForm((p) => ({
@@ -196,18 +210,18 @@ export function RoundForm({
     const existing = new Set(form.officials.map((o) => o.judgeId));
     const toAdd = judgePickerSelected.filter((id) => !existing.has(id));
     if (toAdd.length > 0) {
-      setForm((p) => ({
-        ...p,
-        officials: [
-          ...p.officials,
-          ...toAdd.map((id) => ({
-            judgeId: id,
-            zone: "",
-            secretCode: generateSecretCode(),
-            position: "JUDGE" as const,
-          })),
-        ],
-      }));
+      setForm((p) => {
+        let judges = p.officials.filter((o) => o.position === "JUDGE").length;
+        // New people default to JUDGE; once the 8-judge cap is reached, extras are
+        // added as ผู้เก็บ Lap Time (the admin can re-assign their position after).
+        const added = toAdd.map((id) => {
+          const position: OfficialEntry["position"] =
+            judges < MAX_JUDGES ? "JUDGE" : "EVENT_LOGGER";
+          if (position === "JUDGE") judges += 1;
+          return { judgeId: id, zone: "", secretCode: generateSecretCode(), position };
+        });
+        return { ...p, officials: [...p.officials, ...added] };
+      });
     }
     setJudgePickerOpen(false);
     setJudgePickerSelected([]);
@@ -216,6 +230,12 @@ export function RoundForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (judgeCount > MAX_JUDGES) {
+      setError(
+        `กรรมการ (Judge) ต้องไม่เกิน ${MAX_JUDGES} คนต่อรอบ — ปัจจุบัน ${judgeCount} คน (เปลี่ยนตำแหน่งหรือลบออกบางคน)`,
+      );
+      return;
+    }
     startTransition(async () => {
       try {
         if (isEdit && roundId) {
@@ -434,21 +454,34 @@ export function RoundForm({
                   กรรมการ / เจ้าหน้าที่ในรอบนี้
                 </h2>
                 <p className="mt-0.5 text-[11px] text-slate-600">
-                  เลือกกรรมการ กำหนดตำแหน่ง โซน และรหัสลับสำหรับ join
+                  เลือกกรรมการ กำหนดตำแหน่ง โซน และรหัสลับสำหรับ join — กรรมการสูงสุด {MAX_JUDGES} คน
+                  (หัวหน้ากรรมการ &amp; ผู้เก็บ Lap Time ไม่นับรวม)
                 </p>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                className="h-7 rounded-lg px-3 text-xs"
-                onClick={() => {
-                  setJudgePickerSelected([]);
-                  setJudgeSearch("");
-                  setJudgePickerOpen(true);
-                }}
-              >
-                + เพิ่มกรรมการ
-              </Button>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                    judgeCount > MAX_JUDGES
+                      ? "bg-red-100 text-red-700"
+                      : "bg-slate-200 text-slate-700"
+                  }`}
+                  title="หัวหน้ากรรมการและผู้เก็บ Lap Time ไม่นับรวมในจำนวนนี้"
+                >
+                  กรรมการ {judgeCount}/{MAX_JUDGES}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7 rounded-lg px-3 text-xs"
+                  onClick={() => {
+                    setJudgePickerSelected([]);
+                    setJudgeSearch("");
+                    setJudgePickerOpen(true);
+                  }}
+                >
+                  + เพิ่มกรรมการ
+                </Button>
+              </div>
             </div>
 
             <div className="min-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white">
