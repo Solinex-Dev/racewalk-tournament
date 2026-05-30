@@ -6,6 +6,7 @@ import { LiveTimer } from "@/components/common/live-timer";
 import { LastUpdated } from "@/components/common/last-updated";
 import { prisma } from "@/lib/prisma";
 import { compareAthletesByFinish } from "@/lib/athlete-sort";
+import { lapsCompleted } from "@/lib/lap-progress";
 
 // Always render at request time — public scoreboard must reflect status changes
 // (race start/end, card issuance, lap recordings) within one poll cycle.
@@ -131,7 +132,7 @@ export default async function EventLivePage(props: Props) {
         position: ra.position ?? 0,
         totalTime: lastTimeMs !== undefined ? formatMs(lastTimeMs) : "-",
         status: ra.status,
-        currentLap: lapsForMe.length + (finish ? 1 : 0),
+        currentLap: lapsCompleted(lapsForMe.length, !!finish, lapCount),
         isFinished: !!finish,
       };
     });

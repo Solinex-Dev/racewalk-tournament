@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { LapRecorder, type AthleteRecord } from "@/components/timekeeper/lap-recorder";
 import { AutoRefresh } from "@/components/common/auto-refresh";
 import { OfficialEndedDialog } from "@/components/common/official-ended-dialog";
+import { lapsCompleted } from "@/lib/lap-progress";
 import { prisma } from "@/lib/prisma";
 import { getOfficialSession } from "@/lib/official-session";
 
@@ -53,7 +54,7 @@ export default async function EventLoggerPage(props: Props) {
       bib: ra.bib,
       athleteId: ra.athleteId,
       name: ra.athlete.name,
-      currentLap: myLaps.length + (finish ? 1 : 0),
+      currentLap: lapsCompleted(myLaps.length, !!finish, lapCount),
       lapCount,
       // The finish IS the final crossing — show it as the most recent time when present.
       lastLapAt: finish ? formatMs(finish.timeMs) : lastLap ? formatMs(lastLap.timeMs) : null,
