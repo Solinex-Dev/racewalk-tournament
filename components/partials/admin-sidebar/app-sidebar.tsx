@@ -20,7 +20,8 @@ import {
   Building2,
   LogOut,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
+import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/partials/admin-sidebar/logo";
 import type { Route } from "./nav-main";
@@ -159,7 +160,14 @@ const dashboardRoutes: Route[] = [
 export function DashboardSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
-  const router = useRouter();
+  const [isLoggingOut, startLogout] = useTransition();
+
+  const handleLogout = () => {
+    startLogout(async () => {
+      await fetch("/api/auth/logout", { method: "POST" });
+      await signOut({ callbackUrl: "/admin/login" });
+    });
+  };
 
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -216,8 +224,9 @@ export function DashboardSidebar() {
           type="button"
           variant="outline"
           size="sm"
+          disabled={isLoggingOut}
           className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-100"
-          onClick={() => router.push("/admin/login")}
+          onClick={handleLogout}
         >
           <LogOut className="h-3.5 w-3.5" />
           <span>ออกจากระบบ</span>

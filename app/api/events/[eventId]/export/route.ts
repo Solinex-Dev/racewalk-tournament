@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { attachmentContentDisposition } from "@/lib/content-disposition";
 
 type Ctx = { params: Promise<{ eventId: string }> };
 
@@ -132,14 +133,13 @@ export async function GET(request: Request, ctx: Ctx) {
   }
 
   const csv = "﻿" + lines.join("\r\n"); // UTF-8 BOM for Excel
-  const safeName = event.name.replace(/[^a-zA-Z0-9_฀-๿-]/g, "_");
-  const filename = `${safeName}-results.csv`;
+  const filename = `${event.name}-results.csv`;
 
   return new NextResponse(csv, {
     status: 200,
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      "Content-Disposition": attachmentContentDisposition(filename),
     },
   });
 }

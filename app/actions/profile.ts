@@ -2,7 +2,7 @@
 
 import bcrypt from "bcrypt";
 import { revalidatePath } from "next/cache";
-import { getServerSession } from "next-auth";
+import { getServerSession, type Session } from "next-auth";
 import { authOptions } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -13,8 +13,8 @@ import {
 import { createActivityLog, ActivityLogAction } from "@/lib/activity-log";
 import { isAdminSession } from "@/lib/admin-auth-redirect";
 
-function requireAdminUserId(session: Awaited<ReturnType<typeof getServerSession>>) {
-  const role = (session?.user as { role?: string } | undefined)?.role;
+function requireAdminUserId(session: Session | null) {
+  const role = session?.user?.role;
   const userId = session?.user?.id;
   if (!isAdminSession(role, userId)) {
     throw new Error("ไม่ได้เข้าสู่ระบบ");

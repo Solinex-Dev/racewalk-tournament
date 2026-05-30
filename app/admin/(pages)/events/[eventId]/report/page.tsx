@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "รายงานกิจกรรม – การแข่งขันเดินทน",
-  description: "Export รายงานผลการแข่งขันเป็น CSV หรือ PDF",
+  description: "Export รายงานผลการแข่งขันเป็น Excel หรือ PDF ในรูปแบบเอกสารการแข่งขันเดินทน",
 };
 
 type Props = { params: Promise<{ eventId: string }> };
@@ -19,6 +19,12 @@ function formatMs(ms: number | null | undefined): string {
   const s = Math.floor((ms % 60000) / 1000);
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
+
+const ROUND_STATUS_LABEL: Record<string, string> = {
+  SCHEDULED: "กำหนดการ",
+  ONGOING: "กำลังแข่งขัน",
+  FINISHED: "เสร็จสิ้น",
+};
 
 export default async function EventReportPage(props: Props) {
   const { eventId } = await props.params;
@@ -48,9 +54,7 @@ export default async function EventReportPage(props: Props) {
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-              Export รายงาน
-            </h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Export รายงาน</h1>
             <p className="mt-1 text-sm text-slate-600">
               ดาวน์โหลดผลการแข่งขันของ <span className="font-medium">{event.name}</span>
             </p>
@@ -63,40 +67,44 @@ export default async function EventReportPage(props: Props) {
           </Link>
         </div>
 
-        <Card className="rounded-2xl border-slate-200">
+        {/* ── Official Race Walking Judges Summary Sheet ───────────────────── */}
+        <Card className="rounded-2xl border-emerald-200 bg-emerald-50/40">
           <CardContent className="space-y-4 p-6">
-            <h2 className="text-base font-semibold text-slate-900">ทั้ง Event (รวมทุกรอบ)</h2>
-            <p className="text-sm text-slate-600">
-              ดาวน์โหลดผลรวมทุกรอบในไฟล์เดียว — เหมาะสำหรับการเก็บเป็นบันทึกหรือส่งให้สมาคม
-            </p>
+            <div>
+              <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-200">
+                รูปแบบเอกสารการแข่งขัน
+              </span>
+              <h2 className="mt-2 text-base font-semibold text-slate-900">
+                ใบสรุปผลการตัดสินกรรมการ (Race Walking Judges Summary Sheet)
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                เอกสารตามรูปแบบมาตรฐานการแข่งขันเดินทน — แสดงใบเหลือง/ใบแดง (~ ยกเท้า, &lt; เข่างอ)
+                ของกรรมการแต่ละโซน พร้อมยอดรวม การตัดสิทธิ์ (DQ) และเวลาเข้าเส้นชัย{" "}
+                <span className="text-slate-500">— Excel แยกชีตต่อรอบ (1 รอบ = 1 ชีต)</span>
+              </p>
+            </div>
             <div className="flex flex-wrap gap-2">
-              <a href={`/api/events/${eventId}/export`} download>
-                <Button size="sm" className="rounded-lg text-sm">
-                  ⬇ ดาวน์โหลด CSV
+              <a href={`/api/events/${eventId}/summary-xlsx`} download>
+                <Button size="sm" className="rounded-lg bg-emerald-700 text-sm hover:bg-emerald-800">
+                  ⬇ ดาวน์โหลด Excel (.xlsx)
                 </Button>
               </a>
-              <Link
-                href={`/admin/events/${eventId}/report/print`}
-                target="_blank"
-                rel="noopener"
-              >
-                <Button variant="outline" size="sm" className="rounded-lg text-sm">
-                  🖨️ Print / Save as PDF
+              <Link href={`/admin/events/${eventId}/report/summary`} target="_blank" rel="noopener">
+                <Button variant="outline" size="sm" className="rounded-lg border-emerald-300 text-sm">
+                  🖨️ พิมพ์ / บันทึก PDF
                 </Button>
               </Link>
             </div>
-            <p className="text-[11px] text-slate-500">
-              CSV เปิดได้ใน Excel โดยตรง • PDF ผ่านหน้า Print (Ctrl+P → Save as PDF)
-            </p>
           </CardContent>
         </Card>
 
+        {/* ── Per-round downloads ──────────────────────────────────────────── */}
         <Card className="rounded-2xl border-slate-200">
           <CardContent className="space-y-4 p-6">
-            <h2 className="text-base font-semibold text-slate-900">รายรอบ</h2>
-            <p className="text-sm text-slate-600">
-              ดาวน์โหลดเฉพาะรอบที่ต้องการ
-            </p>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">รายรอบ</h2>
+              <p className="mt-1 text-sm text-slate-600">ดาวน์โหลดเฉพาะรอบที่ต้องการ</p>
+            </div>
 
             {event.rounds.length === 0 ? (
               <p className="text-sm italic text-slate-500">Event นี้ยังไม่มีรอบ</p>
@@ -105,30 +113,67 @@ export default async function EventReportPage(props: Props) {
                 {event.rounds.map((round) => (
                   <div
                     key={round.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
                   >
                     <div className="text-sm">
                       <p className="font-semibold text-slate-900">{round.name}</p>
                       <p className="text-xs text-slate-600">
-                        {round.status} • {round._count.roundAthletes} นักกีฬา •{" "}
-                        {round._count.finishTimes} เข้าเส้นชัย
+                        {ROUND_STATUS_LABEL[round.status] ?? round.status} •{" "}
+                        {round._count.roundAthletes} นักกีฬา • {round._count.finishTimes} เข้าเส้นชัย
                         {round.endedAt && round.startedAt && (
                           <> • เวลา {formatMs(round.endedAt.getTime() - round.startedAt.getTime())}</>
                         )}
                       </p>
                     </div>
-                    <a
-                      href={`/api/events/${eventId}/export?round=${round.id}`}
-                      download
-                    >
-                      <Button variant="outline" size="sm" className="rounded-lg text-xs">
-                        ⬇ CSV รอบนี้
-                      </Button>
-                    </a>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <a href={`/api/events/${eventId}/summary-xlsx?round=${round.id}`} download>
+                        <Button variant="outline" size="sm" className="rounded-lg text-xs">
+                          ⬇ Excel
+                        </Button>
+                      </a>
+                      <Link
+                        href={`/admin/events/${eventId}/report/summary?round=${round.id}`}
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        <Button variant="outline" size="sm" className="rounded-lg text-xs">
+                          🖨️ PDF
+                        </Button>
+                      </Link>
+                      <a href={`/api/events/${eventId}/export?round=${round.id}`} download>
+                        <Button variant="ghost" size="sm" className="rounded-lg text-xs text-slate-500">
+                          CSV
+                        </Button>
+                      </a>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* ── Plain results table (simple CSV / print) ─────────────────────── */}
+        <Card className="rounded-2xl border-slate-200">
+          <CardContent className="space-y-4 p-6">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">ตารางผลแบบย่อ (CSV)</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                สรุปผลรวมทุกรอบแบบตารางอย่างง่าย เหมาะกับการเปิดใน Excel หรือเก็บเป็นบันทึก
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a href={`/api/events/${eventId}/export`} download>
+                <Button variant="outline" size="sm" className="rounded-lg text-sm">
+                  ⬇ ดาวน์โหลด CSV (รวมทุกรอบ)
+                </Button>
+              </a>
+              <Link href={`/admin/events/${eventId}/report/print`} target="_blank" rel="noopener">
+                <Button variant="ghost" size="sm" className="rounded-lg text-sm text-slate-500">
+                  🖨️ พิมพ์ตารางย่อ
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
