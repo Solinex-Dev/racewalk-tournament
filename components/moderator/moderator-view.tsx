@@ -26,6 +26,17 @@ export type RoundInfo = {
   currentLap?: number;
 };
 
+export type AthleteCardDetail = {
+  id: string;
+  color: "YELLOW" | "RED";
+  symbol: "~" | ">";
+  symbolLabel: string; // "ยกเท้า" / "เข่างอ"
+  state: "PENDING" | "CONFIRMED" | "OVERRIDDEN" | null;
+  judgeName: string;
+  judgeZone: string;
+  time: string;
+};
+
 export type AthleteSummary = {
   bib: string;
   name: string;
@@ -35,6 +46,7 @@ export type AthleteSummary = {
   redCards: number;
   status?: "OK" | "DQ" | "DNF";
   position?: number;
+  cardDetails: AthleteCardDetail[];
 };
 
 export type JudgeSummary = {
@@ -103,6 +115,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
   const router = useRouter();
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
   const [expandedJudgeIds, setExpandedJudgeIds] = useState<Set<string>>(new Set());
+  const [expandedAthleteBibs, setExpandedAthleteBibs] = useState<Set<string>>(new Set());
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [selectedExportRound, setSelectedExportRound] = useState<string | null>(null);
   const [selectedExportAthlete, setSelectedExportAthlete] = useState<string>("all");
@@ -216,6 +229,16 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
       const next = new Set(prev);
       if (next.has(judgeId)) next.delete(judgeId);
       else next.add(judgeId);
+      return next;
+    });
+  };
+
+  // Independent toggle — expanding one row never collapses another.
+  const toggleAthlete = (bib: string) => {
+    setExpandedAthleteBibs((prev) => {
+      const next = new Set(prev);
+      if (next.has(bib)) next.delete(bib);
+      else next.add(bib);
       return next;
     });
   };
@@ -382,61 +405,143 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                     <div>
                       <h2 className="text-sm font-semibold text-slate-900">นักกีฬาในรอบนี้</h2>
                       <p className="text-xs text-slate-500">
-                        รวมจำนวนใบเหลือง / ใบแดงต่อนักกีฬา
+                        กดที่แถวเพื่อดูใบเหลือง / ใบแดง ที่ได้รับ และกรรมการที่ให้
+                        (ขยายได้หลายคนพร้อมกันเพื่อเทียบ)
                       </p>
                     </div>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                      {roundAthletes.length} คน
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const bibsWithCards = roundAthletes
+                          .filter((a) => a.cardDetails.length > 0)
+                          .map((a) => a.bib);
+                        if (bibsWithCards.length === 0) return null;
+                        const allExpanded = bibsWithCards.every((b) =>
+                          expandedAthleteBibs.has(b),
+                        );
+                        return (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedAthleteBibs(
+                                allExpanded ? new Set() : new Set(bibsWithCards),
+                              )
+                            }
+                            className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+                          >
+                            {allExpanded ? "หุบทั้งหมด" : "ขยายทั้งหมด"}
+                          </button>
+                        );
+                      })()}
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                        {roundAthletes.length} คน
+                      </span>
+                    </div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-full border-collapse text-xs">
                       <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
                         <tr>
+                          <th className="w-8 px-4 py-3" />
                           <th className="px-4 py-3 text-left">Bib</th>
                           <th className="px-4 py-3 text-left">นักกีฬา</th>
                           <th className="px-4 py-3 text-left">สังกัด</th>
-                          <th className="px-4 py-3 text-center text-amber-600">Y</th>
-                          <th className="px-4 py-3 text-center text-red-600">R</th>
+                          <th className="px-4 py-3 text-center text-amber-600" title="ใบเหลืองทั้งหมด">
+                            Y
+                          </th>
+                          <th
+                            className="px-4 py-3 text-center text-red-600"
+                            title="ใบแดงที่ยืนยันแล้ว (รอยืนยันแสดงเป็น chip ส้ม)"
+                          >
+                            R
+                          </th>
                           <th className="px-4 py-3 text-left">สถานะ</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 bg-white">
                         {roundAthletes.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="px-4 py-6 text-center text-xs text-slate-500">
+                            <td colSpan={7} className="px-4 py-6 text-center text-xs text-slate-500">
                               ยังไม่มีนักกีฬาในรอบนี้
                             </td>
                           </tr>
                         ) : (
-                          roundAthletes.map((a) => (
-                            <tr key={a.bib} className="hover:bg-slate-50/50">
-                              <td className="px-4 py-3 font-mono font-semibold text-slate-900">
-                                {a.bib}
-                              </td>
-                              <td className="px-4 py-3 text-slate-800">{a.name}</td>
-                              <td className="px-4 py-3 text-slate-600">{a.affiliation || "-"}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-amber-700">
-                                {a.yellowCards}
-                              </td>
-                              <td className="px-4 py-3 text-center font-semibold text-red-700">
-                                {a.redCards}
-                              </td>
-                              <td className="px-4 py-3 text-xs">
-                                <span
-                                  className={`rounded-full px-2 py-0.5 font-medium ${
-                                    a.status === "DQ"
-                                      ? "bg-red-50 text-red-700"
-                                      : a.status === "DNF"
-                                        ? "bg-slate-100 text-slate-600"
-                                        : "bg-emerald-50 text-emerald-700"
-                                  }`}
+                          roundAthletes.map((a) => {
+                            const isExpanded = expandedAthleteBibs.has(a.bib);
+                            const hasCards = a.cardDetails.length > 0;
+                            // Reds awaiting Head Judge decision — not yet counted toward R/DQ
+                            const pendingRed = a.cardDetails.filter(
+                              (c) => c.color === "RED" && c.state === "PENDING",
+                            ).length;
+                            return (
+                              <Fragment key={a.bib}>
+                                <tr
+                                  className={`transition-colors ${
+                                    hasCards ? "cursor-pointer hover:bg-slate-50/80" : ""
+                                  } ${isExpanded ? "bg-slate-50" : ""}`}
+                                  onClick={() => hasCards && toggleAthlete(a.bib)}
                                 >
-                                  {a.status ?? "OK"}
-                                </span>
-                              </td>
-                            </tr>
-                          ))
+                                  <td className="px-4 py-3 text-center">
+                                    {hasCards && (
+                                      <svg
+                                        className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M9 5l7 7-7 7"
+                                        />
+                                      </svg>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 font-mono font-semibold text-slate-900">
+                                    {a.bib}
+                                  </td>
+                                  <td className="px-4 py-3 text-slate-800">{a.name}</td>
+                                  <td className="px-4 py-3 text-slate-600">{a.affiliation || "-"}</td>
+                                  <td className="px-4 py-3 text-center font-semibold text-amber-700">
+                                    {a.yellowCards}
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <span className="font-semibold text-red-700">{a.redCards}</span>
+                                      {pendingRed > 0 && (
+                                        <span
+                                          title="ใบแดงที่รอ Head Judge ยืนยัน (ยังไม่นับเป็น R)"
+                                          className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-medium text-orange-700"
+                                        >
+                                          +{pendingRed} รอ
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs">
+                                    <span
+                                      className={`rounded-full px-2 py-0.5 font-medium ${
+                                        a.status === "DQ"
+                                          ? "bg-red-50 text-red-700"
+                                          : a.status === "DNF"
+                                            ? "bg-slate-100 text-slate-600"
+                                            : "bg-emerald-50 text-emerald-700"
+                                      }`}
+                                    >
+                                      {a.status ?? "OK"}
+                                    </span>
+                                  </td>
+                                </tr>
+                                {isExpanded && (
+                                  <tr>
+                                    <td colSpan={7} className="bg-slate-50/60 px-6 py-4">
+                                      <AthleteCardBreakdown details={a.cardDetails} />
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
+                            );
+                          })
                         )}
                       </tbody>
                     </table>
@@ -764,6 +869,100 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
         </div>
       )}
     </>
+  );
+}
+
+function AthleteCardBreakdown({ details }: { details: AthleteCardDetail[] }) {
+  const yellows = details.filter((c) => c.color === "YELLOW");
+  const reds = details.filter((c) => c.color === "RED");
+
+  const stateLabel = (state: AthleteCardDetail["state"]): { label: string; cls: string } => {
+    switch (state) {
+      case "CONFIRMED":
+        return { label: "ยืนยันแล้ว", cls: "bg-red-100 text-red-700" };
+      case "PENDING":
+        return { label: "รอยืนยัน", cls: "bg-orange-100 text-orange-700" };
+      case "OVERRIDDEN":
+        return { label: "ยกเลิกแล้ว", cls: "bg-slate-200 text-slate-500 line-through" };
+      default:
+        return { label: "", cls: "" };
+    }
+  };
+
+  const CardRow = ({ c }: { c: AthleteCardDetail }) => {
+    const isYellow = c.color === "YELLOW";
+    const st = stateLabel(c.state);
+    return (
+      <div
+        className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
+          isYellow ? "border-amber-200 bg-amber-50/50" : "border-red-200 bg-red-50/50"
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          <span
+            className={`flex h-7 w-7 items-center justify-center rounded-full font-mono text-sm font-bold text-white ${
+              isYellow ? "bg-amber-400" : "bg-red-500"
+            }`}
+          >
+            {c.symbol}
+          </span>
+          <div>
+            <p className="text-[11px] font-medium text-slate-800">
+              {c.symbolLabel}
+              {!isYellow && st.label && (
+                <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium ${st.cls}`}>
+                  {st.label}
+                </span>
+              )}
+            </p>
+            <p className="text-[10px] text-slate-500">
+              โดย <span className="font-medium text-slate-700">{c.judgeName}</span>
+              {c.judgeZone && ` (${c.judgeZone})`} • {c.time}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="space-y-2">
+        <h4 className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700">
+          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-[9px] font-bold">
+            {yellows.length}
+          </span>
+          ใบเหลืองที่ได้รับ
+        </h4>
+        {yellows.length > 0 ? (
+          <div className="space-y-1.5">
+            {yellows.map((c) => (
+              <CardRow key={c.id} c={c} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-[11px] text-slate-400">ไม่มีใบเหลือง</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <h4 className="flex items-center gap-1.5 text-[11px] font-semibold text-red-700">
+          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-100 text-[9px] font-bold">
+            {reds.length}
+          </span>
+          ใบแดงที่ได้รับ
+        </h4>
+        {reds.length > 0 ? (
+          <div className="space-y-1.5">
+            {reds.map((c) => (
+              <CardRow key={c.id} c={c} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-[11px] text-slate-400">ไม่มีใบแดง</p>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import type { EventStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
+// Reflect live ONGOING status without serving a stale cached dashboard.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "ภาพรวมผู้ดูแลระบบ – การแข่งขันเดินทน",
   description:
@@ -28,17 +31,17 @@ function countUniqueIds(ids: string[]): number {
 }
 
 export default async function AdminDashboardPage() {
-  const [eventsTotal, judgesTotal, athletesTotal, currentEventRow] =
+  const [eventsTotal, judgesTotal, athletesTotal, ongoingRows] =
     await Promise.all([
       prisma.event.count({ where: { deletedAt: null } }),
       prisma.judge.count({ where: { deletedAt: null } }),
       prisma.athlete.count({ where: { deletedAt: null } }),
-      prisma.event.findFirst({
-        where: {
-          deletedAt: null,
-          OR: [{ isCurrent: true }, { status: "ONGOING" }],
-        },
-        orderBy: [{ isCurrent: "desc" }, { date: "desc" }],
+      // "กิจกรรมปัจจุบัน" = events actually ONGOING right now (can be more than one).
+      // The manual isCurrent flag is intentionally NOT used here — a finished event
+      // that still has isCurrent=true must not appear as a current activity.
+      prisma.event.findMany({
+        where: { deletedAt: null, status: "ONGOING" },
+        orderBy: { date: "desc" },
         include: {
           rounds: {
             where: { deletedAt: null },
@@ -57,30 +60,19 @@ export default async function AdminDashboardPage() {
       }),
     ]);
 
-  const currentEvent = currentEventRow
-    ? {
-        id: currentEventRow.id,
-        name: currentEventRow.name,
-        date: currentEventRow.date.toISOString().slice(0, 10),
-        location: currentEventRow.location,
-        status: currentEventRow.status,
-        athletesCount: countUniqueIds(
-          currentEventRow.rounds.flatMap((r) =>
-            r.roundAthletes.map((ra) => ra.athleteId),
-          ),
-        ),
-        judgesCount: countUniqueIds(
-          currentEventRow.rounds.flatMap((r) =>
-            r.roundOfficials.map((ro) => ro.judgeId),
-          ),
-        ),
-      }
-    : null;
-
-  const currentEventCardClass =
-    currentEvent?.status === "ONGOING"
-      ? "border-emerald-200 bg-emerald-50/70"
-      : "border-slate-200 bg-white";
+  const ongoingEvents = ongoingRows.map((ev) => ({
+    id: ev.id,
+    name: ev.name,
+    date: ev.date.toISOString().slice(0, 10),
+    location: ev.location,
+    status: ev.status,
+    athletesCount: countUniqueIds(
+      ev.rounds.flatMap((r) => r.roundAthletes.map((ra) => ra.athleteId)),
+    ),
+    judgesCount: countUniqueIds(
+      ev.rounds.flatMap((r) => r.roundOfficials.map((ro) => ro.judgeId)),
+    ),
+  }));
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -133,88 +125,88 @@ export default async function AdminDashboardPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[2fr,1.3fr]">
-          <div className="space-y-4">
-            {currentEvent ? (
-              <div
-                className={`rounded-2xl border p-4 shadow-sm ${currentEventCardClass}`}
-              >
-                <p
-                  className={`text-xs font-medium uppercase tracking-wide ${
-                    currentEvent.status === "ONGOING"
-                      ? "text-emerald-700"
-                      : "text-slate-500"
-                  }`}
+        {/* "กิจกรรมปัจจุบัน" section — shown only when at least one event is ONGOING.
+            Renders one card per ongoing event (supports multiple simultaneous races). */}
+        {ongoingEvents.length > 0 ? (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+              <h2 className="text-sm font-semibold text-slate-900">
+                กิจกรรมที่กำลังดำเนินการ
+              </h2>
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                {ongoingEvents.length} รายการ
+              </span>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {ongoingEvents.map((ev) => (
+                <div
+                  key={ev.id}
+                  className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"
                 >
-                  กิจกรรมปัจจุบัน
-                </p>
-                <div className="mt-2 flex flex-col gap-2 text-sm text-slate-900">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold">{currentEvent.name}</p>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium text-white ${STATUS_BADGE_CLASS[currentEvent.status]}`}
-                    >
-                      {STATUS_LABEL[currentEvent.status]}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600">
-                    วันที่แข่งขัน{" "}
-                    <span className="font-medium">{currentEvent.date}</span> ที่{" "}
-                    <span className="font-medium">{currentEvent.location}</span>
-                  </p>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-700">
-                    <div className="rounded-xl bg-white/60 px-3 py-2">
-                      <p className="text-[10px] font-medium uppercase text-slate-500">
-                        นักกีฬาในกิจกรรม
-                      </p>
-                      <p className="mt-1 text-sm font-semibold">
-                        {currentEvent.athletesCount}
-                      </p>
+                  <div className="flex flex-col gap-2 text-sm text-slate-900">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold">{ev.name}</p>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium text-white ${STATUS_BADGE_CLASS[ev.status]}`}
+                      >
+                        {STATUS_LABEL[ev.status]}
+                      </span>
                     </div>
-                    <div className="rounded-xl bg-white/60 px-3 py-2">
-                      <p className="text-[10px] font-medium uppercase text-slate-500">
-                        กรรมการในกิจกรรม
-                      </p>
-                      <p className="mt-1 text-sm font-semibold">
-                        {currentEvent.judgesCount}
-                      </p>
+                    <p className="text-xs text-slate-600">
+                      วันที่แข่งขัน <span className="font-medium">{ev.date}</span> ที่{" "}
+                      <span className="font-medium">{ev.location}</span>
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-700">
+                      <div className="rounded-xl bg-white/60 px-3 py-2">
+                        <p className="text-[10px] font-medium uppercase text-slate-500">
+                          นักกีฬาในกิจกรรม
+                        </p>
+                        <p className="mt-1 text-sm font-semibold">{ev.athletesCount}</p>
+                      </div>
+                      <div className="rounded-xl bg-white/60 px-3 py-2">
+                        <p className="text-[10px] font-medium uppercase text-slate-500">
+                          กรรมการในกิจกรรม
+                        </p>
+                        <p className="mt-1 text-sm font-semibold">{ev.judgesCount}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-3 flex gap-2 text-xs">
-                    <Link
-                      href={`/admin/events/${currentEvent.id}`}
-                      className="inline-flex flex-1 items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
-                    >
-                      ไปหน้า Event นี้
-                    </Link>
-                    <Link
-                      href={`/events/${currentEvent.id}`}
-                      className="inline-flex flex-1 items-center justify-center rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50"
-                    >
-                      เปิดหน้า Live / Public
-                    </Link>
+                    <div className="mt-3 flex gap-2 text-xs">
+                      <Link
+                        href={`/admin/events/${ev.id}/moderator`}
+                        className="inline-flex flex-1 items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                      >
+                        Moderator
+                      </Link>
+                      <Link
+                        href={`/events/${ev.id}`}
+                        className="inline-flex flex-1 items-center justify-center rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50"
+                      >
+                        เปิดหน้า Live
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center shadow-sm">
-                <p className="text-sm font-medium text-slate-900">
-                  ยังไม่มีกิจกรรมปัจจุบัน
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  ตั้ง Event เป็น &quot;กิจกรรมปัจจุบัน&quot; (isCurrent)
-                  หรือสถานะกำลังดำเนินการ
-                </p>
-                <Link
-                  href="/admin/events"
-                  className="mt-4 inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800"
-                >
-                  ไปจัดการ Event
-                </Link>
-              </div>
-            )}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center shadow-sm">
+            <p className="text-sm font-medium text-slate-900">
+              ขณะนี้ไม่มีกิจกรรมที่กำลังดำเนินการ
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              เริ่มการแข่งขันได้จากหน้า Moderator ของแต่ละ Event
+            </p>
+            <Link
+              href="/admin/events"
+              className="mt-4 inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800"
+            >
+              ไปจัดการ Event
+            </Link>
+          </section>
+        )}
       </div>
     </main>
   );

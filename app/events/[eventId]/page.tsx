@@ -80,6 +80,9 @@ export default async function EventLivePage(props: Props) {
     event.rounds[0];
 
   const eventStatus = event.status.toLowerCase();
+  const isRaceLive =
+    eventStatus !== "finished" &&
+    event.rounds.some((r) => r.status === "ONGOING");
 
   type Row = {
     bib: string;
@@ -159,7 +162,13 @@ export default async function EventLivePage(props: Props) {
         <header className="flex flex-col gap-3 border-b border-slate-800 pb-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-lg font-semibold uppercase tracking-[0.2em] text-slate-400">
-              การแข่งขันเดินทน – <span className="text-red-400">สด (Live)</span>
+              การแข่งขันเดินทน
+              {isRaceLive && (
+                <>
+                  {" "}
+                  – <span className="text-red-400">สด (Live)</span>
+                </>
+              )}
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100 md:text-3xl">
               {event.name}

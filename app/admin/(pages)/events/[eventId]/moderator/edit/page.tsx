@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import {
@@ -36,6 +36,9 @@ export default async function ModeratorEditPage(props: Props) {
   });
 
   if (!event) notFound();
+  if (event.status === "DRAFT") {
+    redirect(`/admin/events/${eventId}`);
+  }
 
   const rounds: EditRoundOption[] = event.rounds.map((r) => ({
     id: r.id,
