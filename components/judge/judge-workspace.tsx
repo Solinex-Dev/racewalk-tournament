@@ -142,7 +142,7 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
                     <tr>
                       <th className="px-3 py-2 text-left text-sm">BIB</th>
                       <th className="px-3 py-2 text-left text-sm">สถานะ</th>
-                      <th className="px-3 py-2 text-left text-sm text-amber-400">ใบเตือน (ของคุณ)</th>
+                      <th className="px-3 py-2 text-left text-sm text-amber-400">ใบเหลือง (ของคุณ)</th>
                       <th className="px-3 py-2 text-left text-sm text-red-400">ใบแดง (ของคุณ)</th>
                     </tr>
                   </thead>
@@ -261,7 +261,7 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
 
             <div className="flex gap-3">
               <div className="flex flex-1 flex-col gap-1.5">
-                <span className="text-center text-base font-medium text-amber-400/70">ใบเตือน</span>
+                <span className="text-center text-base font-medium text-amber-400/70">ใบเหลือง</span>
                 <div className="flex gap-2">
                   <button
                     type="button"

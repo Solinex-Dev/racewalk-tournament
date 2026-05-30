@@ -378,12 +378,11 @@ export function EventsList({ events }: EventsListProps) {
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
                         <div className="flex items-center gap-2">
                           <span>{event.name}</span>
-                          {/* "กำลังแข่งขัน" badge — only while the event is actually ongoing
-                              (not tied to the manual isCurrent flag) */}
+                          {/* LIVE badge — only while the event is actually ongoing */}
                           {event.status === "ongoing" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                              กำลังแข่งขัน
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-red-700">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
+                              LIVE
                             </span>
                           )}
                         </div>
