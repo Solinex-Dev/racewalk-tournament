@@ -8,6 +8,7 @@ import {
   loadOfficialRound,
 } from "@/lib/official-round-guards";
 import { revalidateRaceDayViews } from "@/lib/revalidate-race-day";
+import { allActiveAthletesFinished, finalizeRoundEnd } from "@/lib/round-lifecycle";
 
 /**
  * Record a lap time for an athlete (Event Logger).
@@ -140,8 +141,21 @@ export async function recordFinishTime(athleteId: string, timeMs: number) {
     },
   });
 
+  // Auto-finish the round once every in-standing (OK) athlete has crossed the
+  // line — the last finisher ends the race. DQ/DNF athletes never get a finish
+  // time, so they don't hold the round open.
+  let roundEnded = false;
+  if (await allActiveAthletesFinished(session.roundId)) {
+    const result = await finalizeRoundEnd(
+      session.roundId,
+      { id: "system", name: "ระบบ (อัตโนมัติ)", role: "MODERATOR" },
+      "จบการแข่งขันอัตโนมัติ — นักกีฬาเข้าเส้นชัยครบทุกคน",
+    );
+    roundEnded = result.ended;
+  }
+
   revalidateRaceDayViews(session.eventId);
-  return { ok: true };
+  return { ok: true, roundEnded };
 }
 
 function formatMs(ms: number): string {

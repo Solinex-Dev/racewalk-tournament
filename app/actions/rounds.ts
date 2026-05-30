@@ -42,6 +42,26 @@ function assertOfficialLimits(officials: OfficialInput[]) {
   }
 }
 
+/**
+ * Converts a Prisma unique-constraint failure (P2002) into a friendly Thai
+ * message. RoundAthlete has @@unique([roundId, bib]) and RoundOfficial has
+ * @@unique([roundId, secretCode]) — so a duplicate Bib or secret code surfaces
+ * here. Duck-typed on `code` to avoid depending on Prisma's error-class export.
+ */
+function rethrowFriendly(err: unknown): never {
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: unknown }).code === "P2002"
+  ) {
+    throw new Error(
+      "บันทึกไม่สำเร็จ — มีข้อมูลซ้ำกันในรอบนี้ (เช่น หมายเลข Bib หรือ รหัสลับ ที่ซ้ำกัน) กรุณาแก้ไขรายการที่ขึ้นเตือนสีแดงแล้วบันทึกอีกครั้ง",
+    );
+  }
+  throw err;
+}
+
 export async function createRound(eventId: string, data: RoundActionData) {
   assertOfficialLimits(data.officials);
   let createdId = "";
@@ -79,7 +99,7 @@ export async function createRound(eventId: string, data: RoundActionData) {
         })),
       });
     }
-  });
+  }).catch(rethrowFriendly);
 
   await logCurrentAdmin(ActivityLogAction.ROUND_CREATED, "Round", createdId, {
     eventId,
@@ -146,7 +166,7 @@ export async function updateRound(
         },
       });
     }
-  });
+  }).catch(rethrowFriendly);
 
   await logCurrentAdmin(ActivityLogAction.ROUND_UPDATED, "Round", roundId, {
     eventId,

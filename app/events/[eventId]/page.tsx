@@ -5,6 +5,7 @@ import { AutoRefresh } from "@/components/common/auto-refresh";
 import { LiveTimer } from "@/components/common/live-timer";
 import { LastUpdated } from "@/components/common/last-updated";
 import { prisma } from "@/lib/prisma";
+import { compareAthletesByFinish } from "@/lib/athlete-sort";
 
 // Always render at request time — public scoreboard must reflect status changes
 // (race start/end, card issuance, lap recordings) within one poll cycle.
@@ -84,6 +85,11 @@ export default async function EventLivePage(props: Props) {
     eventStatus !== "finished" &&
     event.rounds.some((r) => r.status === "ONGOING");
 
+  const isCurrentRoundFinished =
+    eventStatus === "finished" ||
+    currentRound?.status === "FINISHED" ||
+    currentRound?.endedAt != null;
+
   type Row = {
     bib: string;
     athleteId: string;
@@ -130,17 +136,8 @@ export default async function EventLivePage(props: Props) {
       };
     });
 
-    // Sort: OK first (finished by position, then current lap desc), then DQ/DNF at bottom
-    athletes.sort((a, b) => {
-      const aActive = a.status === "OK" ? 0 : 1;
-      const bActive = b.status === "OK" ? 0 : 1;
-      if (aActive !== bActive) return aActive - bActive;
-      if (a.isFinished && b.isFinished) return (a.position || 999) - (b.position || 999);
-      if (a.isFinished) return -1;
-      if (b.isFinished) return 1;
-      if (a.currentLap !== b.currentLap) return b.currentLap - a.currentLap;
-      return a.bib.localeCompare(b.bib);
-    });
+    // Finish order — shared with the moderator views (see lib/athlete-sort).
+    athletes.sort(compareAthletesByFinish);
   }
 
   // Pre-computed fallback for rounds without startedAt (e.g., legacy finished rounds)
@@ -173,38 +170,21 @@ export default async function EventLivePage(props: Props) {
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100 md:text-3xl">
               {event.name}
             </h1>
-            <p className="mt-1 text-sm text-slate-300">
+            <div className="flex gap-1.5 align-center">
+            <p className="text-sm text-slate-300">
               {currentRound?.heatName || ""} • ระยะ {currentRound?.distanceKm || event.distanceKm} กม. •{" "}
               {event.location}
             </p>
-            <p className="text-xs text-slate-400">แข่งขันวันที่ {formatThaiDate(event.date)}</p>
-            {event.rounds.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {event.rounds.map((r) => {
-                  // Color reflects ROUND's own status — not whether it's "selected for display".
-                  // The currently-displayed round gets an extra outline ring on top.
-                  const statusStyle =
-                    r.status === "ONGOING"
-                      ? "bg-emerald-950 text-emerald-300 ring-emerald-700"
-                      : r.status === "FINISHED"
-                        ? "bg-slate-800 text-slate-400 ring-slate-600"
-                        : "bg-sky-950 text-sky-300 ring-sky-700";
-                  const isCurrent = r.id === currentRound?.id;
-                  return (
-                    <span
-                      key={r.id}
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ${statusStyle} ${
-                        isCurrent ? "outline outline-1 outline-offset-2 outline-emerald-500/60" : ""
-                      }`}
-                    >
-                      {r.status === "ONGOING" && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
-                      )}
-                      {r.name} · {ROUND_STATUS_LABEL[r.status.toLowerCase()]}
-                    </span>
-                  );
-                })}
-              </div>
+            <p className="text-sm text-slate-400">แข่งขันวันที่ {formatThaiDate(event.date)}</p>
+            </div>
+            {currentRound && (
+              <p className="mt-2 text-sm text-slate-300">
+                {currentRound.name}
+                {" · "}
+                <span className="text-slate-400">
+                  {ROUND_STATUS_LABEL[currentRound.status.toLowerCase()]}
+                </span>
+              </p>
             )}
           </div>
 
@@ -225,18 +205,22 @@ export default async function EventLivePage(props: Props) {
                   <LiveTimer
                     startedAt={currentRound.startedAt.toISOString()}
                     endedAt={currentRound.endedAt?.toISOString() ?? null}
-                    className="font-mono font-semibold text-emerald-400"
+                    className={`font-mono font-semibold ${isCurrentRoundFinished ? "text-slate-300" : "text-emerald-400"}`}
                   />
                 </p>
               )}
               {!currentRound?.startedAt && elapsedFallback && (
                 <p className="text-slate-400">
                   เวลาแข่งขัน{" "}
-                  <span className="font-mono font-semibold text-emerald-400">{elapsedFallback}</span>
+                  <span
+                    className={`font-mono font-semibold ${isCurrentRoundFinished ? "text-slate-300" : "text-emerald-400"}`}
+                  >
+                    {elapsedFallback}
+                  </span>
                 </p>
               )}
             </div>
-            <div className="flex flex-col items-end gap-1.5">
+            {/* <div className="flex flex-col items-end gap-1.5">
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${STATUS_CLASS[eventStatus]}`}
               >
@@ -251,19 +235,19 @@ export default async function EventLivePage(props: Props) {
                 {STATUS_LABEL[eventStatus]}
               </span>
               <LastUpdated time={renderedAt} />
-            </div>
+            </div> */}
           </div>
         </header>
 
-        <section className="grid gap-4 lg:grid-cols-[2fr,1.1fr]">
-          <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
-            <div className="border-b border-slate-800 bg-slate-900/50 px-5 py-4">
+        <section className="grid flex-1 auto-rows-fr gap-4 min-h-0 lg:grid-cols-[2fr,1.1fr]">
+          <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
+            {/* <div className="border-b border-slate-800 bg-slate-900/50 px-5 py-4">
               <p className="text font-bold uppercase tracking-wide text-slate-400">
                 กระดานคะแนนสด
               </p>
-            </div>
+            </div> */}
 
-            <div className="max-h-[520px] overflow-auto">
+            <div className="min-h-0 flex-1 overflow-auto">
               <table className="min-w-full border-collapse text-sm">
                 <thead className="sticky top-0 border-b border-slate-800 bg-slate-900/95 text-[14px] font-medium uppercase text-slate-400 backdrop-blur">
                   <tr>
@@ -279,22 +263,44 @@ export default async function EventLivePage(props: Props) {
                 <tbody className="divide-y divide-slate-800">
                   {athletes.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-5 py-8 text-center text-slate-500">
+                      <td colSpan={6} className="px-5 py-8 text-center text-slate-500">
                         ยังไม่มีข้อมูลการแข่งขันในรอบนี้
                       </td>
                     </tr>
                   ) : (
                     athletes.map((athlete) => {
                       const isDQ = athlete.status === "DQ";
+                      const isFinished = athlete.isFinished && athlete.status === "OK";
+                      const medalCls =
+                        athlete.position === 1
+                          ? "bg-amber-400/20 text-amber-300 ring-amber-500/40"
+                          : athlete.position === 2
+                            ? "bg-slate-300/20 text-slate-200 ring-slate-400/40"
+                            : athlete.position === 3
+                              ? "bg-orange-700/30 text-orange-300 ring-orange-600/40"
+                              : "bg-slate-700/40 text-slate-200 ring-slate-600/40";
                       return (
                         <tr
                           key={athlete.bib}
                           className={`transition-colors text-center ${
-                            isDQ ? "bg-slate-800/30 opacity-60" : "hover:bg-slate-800/50"
+                            isDQ
+                              ? "bg-slate-800/30 opacity-60"
+                              : isFinished
+                                ? "bg-emerald-950/30"
+                                : "hover:bg-slate-800/50"
                           }`}
                         >
-                          {/* <td className="px-5 py-4 font-bold text-slate-300">
-                            {athlete.isFinished && athlete.position ? athlete.position : isDQ ? "-" : idx + 1}
+                          {/* <td className="px-5 py-4 text-center">
+                            {isFinished ? (
+                              <span
+                                className={`inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full px-2 text-sm font-bold ring-1 ${medalCls}`}
+                                title="อันดับเข้าเส้นชัย (ล็อกแล้ว)"
+                              >
+                                {athlete.position}
+                              </span>
+                            ) : (
+                              <span className="text-slate-600">—</span>
+                            )}
                           </td> */}
                           <td className="px-5 py-4 text-center">
                             <span
@@ -338,10 +344,18 @@ export default async function EventLivePage(props: Props) {
                                   ? "bg-red-950 text-red-400 ring-red-800"
                                   : athlete.status === "DNF"
                                     ? "bg-amber-950 text-amber-400 ring-amber-800"
-                                    : "bg-emerald-950 text-emerald-400 ring-emerald-800"
+                                    : isFinished
+                                      ? "bg-emerald-500/15 text-emerald-300 ring-emerald-600/40"
+                                      : "bg-sky-950 text-sky-300 ring-sky-800"
                               }`}
                             >
-                              {athlete.status}
+                              {athlete.status === "DQ"
+                                ? "DQ"
+                                : athlete.status === "DNF"
+                                  ? "DNF"
+                                  : isFinished
+                                    ? "FINISHED"
+                                    : "OK"}
                             </span>
                           </td>
                         </tr>
@@ -353,7 +367,7 @@ export default async function EventLivePage(props: Props) {
             </div>
           </div>
 
-          <aside className="space-y-4">
+          {/* <aside className="space-y-4">
             <div className="space-y-2 rounded-2xl border border-slate-800 from-slate-900 to-slate-950 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 สำหรับกรรมการ
@@ -370,7 +384,7 @@ export default async function EventLivePage(props: Props) {
                 </a>
               </div>
             </div>
-          </aside>
+          </aside> */}
         </section>
       </div>
     </main>

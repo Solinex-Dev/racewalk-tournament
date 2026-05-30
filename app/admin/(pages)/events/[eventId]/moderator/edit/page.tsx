@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { compareAthletesByFinish } from "@/lib/athlete-sort";
 import {
   ModeratorEditView,
   type EditAthlete,
@@ -155,6 +156,31 @@ export default async function ModeratorEditPage(props: Props) {
     status: ra.status,
     position: ra.position,
   }));
+
+  // Finish-order sort — identical to the public leaderboard (lib/athlete-sort)
+  const finishedAthleteIds = new Set(round.finishTimes.map((f) => f.athleteId));
+  const lapsByAthlete = new Map<string, number>();
+  for (const l of round.lapTimes) {
+    lapsByAthlete.set(l.athleteId, (lapsByAthlete.get(l.athleteId) ?? 0) + 1);
+  }
+  athletes.sort((a, b) =>
+    compareAthletesByFinish(
+      {
+        status: a.status,
+        position: a.position,
+        isFinished: finishedAthleteIds.has(a.id),
+        currentLap: (lapsByAthlete.get(a.id) ?? 0) + (finishedAthleteIds.has(a.id) ? 1 : 0),
+        bib: a.bib,
+      },
+      {
+        status: b.status,
+        position: b.position,
+        isFinished: finishedAthleteIds.has(b.id),
+        currentLap: (lapsByAthlete.get(b.id) ?? 0) + (finishedAthleteIds.has(b.id) ? 1 : 0),
+        bib: b.bib,
+      },
+    ),
+  );
 
   // Scoring officials become the headings of the "judges" accordion (zone judges
   // first by zone label, then head judge; the event logger is excluded — handled

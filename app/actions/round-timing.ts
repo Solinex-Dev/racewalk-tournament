@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
 import { revalidateRaceDayViews } from "@/lib/revalidate-race-day";
+import { syncEventStatus, finalizeRoundEnd } from "@/lib/round-lifecycle";
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -14,36 +15,6 @@ async function requireAdmin() {
     throw new Error("ต้องเป็น Admin เท่านั้น");
   }
   return session.user;
-}
-
-/**
- * Keep Event.status in sync with the aggregate state of its rounds:
- *   - any round ONGOING            → Event ONGOING
- *   - all rounds FINISHED (>=1)    → Event FINISHED
- *   - otherwise (only SCHEDULED)   → leave SCHEDULED/DRAFT untouched
- * Returns the resulting event status (or null if event not found).
- */
-async function syncEventStatus(eventId: string): Promise<"ONGOING" | "FINISHED" | null> {
-  const rounds = await prisma.round.findMany({
-    where: { eventId, deletedAt: null },
-    select: { status: true },
-  });
-  if (rounds.length === 0) return null;
-
-  const anyOngoing = rounds.some((r) => r.status === "ONGOING");
-  const allFinished = rounds.every((r) => r.status === "FINISHED");
-
-  let next: "ONGOING" | "FINISHED" | null = null;
-  if (anyOngoing) next = "ONGOING";
-  else if (allFinished) next = "FINISHED";
-
-  if (next) {
-    await prisma.event.updateMany({
-      where: { id: eventId, status: { not: next } },
-      data: { status: next },
-    });
-  }
-  return next;
 }
 
 /**
@@ -101,28 +72,13 @@ export async function endRound(roundId: string) {
   if (!round) throw new Error("ไม่พบรอบที่ระบุ");
   if (round.status === "FINISHED") return { ok: true };
 
-  const now = new Date();
-  await prisma.round.update({
-    where: { id: roundId },
-    data: {
-      status: "FINISHED",
-      endedAt: now,
-    },
-  });
-
-  await prisma.roundActivityLog.create({
-    data: {
-      roundId,
-      actorId: user.id,
-      actorName: user.name ?? "Moderator",
-      actorRole: "MODERATOR",
-      actionType: "round_end",
-      details: "จบการแข่งขัน",
-    },
-  });
-
-  // If every round is now finished, the event itself is finished
-  const eventStatus = await syncEventStatus(round.eventId);
+  // Mark the round finished + log it; if every round is now finished, the event
+  // itself is finished. Shared with the automatic end-of-race trigger.
+  const { eventStatus } = await finalizeRoundEnd(
+    roundId,
+    { id: user.id, name: user.name ?? "Moderator", role: "MODERATOR" },
+    "จบการแข่งขัน",
+  );
 
   await logCurrentAdmin(ActivityLogAction.ROUND_ENDED, "Round", roundId, {
     eventId: round.eventId,

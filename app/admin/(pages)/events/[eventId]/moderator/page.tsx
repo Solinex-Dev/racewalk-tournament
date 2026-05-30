@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { compareAthletesByFinish } from "@/lib/athlete-sort";
 import {
   ModeratorView,
   type EventInfo,
@@ -97,6 +98,8 @@ export default async function ModeratorPage(props: Props) {
             where: { deletedAt: null },
             include: { athlete: { select: { name: true } }, judge: { select: { name: true } } },
           },
+          lapTimes: { where: { deletedAt: null }, select: { athleteId: true } },
+          finishTimes: { where: { deletedAt: null }, select: { athleteId: true } },
           activityLogs: {
             where: { deletedAt: null },
             orderBy: { timestamp: "asc" },
@@ -126,8 +129,35 @@ export default async function ModeratorPage(props: Props) {
       r.roundOfficials.map((ro) => [ro.judgeId, ro.zone ?? ""]),
     );
 
+    // Finish-order sort — identical to the public leaderboard (lib/athlete-sort)
+    const finishedAthleteIds = new Set(r.finishTimes.map((f) => f.athleteId));
+    const lapsByAthlete = new Map<string, number>();
+    for (const l of r.lapTimes) {
+      lapsByAthlete.set(l.athleteId, (lapsByAthlete.get(l.athleteId) ?? 0) + 1);
+    }
+    const orderedRoundAthletes = [...r.roundAthletes].sort((a, b) =>
+      compareAthletesByFinish(
+        {
+          status: a.status,
+          position: a.position ?? null,
+          isFinished: finishedAthleteIds.has(a.athleteId),
+          currentLap:
+            (lapsByAthlete.get(a.athleteId) ?? 0) + (finishedAthleteIds.has(a.athleteId) ? 1 : 0),
+          bib: a.bib,
+        },
+        {
+          status: b.status,
+          position: b.position ?? null,
+          isFinished: finishedAthleteIds.has(b.athleteId),
+          currentLap:
+            (lapsByAthlete.get(b.athleteId) ?? 0) + (finishedAthleteIds.has(b.athleteId) ? 1 : 0),
+          bib: b.bib,
+        },
+      ),
+    );
+
     // Build athlete summaries with card counts + per-card breakdown
-    const athletes: AthleteSummary[] = r.roundAthletes.map((ra) => {
+    const athletes: AthleteSummary[] = orderedRoundAthletes.map((ra) => {
       const yellowCount = r.cards.filter(
         (c) => c.athleteId === ra.athleteId && c.color === "YELLOW",
       ).length;

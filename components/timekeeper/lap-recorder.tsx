@@ -86,8 +86,11 @@ export function LapRecorder({
     startTransition(async () => {
       try {
         if (nextLap >= athlete.lapCount) {
-          await recordFinishTime(athlete.athleteId, captureMs);
+          const res = await recordFinishTime(athlete.athleteId, captureMs);
           toast.success(`บันทึกเข้าเส้นชัย BIB ${athlete.bib} — ${formatMs(captureMs)}`);
+          if (res?.roundEnded) {
+            toast.success("นักกีฬาเข้าเส้นชัยครบทุกคน — จบการแข่งขันอัตโนมัติ");
+          }
         } else {
           await recordLapTime(athlete.athleteId, nextLap, captureMs);
           toast.success(`บันทึก Lap ${nextLap} ของ BIB ${athlete.bib}`);

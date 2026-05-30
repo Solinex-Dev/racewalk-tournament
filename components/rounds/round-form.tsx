@@ -186,6 +186,42 @@ export function RoundForm({
   const headCount = form.officials.filter((o) => o.position === "HEAD_JUDGE").length;
   const loggerCount = form.officials.filter((o) => o.position === "EVENT_LOGGER").length;
 
+  // Duplicate detection — warns in red but NEVER blocks input or submission.
+  // Bib: compared by trimmed value. Zone/โต๊ะ: compared case-insensitively, and
+  // blank zones (head judge / lap-time logger have none) are ignored.
+  const bibDup = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const a of form.athletes) {
+      const t = a.bib.trim();
+      if (!t) continue;
+      counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    const keys = new Set<string>();
+    for (const [k, n] of counts) if (n > 1) keys.add(k);
+    return { keys, labels: [...keys] };
+  }, [form.athletes]);
+
+  const zoneDup = React.useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const o of form.officials) {
+      const t = o.zone.trim();
+      if (!t) continue;
+      const k = t.toLowerCase();
+      const arr = groups.get(k) ?? [];
+      arr.push(t);
+      groups.set(k, arr);
+    }
+    const keys = new Set<string>();
+    const labels: string[] = [];
+    for (const [k, arr] of groups) {
+      if (arr.length > 1) {
+        keys.add(k);
+        labels.push(arr[0] ?? k);
+      }
+    }
+    return { keys, labels };
+  }, [form.officials]);
+
   const maxForPosition = (pos: OfficialEntry["position"]) =>
     pos === "JUDGE" ? MAX_JUDGES : pos === "HEAD_JUDGE" ? MAX_HEAD_JUDGE : MAX_EVENT_LOGGER;
 
@@ -474,6 +510,17 @@ export function RoundForm({
               </Button>
             </div>
 
+            {bibDup.keys.size > 0 && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-[11px] text-red-700">
+                <span aria-hidden>⚠</span>
+                <span>
+                  มีหมายเลข Bib ซ้ำกัน:{" "}
+                  <span className="font-semibold">{bibDup.labels.join(", ")}</span> — กรุณาตรวจสอบ
+                  (ระบบยังให้บันทึกได้ แต่ Bib ต้องไม่ซ้ำกันในรอบเดียวกัน)
+                </span>
+              </div>
+            )}
+
             <div className="min-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white">
               <table className="min-w-full border-collapse text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
@@ -502,11 +549,25 @@ export function RoundForm({
                         </td>
                         <td className="px-3 py-2">
                           <Input
-                            className="h-7 w-28 px-2 py-1 text-xs"
+                            className={`h-7 w-28 px-2 py-1 text-xs ${
+                              row.bib.trim() !== "" && bibDup.keys.has(row.bib.trim())
+                                ? "border-red-400 text-red-700 focus-visible:ring-red-200"
+                                : ""
+                            }`}
                             value={row.bib}
                             onChange={(e) => handleBibChange(i, e.target.value)}
                             placeholder="เช่น 101"
+                            aria-invalid={
+                              row.bib.trim() !== "" && bibDup.keys.has(row.bib.trim())
+                                ? true
+                                : undefined
+                            }
                           />
+                          {row.bib.trim() !== "" && bibDup.keys.has(row.bib.trim()) && (
+                            <p className="mt-1 text-[10px] font-medium text-red-600">
+                              ⚠ หมายเลข Bib ซ้ำ
+                            </p>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-right">
                           <Button
@@ -573,6 +634,17 @@ export function RoundForm({
               </div>
             </div>
 
+            {zoneDup.keys.size > 0 && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-[11px] text-red-700">
+                <span aria-hidden>⚠</span>
+                <span>
+                  มีโซน / โต๊ะ ซ้ำกัน:{" "}
+                  <span className="font-semibold">{zoneDup.labels.join(", ")}</span> —
+                  กรรมการแต่ละคนควรอยู่คนละโซน (ระบบยังให้บันทึกได้)
+                </span>
+              </div>
+            )}
+
             <div className="min-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white">
               <table className="min-w-full border-collapse text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
@@ -618,11 +690,28 @@ export function RoundForm({
                         </td>
                         <td className="px-3 py-2">
                           <Input
-                            className="h-7 w-24 px-2 py-1 text-xs"
+                            className={`h-7 w-24 px-2 py-1 text-xs ${
+                              row.zone.trim() !== "" &&
+                              zoneDup.keys.has(row.zone.trim().toLowerCase())
+                                ? "border-red-400 text-red-700 focus-visible:ring-red-200"
+                                : ""
+                            }`}
                             value={row.zone}
                             onChange={(e) => handleZoneChange(i, e.target.value)}
                             placeholder="เช่น A, 1"
+                            aria-invalid={
+                              row.zone.trim() !== "" &&
+                              zoneDup.keys.has(row.zone.trim().toLowerCase())
+                                ? true
+                                : undefined
+                            }
                           />
+                          {row.zone.trim() !== "" &&
+                            zoneDup.keys.has(row.zone.trim().toLowerCase()) && (
+                              <p className="mt-1 text-[10px] font-medium text-red-600">
+                                ⚠ โซน/โต๊ะ ซ้ำ
+                              </p>
+                            )}
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1.5">
