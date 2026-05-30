@@ -55,7 +55,8 @@ export default async function EventLoggerPage(props: Props) {
       name: ra.athlete.name,
       currentLap: myLaps.length + (finish ? 1 : 0),
       lapCount,
-      lastLapAt: lastLap ? formatMs(lastLap.timeMs) : finish ? formatMs(finish.timeMs) : null,
+      // The finish IS the final crossing — show it as the most recent time when present.
+      lastLapAt: finish ? formatMs(finish.timeMs) : lastLap ? formatMs(lastLap.timeMs) : null,
       status: ra.status,
       finishedAt: finish ? formatMs(finish.timeMs) : null,
     };

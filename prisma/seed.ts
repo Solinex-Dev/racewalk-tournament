@@ -8,8 +8,9 @@
  * Design principles (so the data is realistic AND obeys business rules):
  *   1. Race-walk realism — pace 4:00–5:30 / km (NOT runner pace). 1 lap = 1 km
  *      for every round (distanceKm === lapCount), so paceSec is per-lap seconds.
- *   2. Internal consistency — lap times are cumulative; a finisher's FinishTime
- *      equals their last lap's cumulative time exactly. currentLap = furthest lap.
+ *   2. Internal consistency — lap times are cumulative. A finisher emits lap rows
+ *      1..(N-1); the Nth (final) crossing IS the FinishTime (not a lap row),
+ *      matching the live recorder. currentLap = lap rows + (finished ? 1 : 0) = N.
  *   3. Rule correctness — a DQ athlete has EXACTLY ≥4 CONFIRMED red cards from 4
  *      distinct judges (the generator throws if a DQ scenario violates this).
  *      Yellow: ≤1 per symbol per judge per athlete. Red: ≤1 (non-overridden) per
@@ -453,20 +454,27 @@ function buildAll() {
       if (!rc.startedAt) continue;
       const startMs = rc.startedAt.getTime();
 
-      // Lap cumulative times (deterministic small jitter, always monotonic)
+      // Cumulative lap times (deterministic small jitter, always monotonic).
+      // A finisher's LAST crossing IS the finish — stored as a FinishTime, NOT as
+      // a lap row — so a finisher emits lap rows 1..(N-1) plus a finish, exactly
+      // like the live flow (recordLapTime ×(N-1) + recordFinishTime for the Nth).
+      const isFinisher = sc.outcome === "FINISH" && sc.position != null && sc.laps > 0;
+      const lapRowCount = isFinisher ? sc.laps - 1 : sc.laps;
       const lapCum: number[] = [0];
       for (let lap = 1; lap <= sc.laps; lap++) {
         const jitter = (((lap * 37) % 11) - 5) * 1000; // ±5s
         const firstLapPenalty = lap === 1 ? 3000 : 0;   // settle-in
         lapCum[lap] = lapCum[lap - 1] + sc.paceSec * 1000 + jitter + firstLapPenalty;
-        laps.push({
-          id: `lap-${rc.id}-${sc.athleteId}-${lap}`,
-          roundId: rc.id, athleteId: sc.athleteId, lapNumber: lap,
-          timeMs: lapCum[lap], recordedBy: rc.officials.logger, source: "EVENT_LOGGER",
-        });
+        if (lap <= lapRowCount) {
+          laps.push({
+            id: `lap-${rc.id}-${sc.athleteId}-${lap}`,
+            roundId: rc.id, athleteId: sc.athleteId, lapNumber: lap,
+            timeMs: lapCum[lap], recordedBy: rc.officials.logger, source: "EVENT_LOGGER",
+          });
+        }
       }
 
-      // FinishTime = last lap cumulative (exact)
+      // FinishTime = final lap's cumulative time (the last crossing IS the finish)
       if (sc.outcome === "FINISH" && sc.position != null && sc.laps > 0) {
         finishes.push({
           id: `ft-${rc.id}-${sc.athleteId}`, roundId: rc.id, athleteId: sc.athleteId,
