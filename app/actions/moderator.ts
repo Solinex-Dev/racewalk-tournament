@@ -207,6 +207,104 @@ export async function moderatorRejectRedCard(cardId: string, reason: string) {
   return { ok: true };
 }
 
+function symbolLabel(s: string): string {
+  return s === "LIFTED_FOOT" ? "ยกเท้า" : "เข่างอ";
+}
+
+/**
+ * Moderator edits a card's offence symbol (ยกเท้า ↔ เข่างอ) — e.g. the judge
+ * recorded the wrong offence. Works on yellow or red cards.
+ */
+export async function moderatorEditCardSymbol(
+  cardId: string,
+  newSymbol: "LIFTED_FOOT" | "BENT_KNEE",
+  reason: string,
+) {
+  const user = await requireAdmin();
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    include: {
+      athlete: { select: { name: true } },
+      judge: { select: { name: true } },
+    },
+  });
+  if (!card) throw new Error("ไม่พบใบที่ระบุ");
+  if (card.symbol === newSymbol) return { ok: true };
+
+  await prisma.card.update({
+    where: { id: cardId },
+    data: { symbol: newSymbol },
+  });
+
+  await logModeratorAction(
+    card.roundId,
+    user,
+    "moderator_edit_card",
+    `แก้สัญลักษณ์ใบ${card.color === "YELLOW" ? "เหลือง" : "แดง"}ของ ${card.athlete.name} (ออกโดย ${card.judge.name}) จาก ${symbolLabel(card.symbol)} เป็น ${symbolLabel(newSymbol)} — เหตุผล: ${reason}`,
+    card.athleteId,
+  );
+  await logCurrentAdmin(ActivityLogAction.MODERATOR_EDIT_CARD, "Card", cardId, {
+    roundId: card.roundId,
+    athleteId: card.athleteId,
+    from: card.symbol,
+    to: newSymbol,
+    reason,
+  });
+
+  revalidatePath(`/admin/events`);
+  return { ok: true };
+}
+
+/**
+ * Moderator edits an athlete's finishing rank. Updates both the FinishTime row
+ * and the RoundAthlete.position (the authoritative ranking used by scoreboards).
+ * Does not re-order other athletes — the moderator is responsible for consistency.
+ */
+export async function moderatorEditFinishPosition(
+  finishTimeId: string,
+  newPosition: number,
+  reason: string,
+) {
+  const user = await requireAdmin();
+  if (!Number.isInteger(newPosition) || newPosition < 1) {
+    throw new Error("อันดับต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป");
+  }
+
+  const ft = await prisma.finishTime.findUnique({
+    where: { id: finishTimeId },
+    include: { athlete: { select: { name: true } } },
+  });
+  if (!ft) throw new Error("ไม่พบเวลาเข้าเส้นชัย");
+
+  const oldPos = ft.position;
+  await prisma.finishTime.update({
+    where: { id: finishTimeId },
+    data: { position: newPosition },
+  });
+  await prisma.roundAthlete.updateMany({
+    where: { roundId: ft.roundId, athleteId: ft.athleteId },
+    data: { position: newPosition },
+  });
+
+  await logModeratorAction(
+    ft.roundId,
+    user,
+    "moderator_edit_finish_position",
+    `แก้อันดับของ ${ft.athlete.name} จาก ${oldPos} เป็น ${newPosition} — เหตุผล: ${reason}`,
+    ft.athleteId,
+  );
+  await logCurrentAdmin(ActivityLogAction.MODERATOR_EDIT_FINISH_POSITION, "FinishTime", finishTimeId, {
+    roundId: ft.roundId,
+    athleteId: ft.athleteId,
+    from: oldPos,
+    to: newPosition,
+    reason,
+  });
+
+  revalidatePath(`/admin/events`);
+  return { ok: true };
+}
+
 // ─── Athlete status override ─────────────────────────────────────────────────
 
 export async function moderatorOverrideAthleteStatus(

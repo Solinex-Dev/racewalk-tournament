@@ -8,12 +8,21 @@ export type EditAthlete = {
   position: number | null;
 };
 
+export type EditJudge = {
+  id: string;
+  name: string;
+  position: "JUDGE" | "HEAD_JUDGE" | "EVENT_LOGGER";
+  zone: string;
+};
+
 export type EditCard = {
   id: string;
   athleteId: string;
   athleteName: string;
   bib: string;
+  judgeId: string;
   judgeName: string;
+  judgeZone: string;
   color: "YELLOW" | "RED";
   symbol: "BENT_KNEE" | "LIFTED_FOOT";
   state: "PENDING" | "CONFIRMED" | "OVERRIDDEN" | null;

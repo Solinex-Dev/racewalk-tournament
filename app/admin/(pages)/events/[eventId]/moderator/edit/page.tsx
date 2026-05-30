@@ -5,6 +5,7 @@ import {
   ModeratorEditView,
   type EditAthlete,
   type EditCard,
+  type EditJudge,
   type EditLap,
   type EditFinish,
   type EditRoundOption,
@@ -59,6 +60,7 @@ export default async function ModeratorEditPage(props: Props) {
         rounds={rounds}
         selectedRoundId=""
         athletes={[]}
+        judges={[]}
         cards={[]}
         laps={[]}
         finishes={[]}
@@ -73,6 +75,10 @@ export default async function ModeratorEditPage(props: Props) {
         where: { deletedAt: null },
         include: { athlete: { select: { id: true, name: true } } },
         orderBy: [{ position: "asc" }, { bib: "asc" }],
+      },
+      roundOfficials: {
+        where: { deletedAt: null },
+        include: { judge: { select: { name: true } } },
       },
       cards: {
         where: { deletedAt: null },
@@ -99,6 +105,7 @@ export default async function ModeratorEditPage(props: Props) {
 
   // Map for fast bib lookup
   const bibByAthleteId = new Map(round.roundAthletes.map((ra) => [ra.athleteId, ra.bib]));
+  const zoneByJudgeId = new Map(round.roundOfficials.map((ro) => [ro.judgeId, ro.zone ?? ""]));
 
   const athletes: EditAthlete[] = round.roundAthletes.map((ra) => ({
     id: ra.athleteId,
@@ -108,12 +115,30 @@ export default async function ModeratorEditPage(props: Props) {
     position: ra.position,
   }));
 
+  // Scoring officials become the headings of the "judges" accordion (zone judges
+  // first by zone label, then head judge; the event logger is excluded — handled
+  // in the Lap/Finish sections).
+  const judges: EditJudge[] = round.roundOfficials
+    .filter((ro) => ro.position === "JUDGE" || ro.position === "HEAD_JUDGE")
+    .map((ro) => ({
+      id: ro.judgeId,
+      name: ro.judge.name,
+      position: ro.position,
+      zone: ro.zone ?? "",
+    }))
+    .sort((a, b) => {
+      if (a.position !== b.position) return a.position === "HEAD_JUDGE" ? 1 : -1;
+      return a.zone.localeCompare(b.zone, "en");
+    });
+
   const cards: EditCard[] = round.cards.map((c) => ({
     id: c.id,
     athleteId: c.athleteId,
     athleteName: c.athlete.name,
     bib: bibByAthleteId.get(c.athleteId) ?? "?",
+    judgeId: c.judgeId,
     judgeName: c.judge.name,
+    judgeZone: zoneByJudgeId.get(c.judgeId) ?? "",
     color: c.color,
     symbol: c.symbol,
     state: c.state,
@@ -145,6 +170,7 @@ export default async function ModeratorEditPage(props: Props) {
       rounds={rounds}
       selectedRoundId={selectedRoundId}
       athletes={athletes}
+      judges={judges}
       cards={cards}
       laps={laps}
       finishes={finishes}

@@ -55,6 +55,8 @@ const ACTION_LABEL: Record<string, string> = {
   moderator_delete_card: "ลบใบ (Moderator)",
   moderator_confirm_red: "ยืนยันใบแดง (Moderator)",
   moderator_reject_red: "ยกเลิกใบแดง (Moderator)",
+  moderator_edit_card: "แก้สัญลักษณ์ใบ (Moderator)",
+  moderator_edit_finish_position: "แก้อันดับ (Moderator)",
   moderator_override_status: "แก้สถานะนักกีฬา (Moderator)",
   moderator_edit_lap: "แก้เวลา Lap (Moderator)",
   moderator_delete_lap: "ลบ Lap (Moderator)",

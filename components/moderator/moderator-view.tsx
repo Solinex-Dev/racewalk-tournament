@@ -1051,6 +1051,8 @@ function ActionBadge({ actionType }: { actionType: ActivityLogItem["actionType"]
     moderator_delete_card:    { label: "Mod: ลบใบ",     cls: "bg-violet-50 text-violet-700" },
     moderator_confirm_red:    { label: "Mod: ยืนยันแดง", cls: "bg-violet-50 text-violet-700" },
     moderator_reject_red:     { label: "Mod: ยกเลิกแดง", cls: "bg-violet-50 text-violet-700" },
+    moderator_edit_card:      { label: "Mod: แก้ใบ",    cls: "bg-violet-50 text-violet-700" },
+    moderator_edit_finish_position: { label: "Mod: แก้อันดับ", cls: "bg-violet-50 text-violet-700" },
     moderator_override_status:{ label: "Mod: สถานะ",    cls: "bg-violet-50 text-violet-700" },
     moderator_edit_lap:       { label: "Mod: แก้ Lap",  cls: "bg-violet-50 text-violet-700" },
     moderator_delete_lap:     { label: "Mod: ลบ Lap",   cls: "bg-violet-50 text-violet-700" },

@@ -457,15 +457,17 @@ export function EventsList({ events }: EventsListProps) {
                                     <ArrowUpRight className="h-3 w-3" />
                                   </Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                  <Link
-                                    href={`/judge/events/${event.id}/join`}
-                                    target="_blank"
-                                    className="flex w-full items-center"
-                                  >
-                                    <span>ลิงก์กรรมการ</span>
-                                  </Link>
-                                </DropdownMenuItem>
+                                {event.status !== "finished" && (
+                                  <DropdownMenuItem asChild>
+                                    <Link
+                                      href={`/judge/events/${event.id}/join`}
+                                      target="_blank"
+                                      className="flex w-full items-center"
+                                    >
+                                      <span>ลิงก์กรรมการ</span>
+                                    </Link>
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}

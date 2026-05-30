@@ -23,13 +23,19 @@ export type ModeratorEditDialogPayload =
   | { kind: "delete-lap"; lap: EditLap }
   | { kind: "delete-finish"; finish: EditFinish }
   | { kind: "edit-lap"; lap: EditLap }
-  | { kind: "edit-finish"; finish: EditFinish };
+  | { kind: "edit-finish"; finish: EditFinish }
+  | { kind: "edit-finish-position"; finish: EditFinish }
+  | { kind: "edit-card-symbol"; card: EditCard };
 
 type ModeratorEditDialogProps = {
   payload: ModeratorEditDialogPayload | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (data: { reason: string; timeInput?: string }) => void;
+  onConfirm: (data: {
+    reason: string;
+    timeInput?: string;
+    symbolValue?: "LIFTED_FOOT" | "BENT_KNEE";
+  }) => void;
   isPending?: boolean;
   formatMs: (ms: number) => string;
 };
@@ -234,6 +240,42 @@ function getDialogMeta(
         timeDefault: formatMs(payload.finish.timeMs),
         timeLabel: "เวลาใหม่ (HH:MM:SS)",
       };
+    case "edit-finish-position":
+      return {
+        title: "แก้ไขอันดับ",
+        description: (
+          <>
+            นักกีฬา{" "}
+            <span className="font-medium text-slate-900">{payload.finish.athleteName}</span>{" "}
+            (Bib {payload.finish.bib})
+          </>
+        ),
+        variant: "default" as const,
+        confirmLabel: "บันทึกอันดับ",
+        confirmClass: "bg-slate-900 text-white hover:bg-slate-800",
+        destructive: false,
+        showTime: true,
+        timeDefault: String(payload.finish.position),
+        timeLabel: "อันดับใหม่ (ตัวเลข)",
+      };
+    case "edit-card-symbol":
+      return {
+        title: "แก้ไขสัญลักษณ์ความผิด",
+        description: (
+          <>
+            ใบ{payload.card.color === "YELLOW" ? "เหลือง" : "แดง"}ของ{" "}
+            <span className="font-medium text-slate-900">{payload.card.athleteName}</span>{" "}
+            (Bib {payload.card.bib}) โดย {payload.card.judgeName}
+          </>
+        ),
+        variant: "default" as const,
+        confirmLabel: "บันทึกสัญลักษณ์",
+        confirmClass: "bg-slate-900 text-white hover:bg-slate-800",
+        destructive: false,
+        showTime: false,
+        timeDefault: "",
+        timeLabel: "",
+      };
   }
 }
 
@@ -247,6 +289,8 @@ export function ModeratorEditDialog({
 }: ModeratorEditDialogProps) {
   const [reason, setReason] = React.useState("");
   const [timeInput, setTimeInput] = React.useState("");
+  const [symbolValue, setSymbolValue] =
+    React.useState<"LIFTED_FOOT" | "BENT_KNEE">("LIFTED_FOOT");
 
   React.useEffect(() => {
     if (!open || !payload) return;
@@ -255,8 +299,13 @@ export function ModeratorEditDialog({
       setTimeInput(formatMs(payload.lap.timeMs));
     } else if (payload.kind === "edit-finish") {
       setTimeInput(formatMs(payload.finish.timeMs));
+    } else if (payload.kind === "edit-finish-position") {
+      setTimeInput(String(payload.finish.position));
     } else {
       setTimeInput("");
+    }
+    if (payload.kind === "edit-card-symbol") {
+      setSymbolValue(payload.card.symbol);
     }
   }, [open, payload, formatMs]);
 
@@ -270,7 +319,11 @@ export function ModeratorEditDialog({
     e.preventDefault();
     const trimmed = reason.trim();
     if (!trimmed) return;
-    onConfirm({ reason: trimmed, timeInput: meta.showTime ? timeInput : undefined });
+    onConfirm({
+      reason: trimmed,
+      timeInput: meta.showTime ? timeInput : undefined,
+      symbolValue: payload.kind === "edit-card-symbol" ? symbolValue : undefined,
+    });
   };
 
   return (
@@ -348,10 +401,39 @@ export function ModeratorEditDialog({
                   value={timeInput}
                   onChange={(e) => setTimeInput(e.target.value)}
                   className="rounded-xl font-mono"
-                  placeholder="00:05:30"
+                  placeholder={payload.kind === "edit-finish-position" ? "เช่น 3" : "00:05:30"}
                   disabled={isPending}
                   required
                 />
+              </div>
+            )}
+
+            {payload.kind === "edit-card-symbol" && (
+              <div className="space-y-2">
+                <span className="text-sm font-medium text-slate-900">สัญลักษณ์ความผิด</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      ["LIFTED_FOOT", "ยกเท้า", "~"],
+                      ["BENT_KNEE", "เข่างอ", ">"],
+                    ] as const
+                  ).map(([val, label, sym]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => setSymbolValue(val)}
+                      className={cn(
+                        "flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+                        symbolValue === val
+                          ? "border-slate-900 bg-slate-900 text-white"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                      )}
+                    >
+                      <span className="font-mono text-base">{sym}</span> {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
