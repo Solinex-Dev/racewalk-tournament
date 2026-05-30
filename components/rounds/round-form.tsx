@@ -715,7 +715,10 @@ export function RoundForm({
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1.5">
-                            <span className="inline-flex items-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-800">
+                            <span
+                              className="inline-flex cursor-default select-none items-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-800"
+                              onCopy={(e) => e.preventDefault()}
+                            >
                               {row.secretCode || "------"}
                             </span>
                             <Tooltip open={copiedSecretIndex === i}>
