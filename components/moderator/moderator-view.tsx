@@ -976,6 +976,7 @@ function ActionBadge({ actionType }: { actionType: ActivityLogItem["actionType"]
     red_card_confirm:    { label: "ยืนยันใบแดง",     cls: "bg-red-50 text-red-700" },
     red_card_override:   { label: "ยกเลิกใบแดง",    cls: "bg-slate-100 text-slate-700" },
     athlete_dq:          { label: "DQ",             cls: "bg-red-100 text-red-800" },
+    athlete_dnf:         { label: "DNF",            cls: "bg-amber-100 text-amber-800" },
     round_start:         { label: "เริ่มรอบ",        cls: "bg-emerald-50 text-emerald-700" },
     round_end:           { label: "จบรอบ",          cls: "bg-slate-100 text-slate-700" },
     lap_time:            { label: "Lap",            cls: "bg-sky-50 text-sky-700" },

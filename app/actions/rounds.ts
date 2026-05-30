@@ -9,7 +9,7 @@ type OfficialInput = {
   judgeId: string;
   zone?: string;
   secretCode: string;
-  position: "JUDGE" | "HEAD_JUDGE" | "EVENT_LOGGER" | "TIMEKEEPER";
+  position: "JUDGE" | "HEAD_JUDGE" | "EVENT_LOGGER";
 };
 
 export type RoundActionData = {

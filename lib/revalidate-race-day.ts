@@ -5,7 +5,6 @@ export function revalidateRaceDayViews(eventId: string): void {
   revalidatePath(`/judge/events/${eventId}`);
   revalidatePath(`/head-judge/events/${eventId}`);
   revalidatePath(`/event-logger/events/${eventId}`);
-  revalidatePath(`/timekeeper/events/${eventId}`);
   revalidatePath(`/admin/events/${eventId}/moderator`);
   revalidatePath(`/events/${eventId}`);
 }

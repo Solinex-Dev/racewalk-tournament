@@ -50,7 +50,6 @@ enum OfficialPosition {
   JUDGE
   HEAD_JUDGE
   EVENT_LOGGER
-  TIMEKEEPER
 }
 
 enum CardColor {

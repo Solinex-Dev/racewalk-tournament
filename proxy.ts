@@ -27,7 +27,7 @@ const adminLoginPath = "/admin/login";
 const authEntryPaths = [adminLoginPath] as const;
 
 // Race-day workspace routes whose official cookie should slide (renew) on every request.
-const officialPathPrefixes = ["/judge", "/head-judge", "/event-logger", "/timekeeper"];
+const officialPathPrefixes = ["/judge", "/head-judge", "/event-logger"];
 
 function isAuthEntryPath(pathname: string): boolean {
   return authEntryPaths.some(

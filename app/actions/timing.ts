@@ -10,11 +10,11 @@ import {
 import { revalidateRaceDayViews } from "@/lib/revalidate-race-day";
 
 /**
- * Record a lap time for an athlete (Event Logger / Timekeeper).
+ * Record a lap time for an athlete (Event Logger).
  * timeMs = race elapsed time in milliseconds at the moment the lap finished.
  */
 export async function recordLapTime(athleteId: string, lapNumber: number, timeMs: number) {
-  const session = await requireOfficialSession(["EVENT_LOGGER", "TIMEKEEPER"]);
+  const session = await requireOfficialSession(["EVENT_LOGGER"]);
   const round = await loadOfficialRound(session.roundId);
   assertRoundOngoingForTiming(round);
 
@@ -82,7 +82,7 @@ export async function recordLapTime(athleteId: string, lapNumber: number, timeMs
  * existing finish records (1 = first to finish).
  */
 export async function recordFinishTime(athleteId: string, timeMs: number) {
-  const session = await requireOfficialSession(["EVENT_LOGGER", "TIMEKEEPER"]);
+  const session = await requireOfficialSession(["EVENT_LOGGER"]);
   const round = await loadOfficialRound(session.roundId);
   assertRoundOngoingForTiming(round);
 

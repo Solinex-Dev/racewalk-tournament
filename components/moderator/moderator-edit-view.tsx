@@ -447,7 +447,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
           <CardContent className="p-0">
             <div className="border-b border-slate-200 px-6 py-4">
               <h2 className="text-sm font-semibold text-slate-900">เวลาเข้าเส้นชัย ({props.finishes.length} รายการ)</h2>
-              <p className="text-xs text-slate-500">ถ้าลบจะคืนสภาพให้ Timekeeper บันทึกใหม่ได้</p>
+              <p className="text-xs text-slate-500">ถ้าลบจะคืนสภาพให้ผู้เก็บ Lap Time บันทึกใหม่ได้</p>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-xs">

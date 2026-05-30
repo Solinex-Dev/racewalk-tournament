@@ -2,9 +2,23 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { createRound, updateRound } from "@/app/actions/rounds";
 
 export type AthleteOption = { id: string; name: string };
@@ -15,7 +29,7 @@ type OfficialEntry = {
   judgeId: string;
   zone: string;
   secretCode: string;
-  position: "JUDGE" | "HEAD_JUDGE" | "EVENT_LOGGER" | "TIMEKEEPER";
+  position: "JUDGE" | "HEAD_JUDGE" | "EVENT_LOGGER";
 };
 
 export type RoundFormValues = {
@@ -61,7 +75,6 @@ const POSITION_LABEL: Record<OfficialEntry["position"], string> = {
   JUDGE: "กรรมการ",
   HEAD_JUDGE: "หัวหน้ากรรมการ",
   EVENT_LOGGER: "เก็บ Lap Time",
-  TIMEKEEPER: "จับเวลา",
 };
 
 export function RoundForm({
@@ -90,8 +103,31 @@ export function RoundForm({
   const [judgePickerOpen, setJudgePickerOpen] = React.useState(false);
   const [athletePickerSelected, setAthletePickerSelected] = React.useState<string[]>([]);
   const [judgePickerSelected, setJudgePickerSelected] = React.useState<string[]>([]);
+  const [resetSecretIndex, setResetSecretIndex] = React.useState<number | null>(null);
+  const [copiedSecretIndex, setCopiedSecretIndex] = React.useState<number | null>(null);
 
   const isEdit = mode === "edit";
+
+  const resetSecretOfficial =
+    resetSecretIndex !== null ? form.officials[resetSecretIndex] : null;
+  const resetSecretJudgeName = resetSecretOfficial
+    ? judgeOptions.find((j) => j.id === resetSecretOfficial.judgeId)?.name ??
+      resetSecretOfficial.judgeId
+    : "";
+
+  const handleCopySecret = async (index: number, code: string) => {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedSecretIndex(index);
+      window.setTimeout(
+        () => setCopiedSecretIndex((cur) => (cur === index ? null : cur)),
+        2000,
+      );
+    } catch {
+      setError("ไม่สามารถคัดลอกรหัสได้");
+    }
+  };
 
   const filteredAthletes = athleteOptions.filter((a) => {
     if (!athleteSearch) return true;
@@ -136,6 +172,12 @@ export function RoundForm({
         i === index ? { ...o, secretCode: generateSecretCode() } : o,
       ),
     }));
+
+  const confirmResetSecret = () => {
+    if (resetSecretIndex === null) return;
+    handleRegenerateSecret(resetSecretIndex);
+    setResetSecretIndex(null);
+  };
 
   const confirmAthletePicker = () => {
     const existing = new Set(form.athletes.map((a) => a.athleteId));
@@ -189,6 +231,47 @@ export function RoundForm({
   };
 
   return (
+    <>
+      <Dialog
+        open={resetSecretIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) setResetSecretIndex(null);
+        }}
+      >
+        <DialogContent className="border-slate-200 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900">ยืนยันรีเซ็ตรหัสลับ?</DialogTitle>
+            <DialogDescription className="text-left text-slate-600">
+              รหัสลับของ{" "}
+              <span className="font-medium text-slate-900">{resetSecretJudgeName}</span>{" "}
+              จะถูกสร้างใหม่ รหัสเดิมจะใช้เข้าระบบไม่ได้อีก
+              {resetSecretOfficial?.secretCode && (
+                <span className="mt-2 block font-mono text-xs text-slate-500">
+                  รหัสปัจจุบัน: {resetSecretOfficial.secretCode}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl border-slate-200"
+              onClick={() => setResetSecretIndex(null)}
+            >
+              ยกเลิก
+            </Button>
+            <Button
+              type="button"
+              className="rounded-xl bg-slate-900 text-white hover:bg-slate-800"
+              onClick={confirmResetSecret}
+            >
+              ยืนยันรีเซ็ต
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     <Card className="rounded-2xl border-slate-200">
       <CardContent className="p-6">
         <form className="space-y-5" onSubmit={handleSubmit}>
@@ -420,16 +503,32 @@ export function RoundForm({
                           />
                         </td>
                         <td className="px-3 py-2">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
                             <span className="inline-flex items-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-800">
                               {row.secretCode || "------"}
                             </span>
+                            <Tooltip open={copiedSecretIndex === i}>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 w-7 rounded-lg border-slate-200 p-0"
+                                  disabled={!row.secretCode}
+                                  aria-label="คัดลอกรหัสลับ"
+                                  onClick={() => handleCopySecret(i, row.secretCode)}
+                                >
+                                  <Copy className="h-3.5 w-3.5 text-slate-600" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">Copied!</TooltipContent>
+                            </Tooltip>
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               className="h-7 rounded-lg border-slate-200 px-2 text-[11px]"
-                              onClick={() => handleRegenerateSecret(i)}
+                              onClick={() => setResetSecretIndex(i)}
                             >
                               รีเซ็ต
                             </Button>
@@ -672,5 +771,6 @@ export function RoundForm({
         )}
       </CardContent>
     </Card>
+    </>
   );
 }

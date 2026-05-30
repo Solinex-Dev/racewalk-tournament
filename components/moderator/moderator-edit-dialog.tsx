@@ -140,7 +140,7 @@ function getDialogMeta(
             ลบเวลาเข้าเส้นชัยของ{" "}
             <span className="font-medium text-slate-900">{payload.finish.athleteName}</span>
             <span className="mt-1 block text-slate-500">
-              Timekeeper สามารถบันทึกเวลาใหม่ได้หลังลบ
+              ผู้เก็บ Lap Time สามารถบันทึกเวลาใหม่ได้หลังลบ
             </span>
           </>
         ),

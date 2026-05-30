@@ -17,7 +17,6 @@ const POSITION_LABEL: Record<string, string> = {
   JUDGE: "กรรมการ",
   HEAD_JUDGE: "หัวหน้ากรรมการ",
   EVENT_LOGGER: "เก็บ Lap Time",
-  TIMEKEEPER: "จับเวลา",
 };
 
 function formatThaiDate(dt: Date) {
@@ -46,6 +45,7 @@ const ACTION_LABEL: Record<string, string> = {
   round_start: "เริ่มรอบการแข่งขัน",
   round_end: "จบรอบการแข่งขัน",
   athlete_dq: "ตัดสิทธิ์ (DQ)",
+  athlete_dnf: "ไม่จบการแข่งขัน (DNF)",
   lap_time: "บันทึกเวลา Lap",
   finish_time: "บันทึกเวลาเข้าเส้นชัย",
   yellow_card: "ให้ใบเหลือง",

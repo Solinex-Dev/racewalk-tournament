@@ -25,8 +25,7 @@ const ACTOR_ROLE_LABELS: Record<string, string> = {
   JUDGE: "กรรมการ",
   HEAD_JUDGE: "หัวหน้ากรรมการ",
   MODERATOR: "ผู้ดูแล",
-  TIMEKEEPER: "ผู้จับเวลา",
-  EVENT_LOGGER: "ผู้บันทึก",
+  EVENT_LOGGER: "ผู้บันทึก Lap Time",
   ADMIN: "ผู้ดูแลระบบ",
 };
 

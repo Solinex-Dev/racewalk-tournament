@@ -366,7 +366,7 @@ export default async function EventLivePage(props: Props) {
                   href={`/judge/events/${event.id}/join`}
                   className="inline-flex items-center justify-center rounded-lg bg-slate-100 px-3 py-1.5 text-[14px] font-medium text-slate-900 hover:bg-slate-200"
                 >
-                  เข้ารหัสกรรมการ (Judge / Head Judge / Logger / Timekeeper)
+                  เข้ารหัสเจ้าหน้าที่ (กรรมการ / หัวหน้ากรรมการ / ผู้เก็บ Lap Time)
                 </a>
               </div>
             </div>

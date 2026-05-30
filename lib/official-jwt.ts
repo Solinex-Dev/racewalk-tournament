@@ -10,7 +10,7 @@ import { SignJWT, jwtVerify } from "jose";
 export const OFFICIAL_COOKIE_NAME = "rw_official_session";
 export const OFFICIAL_COOKIE_TTL_SECONDS = 60 * 60 * 12; // 12 hours of inactivity buffer
 
-export type OfficialPosition = "JUDGE" | "HEAD_JUDGE" | "EVENT_LOGGER" | "TIMEKEEPER";
+export type OfficialPosition = "JUDGE" | "HEAD_JUDGE" | "EVENT_LOGGER";
 
 export type OfficialSessionPayload = {
   officialId: string; // RoundOfficial.id
@@ -71,8 +71,6 @@ export function defaultRouteForPosition(position: OfficialPosition, eventId: str
       return `/head-judge/events/${eventId}`;
     case "EVENT_LOGGER":
       return `/event-logger/events/${eventId}`;
-    case "TIMEKEEPER":
-      return `/timekeeper/events/${eventId}`;
     case "JUDGE":
     default:
       return `/judge/events/${eventId}`;

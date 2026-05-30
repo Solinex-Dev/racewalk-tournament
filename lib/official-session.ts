@@ -1,6 +1,6 @@
 /**
  * Cookie-based session helpers for non-admin race-day roles
- * (Judge, Head Judge, Event Logger, Timekeeper).
+ * (Judge, Head Judge, Event Logger).
  *
  * The JWT sign/verify primitives live in lib/official-jwt.ts (edge-safe).
  * This module adds the next/headers cookie read/write layer — usable only
