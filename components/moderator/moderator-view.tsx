@@ -762,7 +762,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
 
       </main>
 
-      {showEditConfirm && (
+      {showEditConfirm && displayRound && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="mx-4 max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
             <div className="flex items-center justify-between">
@@ -776,6 +776,34 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
               </button>
             </div>
             <div className="mt-4 space-y-4">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[11px] font-medium text-slate-500">รอบที่จะแก้ไข</p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-900">{displayRound.name}</p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className="text-slate-500">{event.name}</span>
+                  {displayRound.distance_km && (
+                    <span className="rounded-full bg-slate-200 px-2 py-0.5 font-medium text-slate-700">
+                      {displayRound.distance_km} กม.
+                    </span>
+                  )}
+                  {displayRound.heat_name && (
+                    <span className="rounded-full bg-slate-200 px-2 py-0.5 font-medium text-slate-700">
+                      {displayRound.heat_name}
+                    </span>
+                  )}
+                  <span
+                    className={`rounded-full px-2 py-0.5 font-medium ${
+                      displayRound.status === "finished"
+                        ? "bg-slate-200 text-slate-700"
+                        : displayRound.status === "ongoing"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-sky-100 text-sky-700"
+                    }`}
+                  >
+                    {roundStatusLabel[displayRound.status]}
+                  </span>
+                </div>
+              </div>
               <p className="text-xs text-slate-600">
                 คุณกำลังจะเข้าสู่โหมดแก้ไขข้อมูลรอบนี้ การเปลี่ยนแปลงจะถูกบันทึกเป็น audit log
               </p>
