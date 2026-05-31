@@ -1,8 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
-import { LiveTimer } from "@/components/common/live-timer";
 import { AutoRefresh } from "@/components/common/auto-refresh";
+import { LiveTimer } from "@/components/common/live-timer";
+import { Logo } from "@/components/partials/admin-sidebar/logo";
+import { prisma } from "@/lib/prisma";
 
 // Landing page reflects live race state — render at request time and let the
 // client poll so newly-started / finished events appear without a hard reload.
@@ -114,9 +115,7 @@ export default async function Home() {
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-sky-500 to-cyan-400 text-xs font-semibold text-white shadow-lg shadow-sky-500/40">
-              RW
-            </div>
+            <Logo className="h-9 w-9 shrink-0 invert" />
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold tracking-tight">การแข่งขันเดินทน</span>
               <span className="text-[11px] text-slate-400">

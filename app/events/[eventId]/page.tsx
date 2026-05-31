@@ -15,7 +15,8 @@ export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "กระดานคะแนนสดกิจกรรม – การแข่งขันเดินทน",
-  description: "หน้าดูผลการแข่งขันเดินทนแบบสด (Live scoreboard) สำหรับผู้ชมและผู้ติดตาม",
+  description:
+    "หน้าดูผลการแข่งขันเดินทนแบบสด (Live scoreboard) สำหรับผู้ชมและผู้ติดตาม",
 };
 
 type Props = { params: Promise<{ eventId: string }> };
@@ -28,7 +29,11 @@ function formatMs(ms: number) {
 }
 
 function formatThaiDate(dt: Date) {
-  return dt.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+  return dt.toLocaleDateString("th-TH", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -61,12 +66,20 @@ export default async function EventLivePage(props: Props) {
         include: {
           roundAthletes: {
             where: { deletedAt: null },
-            include: { athlete: { include: { affiliation: { select: { name: true } } } } },
+            include: {
+              athlete: { include: { affiliation: { select: { name: true } } } },
+            },
           },
           cards: {
-            where: { deletedAt: null, OR: [{ color: "YELLOW" }, { color: "RED", state: "CONFIRMED" }] },
+            where: {
+              deletedAt: null,
+              OR: [{ color: "YELLOW" }, { color: "RED", state: "CONFIRMED" }],
+            },
           },
-          lapTimes: { where: { deletedAt: null }, orderBy: { lapNumber: "asc" } },
+          lapTimes: {
+            where: { deletedAt: null },
+            orderBy: { lapNumber: "asc" },
+          },
           finishTimes: { where: { deletedAt: null } },
         },
       },
@@ -116,11 +129,19 @@ export default async function EventLivePage(props: Props) {
         (c) => c.athleteId === ra.athleteId && c.color === "YELLOW",
       ).length;
       const red = currentRound.cards.filter(
-        (c) => c.athleteId === ra.athleteId && c.color === "RED" && c.state === "CONFIRMED",
+        (c) =>
+          c.athleteId === ra.athleteId &&
+          c.color === "RED" &&
+          c.state === "CONFIRMED",
       ).length;
-      const lapsForMe = currentRound.lapTimes.filter((l) => l.athleteId === ra.athleteId);
-      const finish = currentRound.finishTimes.find((f) => f.athleteId === ra.athleteId);
-      const lastTimeMs = finish?.timeMs ?? lapsForMe[lapsForMe.length - 1]?.timeMs;
+      const lapsForMe = currentRound.lapTimes.filter(
+        (l) => l.athleteId === ra.athleteId,
+      );
+      const finish = currentRound.finishTimes.find(
+        (f) => f.athleteId === ra.athleteId,
+      );
+      const lastTimeMs =
+        finish?.timeMs ?? lapsForMe[lapsForMe.length - 1]?.timeMs;
       return {
         bib: ra.bib,
         athleteId: ra.athleteId,
@@ -144,7 +165,10 @@ export default async function EventLivePage(props: Props) {
   // Pre-computed fallback for rounds without startedAt (e.g., legacy finished rounds)
   const elapsedFallback: string | null = (() => {
     if (!currentRound || currentRound.startedAt) return null;
-    if (currentRound.status === "FINISHED" && currentRound.finishTimes.length > 0) {
+    if (
+      currentRound.status === "FINISHED" &&
+      currentRound.finishTimes.length > 0
+    ) {
       const maxMs = Math.max(...currentRound.finishTimes.map((f) => f.timeMs));
       return formatMs(maxMs);
     }
@@ -156,27 +180,33 @@ export default async function EventLivePage(props: Props) {
   return (
     <main className="h-screen overflow-hidden bg-slate-950 text-slate-100">
       <AutoRefresh intervalMs={5000} />
-      <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col gap-6 px-4 py-6 lg:py-10">
+      <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col gap-4 px-4 py-6 lg:py-10">
         <header className="flex flex-col gap-3 border-b border-slate-800 pb-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-lg font-semibold uppercase tracking-[0.2em] text-slate-400">
-              การแข่งขันเดินทน
-              {isRaceLive && (
-                <>
-                  {" "}
-                  – <span className="text-red-400">สด (Live)</span>
-                </>
-              )}
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100 md:text-3xl">
-              {event.name}
-            </h1>
+          <div className="w-full">
+            <div className="flex gap-3 items-center justify-between">
+              
+              <p className="text-lg font-semibold uppercase tracking-[0.2em] text-slate-400">
+                การแข่งขันเดินทน
+                {isRaceLive && (
+                  <>
+                    {" "}
+                    – <span className="text-red-400">สด (Live)</span>
+                  </>
+                )}
+              </p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100 md:text-3xl">
+                {event.name}
+              </h1>
+            </div>
             <div className="flex gap-1.5 align-center">
-            <p className="text-sm text-slate-300">
-              {currentRound?.heatName || ""} • ระยะ {currentRound?.distanceKm || event.distanceKm} กม. •{" "}
-              {event.location}
-            </p>
-            <p className="text-sm text-slate-400">แข่งขันวันที่ {formatThaiDate(event.date)}</p>
+              <p className="text-sm text-slate-300">
+                {currentRound?.heatName || ""} • ระยะ{" "}
+                {currentRound?.distanceKm || event.distanceKm} กม. •{" "}
+                {event.location}
+              </p>
+              <p className="text-sm text-slate-400">
+                แข่งขันวันที่ {formatThaiDate(event.date)}
+              </p>
             </div>
             {currentRound && (
               <p className="mt-2 text-sm text-slate-300">
@@ -188,9 +218,11 @@ export default async function EventLivePage(props: Props) {
               </p>
             )}
           </div>
+        </header>
 
-          <div className="flex items-end gap-4">
-            <div className="text-right text-lg">
+        <section className="grid flex-1 gap-4 min-h-0">
+          <div className="flex items-end gap-4 ">
+            <div className="flex w-full gap-2 justify-between text-right text-lg">
               {lapCount > 0 && (
                 <p className="text-slate-400">
                   Lap ปัจจุบัน{" "}
@@ -238,9 +270,6 @@ export default async function EventLivePage(props: Props) {
               <LastUpdated time={renderedAt} />
             </div> */}
           </div>
-        </header>
-
-        <section className="grid flex-1 auto-rows-fr gap-4 min-h-0 lg:grid-cols-[2fr,1.1fr]">
           <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
             {/* <div className="border-b border-slate-800 bg-slate-900/50 px-5 py-4">
               <p className="text font-bold uppercase tracking-wide text-slate-400">
@@ -256,22 +285,30 @@ export default async function EventLivePage(props: Props) {
                     <th className="px-5 py-4 text-center text-sm">รอบ</th>
                     <th className="px-5 py-4 text-center text-sm">BIB</th>
                     <th className="px-5 py-4 text-center text-sm">นักกีฬา</th>
-                    <th className="px-5 py-4 text-center text-sm hidden md:table-cell">ใบแดง</th>
+                    <th className="px-5 py-4 text-center text-sm hidden md:table-cell">
+                      ใบแดง
+                    </th>
                     {/* <th className="px-5 py-4 text-center text-sm">เวลา</th> */}
-                    <th className="px-5 py-4 text-center text-sm hidden md:table-cell">สถานะ</th>
+                    <th className="px-5 py-4 text-center text-sm hidden md:table-cell">
+                      สถานะ
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
                   {athletes.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-5 py-8 text-center text-slate-500">
+                      <td
+                        colSpan={6}
+                        className="px-5 py-8 text-center text-slate-500"
+                      >
                         ยังไม่มีข้อมูลการแข่งขันในรอบนี้
                       </td>
                     </tr>
                   ) : (
                     athletes.map((athlete) => {
                       const isDQ = athlete.status === "DQ";
-                      const isFinished = athlete.isFinished && athlete.status === "OK";
+                      const isFinished =
+                        athlete.isFinished && athlete.status === "OK";
                       const medalCls =
                         athlete.position === 1
                           ? "bg-amber-400/20 text-amber-300 ring-amber-500/40"
@@ -308,20 +345,28 @@ export default async function EventLivePage(props: Props) {
                               className={`font-mono text-sm font-semibold ${isDQ ? "text-slate-500" : "text-slate-100"}`}
                             >
                               {athlete.currentLap}
-                              <span className={`text-xs font-normal ${isDQ ? "text-slate-600" : "text-slate-400"}`}>
+                              <span
+                                className={`text-xs font-normal ${isDQ ? "text-slate-600" : "text-slate-400"}`}
+                              >
                                 /{lapCount || "?"}
                               </span>
                             </span>
                           </td>
-                          <td className={`px-5 py-4 font-mono text-lg ${isDQ ? "text-slate-500" : "text-amber-400"}`}>
+                          <td
+                            className={`px-5 py-4 font-mono text-lg ${isDQ ? "text-slate-500" : "text-amber-400"}`}
+                          >
                             {athlete.bib}
                           </td>
                           <td className="px-5 py-4">
-                            <p className={`text-sm font-bold ${isDQ ? "text-slate-500" : "text-slate-100"}`}>
+                            <p
+                              className={`text-sm font-bold ${isDQ ? "text-slate-500" : "text-slate-100"}`}
+                            >
                               {athlete.name}
                             </p>
                             {athlete.affiliation && (
-                              <p className="text-[12px] text-slate-400">{athlete.affiliation}</p>
+                              <p className="text-[12px] text-slate-400">
+                                {athlete.affiliation}
+                              </p>
                             )}
                           </td>
                           <td className="hidden px-5 py-4 md:table-cell">
