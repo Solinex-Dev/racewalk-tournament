@@ -15,9 +15,11 @@
  *      distinct judges (the generator throws if a DQ scenario violates this).
  *      Yellow: ≤1 per symbol per judge per athlete. Red: ≤1 (non-overridden) per
  *      judge per athlete. OVERRIDDEN reds never count toward DQ.
- *   4. Diversity — DRAFT / SCHEDULED / 2× ONGOING / 2× FINISHED events, men's &
+ *   4. Diversity — DRAFT / SCHEDULED / 2× ONGOING / 3× FINISHED events, men's &
  *      women's heats kept separate, national + international (Asian Junior) fields,
- *      3-letter ISO country codes (matches the admin forms).
+ *      3-letter ISO country codes (matches the admin forms). The "open meet" event
+ *      stress-tests field sizes: a 50-athlete mass round, a 2-athlete duel and a
+ *      1-athlete solo time trial (all generator-produced, same invariants).
  *
  * Secret codes are generated deterministically; the joinable (SCHEDULED/ONGOING)
  * ones are printed in the run summary.
@@ -98,6 +100,65 @@ const SEED_ATHLETES = [
   { id: "ath-jw04", name: "กมลชนก เบาเท้า",     country: "THA", province: "เชียงใหม่",      club: "เชียงใหม่",         note: null, affiliationId: "aff-cm" },
   { id: "ath-jw05", name: "ปาริชาต ลื่นไหล",     country: "THA", province: "กรุงเทพมหานคร", club: "มหาวิทยาลัย",       note: null, affiliationId: "aff-ku" },
 ];
+
+// ─── Open-meet athletes (generated) — for large / edge field-size scenarios ────
+// Deterministic names (stable across reseeds). Powers the "open" event below:
+// a 50-athlete mass field, a 2-athlete duel and a 1-athlete solo time trial.
+
+type AthleteSeed = {
+  id: string; name: string; country: string; province: string | null;
+  club: string | null; note: string | null; affiliationId: string | null;
+};
+
+const OPEN_FIRST = ["ก้องภพ", "ธีรเดช", "ปกรณ์", "อาทิตย์", "ชนาธิป", "ภูริช", "กิตติคุณ", "ณัฐวุฒิ", "ศุภชัย", "วีรพล", "พีรพัฒน์", "อนุสรณ์", "ฐิติพงศ์", "จิรายุ", "ธนดล", "ภาคิน", "สิทธิชัย", "ปรัชญา", "วรเมธ", "ธัญเทพ"];
+const OPEN_LAST = ["ใจกล้า", "ก้าวไกล", "วิ่งสู้", "มุ่งมั่น", "อดทน", "เร่งรุด", "ฟ้าประทาน", "ทรงพล", "ศรีสุข", "พากเพียร", "ยืนยง", "สู้ไม่ถอย"];
+const OPEN_PROVINCE = ["กรุงเทพมหานคร", "เชียงใหม่", "ขอนแก่น", "สงขลา", "ชลบุรี", "นครราชสีมา"];
+const OPEN_COUNTRY = ["THA", "THA", "THA", "THA", "THA", "THA", "THA", "VNM", "MYS", "LAO"];
+const OPEN_AFF: (string | null)[] = ["aff-bkk", "aff-army", "aff-ku", "aff-cm", "aff-kk", "aff-hy", null];
+
+function genOpenAthlete(i: number): AthleteSeed {
+  const country = OPEN_COUNTRY[i % OPEN_COUNTRY.length]!;
+  const isThai = country === "THA";
+  return {
+    id: `ath-open${String(i + 1).padStart(2, "0")}`,
+    name: `${OPEN_FIRST[i % OPEN_FIRST.length]} ${OPEN_LAST[Math.floor(i / OPEN_FIRST.length) % OPEN_LAST.length]}`,
+    country,
+    province: isThai ? OPEN_PROVINCE[i % OPEN_PROVINCE.length]! : null,
+    club: null,
+    note: null,
+    affiliationId: isThai ? OPEN_AFF[i % OPEN_AFF.length] ?? null : null,
+  };
+}
+
+const OPEN_ATHLETES: AthleteSeed[] = Array.from({ length: 53 }, (_, i) => genOpenAthlete(i));
+const MASS_IDS = OPEN_ATHLETES.slice(0, 50).map((a) => a.id);
+const DUEL_IDS = OPEN_ATHLETES.slice(50, 52).map((a) => a.id);
+const SOLO_ID = OPEN_ATHLETES[52]!.id;
+
+// Filler athlete pools — reused across heats so every round has a realistic
+// 18–28-strong field. Distinct surname set from the open pool so names don't
+// collide. Reuse across events is fine (same athlete competes year to year).
+const FEMALE_FIRST = ["สุภาพร", "กาญจนา", "นภัสสร", "ปิยะดา", "วรรณภา", "อัจฉรา", "ธิดารัตน์", "พรทิพย์", "มณีรัตน์", "ศศิธร", "กมลทิพย์", "เบญจวรรณ", "อนงค์", "ชุติมา", "รัตนา", "สิริมา"];
+const FILL_LAST = ["พลแสน", "ดงทอง", "นาเวศน์", "บุญมาก", "ทองแท้", "แดนไกล", "ภูผา", "สายลม", "คงทน", "รุ่งเรือง", "เกียรติยศ", "ชนะชัย", "เทพนิมิต", "มงคล"];
+
+function genFillerAthlete(prefix: string, i: number, firsts: string[]): AthleteSeed {
+  const country = OPEN_COUNTRY[i % OPEN_COUNTRY.length]!;
+  const isThai = country === "THA";
+  return {
+    id: `${prefix}${String(i + 1).padStart(2, "0")}`,
+    name: `${firsts[i % firsts.length]} ${FILL_LAST[Math.floor(i / firsts.length) % FILL_LAST.length]}`,
+    country,
+    province: isThai ? OPEN_PROVINCE[i % OPEN_PROVINCE.length]! : null,
+    club: null,
+    note: null,
+    affiliationId: isThai ? OPEN_AFF[i % OPEN_AFF.length] ?? null : null,
+  };
+}
+
+const MEN_FILL = Array.from({ length: 24 }, (_, i) => genFillerAthlete("ath-mf", i, OPEN_FIRST));
+const WOMEN_FILL = Array.from({ length: 20 }, (_, i) => genFillerAthlete("ath-wf", i, FEMALE_FIRST));
+const menFill = (n: number) => MEN_FILL.slice(0, n).map((a) => a.id);
+const womenFill = (n: number) => WOMEN_FILL.slice(0, n).map((a) => a.id);
 
 // ─── Judges ───────────────────────────────────────────────────────────────────
 
@@ -195,6 +256,157 @@ function secretCodeFor(roundId: string, judgeId: string): string {
   return out;
 }
 
+// ─── Large-field scenario generator (mass open race) ──────────────────────────
+
+const DNF_REASONS = ["บาดเจ็บกล้ามเนื้อน่อง", "เป็นตะคริว", "อ่อนเพลียจากความร้อน", "ถอนตัวตามคำแนะนำแพทย์", "หมดแรงช่วงท้าย"];
+
+// 8 zone judges for the mass field — fills all 8 RWJS columns; ≥4 needed for DQ.
+const OPEN_MASS_ZONES = ["jud-01", "jud-02", "jud-03", "jud-04", "jud-08", "jud-09", "jud-10", "jud-13"];
+
+/** Sparse, deterministic cards for a mass-field finisher (never ≥4 reds → no DQ). */
+function genSparseCards(i: number, zones: string[], lapCount: number): CardSpec[] | undefined {
+  const z = (k: number) => zones[k % zones.length]!;
+  const maxLap = Math.max(1, lapCount - 1);
+  if (i === 0) return undefined; // clean leader
+  if (i % 11 === 0) {
+    // penalised survivor — 1 yellow + 2 CONFIRMED reds (still < 4, so NOT a DQ)
+    return [Y("K", z(0), 2), R("F", z(1), Math.min(4, maxLap), "CONFIRMED"), R("K", z(2), Math.min(6, maxLap), "CONFIRMED")];
+  }
+  if (i % 13 === 0) return [R("F", z(0), Math.min(5, maxLap), "OVERRIDDEN")]; // overturned red
+  if (i % 3 === 0) return [Y("F", z(i), 1 + (i % maxLap))];
+  if (i % 5 === 0) return [Y("K", z(i + 1), 2 + (i % 3))];
+  return undefined;
+}
+
+/**
+ * Generate a full mass-field scenario list. Finishers get contiguous positions
+ * (1..F) in list order with a gently slowing pace; DQ athletes carry exactly 4
+ * CONFIRMED reds from 4 distinct zone judges; DNF athletes stop part-way.
+ */
+function genMassScenarios(opts: {
+  ids: string[];
+  zones: string[]; // ≥4 zone judges (needed for DQ)
+  lapCount: number;
+  bibStart: number;
+  basePace: number; // sec/lap for the winner
+  dqIdx?: number[];
+  dnfIdx?: number[];
+}): AthleteScenario[] {
+  const { ids, zones, lapCount, bibStart, basePace } = opts;
+  const dq = new Set(opts.dqIdx ?? []);
+  const dnf = new Set(opts.dnfIdx ?? []);
+  const out: AthleteScenario[] = [];
+  let pos = 1;
+
+  ids.forEach((id, i) => {
+    const bib = String(bibStart + i);
+    if (dq.has(i)) {
+      const laps = Math.max(5, lapCount - 3 - (i % 2));
+      out.push({
+        athleteId: id, bib, outcome: "DQ", laps, paceSec: basePace + 34 + (i % 8),
+        cards: [
+          R("K", zones[0]!, laps - 3, "CONFIRMED"),
+          R("F", zones[1]!, laps - 2, "CONFIRMED"),
+          R("K", zones[2]!, laps - 1, "CONFIRMED"),
+          R("F", zones[3]!, laps, "CONFIRMED"),
+        ],
+      });
+      return;
+    }
+    if (dnf.has(i)) {
+      const laps = Math.max(2, Math.floor(lapCount * 0.45) + (i % 4));
+      out.push({
+        athleteId: id, bib, outcome: "DNF", laps, paceSec: basePace + 28 + (i % 10),
+        reason: DNF_REASONS[i % DNF_REASONS.length],
+      });
+      return;
+    }
+    const paceSec = Math.round(basePace + pos * 1.6 + (i % 5));
+    out.push({ athleteId: id, bib, outcome: "FINISH", position: pos, laps: lapCount, paceSec, cards: genSparseCards(i, zones, lapCount) });
+    pos++;
+  });
+
+  return out;
+}
+
+/** Cards for a mid-race (ONGOING) filler — incl. the occasional PENDING red. */
+function ongoingFillerCards(i: number, zones: string[], laps: number): CardSpec[] | undefined {
+  if (laps < 1) return undefined;
+  const z = (k: number) => zones[k % zones.length]!;
+  const at = (n: number) => Math.max(1, Math.min(laps, n));
+  if (i % 9 === 0) return [Y("K", z(0), at(1)), R("F", z(1), at(laps), "PENDING")]; // red awaiting head judge
+  if (i % 4 === 0) return [Y("F", z(i), at(laps))];
+  if (i % 6 === 0) return [Y("K", z(i + 1), at(2))];
+  return undefined;
+}
+
+/**
+ * Filler athletes appended to a curated heat so each field is realistically deep.
+ *   finished  → continue contiguous positions from `startPos`; sprinkle DQ / DNF.
+ *   ongoing   → mid-race (partial laps, no finish); pending reds + maybe a DQ.
+ *   scheduled → roster only (no laps / cards).
+ * Bibs start at `bibStart` (keep ≥ 50 so they never collide with curated bibs).
+ */
+function genFillers(opts: {
+  ids: string[];
+  bibStart: number;
+  startPos: number;
+  zones: string[];
+  lapCount: number;
+  basePace: number;
+  mode: "finished" | "ongoing" | "scheduled";
+  ongoingMaxLap?: number;
+  dqAt?: number[];
+  dnfAt?: number[];
+}): AthleteScenario[] {
+  const { ids, bibStart, startPos, zones, lapCount, basePace, mode } = opts;
+  const ongoingMaxLap = opts.ongoingMaxLap ?? Math.max(1, lapCount - 1);
+  const dq = new Set(opts.dqAt ?? []);
+  const dnf = new Set(opts.dnfAt ?? []);
+  const dqCards = (laps: number): CardSpec[] => [
+    R("K", zones[0]!, Math.max(1, laps - 3), "CONFIRMED"),
+    R("F", zones[1]!, Math.max(1, laps - 2), "CONFIRMED"),
+    R("K", zones[2]!, Math.max(1, laps - 1), "CONFIRMED"),
+    R("F", zones[3]!, laps, "CONFIRMED"),
+  ];
+  const out: AthleteScenario[] = [];
+  let pos = startPos;
+
+  ids.forEach((id, i) => {
+    const bib = String(bibStart + i);
+    if (mode === "scheduled") {
+      out.push({ athleteId: id, bib, outcome: "FINISH", laps: 0, paceSec: basePace + (i % 20) });
+      return;
+    }
+    if (mode === "ongoing") {
+      if (dq.has(i)) {
+        const dl = Math.max(4, Math.min(ongoingMaxLap, 6));
+        out.push({ athleteId: id, bib, outcome: "DQ", laps: dl, paceSec: basePace + 22 + (i % 8), cards: dqCards(dl) });
+        return;
+      }
+      const laps = 1 + (i % ongoingMaxLap);
+      out.push({ athleteId: id, bib, outcome: "FINISH", laps, paceSec: basePace + (i % 16), cards: ongoingFillerCards(i, zones, laps) });
+      return;
+    }
+    // finished
+    if (dq.has(i)) {
+      const dl = Math.max(5, lapCount - 3 - (i % 2));
+      out.push({ athleteId: id, bib, outcome: "DQ", laps: dl, paceSec: basePace + 30 + (i % 8), cards: dqCards(dl) });
+      return;
+    }
+    if (dnf.has(i)) {
+      const dl = Math.max(2, Math.floor(lapCount * 0.5) + (i % 4));
+      out.push({ athleteId: id, bib, outcome: "DNF", laps: dl, paceSec: basePace + 24 + (i % 10), reason: DNF_REASONS[i % DNF_REASONS.length] });
+      return;
+    }
+    const paceSec = Math.round(basePace + (pos - startPos) * 1.4 + (i % 5));
+    out.push({ athleteId: id, bib, outcome: "FINISH", position: pos, laps: lapCount, paceSec, cards: genSparseCards(i + 2, zones, lapCount) });
+    pos++;
+  });
+
+  return out;
+}
+
 // ─── Events ───────────────────────────────────────────────────────────────────
 
 const SEED_EVENTS = [
@@ -204,6 +416,7 @@ const SEED_EVENTS = [
   { id: "evt-live2",    name: "เดินทนชิงแชมป์ประเทศไทย 2026 — รายการหญิง", date: new Date(NOW),             location: "สนามกีฬาแห่งชาติ ศุภชลาศัย",  distanceKm: "10", lapCount: 10, status: "ONGOING"   as const, isCurrent: false },
   { id: "evt-fin-nat",  name: "เดินทนชิงแชมป์ประเทศไทย 2025",       date: new Date("2025-03-15T00:00:00Z"), location: "สนามกีฬาแห่งชาติ ศุภชลาศัย",  distanceKm: "20", lapCount: 20, status: "FINISHED"  as const, isCurrent: false },
   { id: "evt-fin-asia", name: "Asian Junior Racewalk Championship 2024", date: new Date("2024-09-15T00:00:00Z"), location: "Suphachalasai Stadium, Bangkok", distanceKm: "10", lapCount: 10, status: "FINISHED" as const, isCurrent: false },
+  { id: "evt-open",     name: "เดินทนโอเพ่นมหาชน 2025",               date: new Date("2025-06-21T00:00:00Z"), location: "สวนสาธารณะสวนลุมพินี กรุงเทพฯ", distanceKm: "10", lapCount: 10, status: "FINISHED" as const, isCurrent: false },
 ];
 
 // ─── Rounds + scenarios ───────────────────────────────────────────────────────
@@ -229,6 +442,7 @@ const ROUNDS: RoundConfig[] = [
       { athleteId: "ath-jm07", bib: "4", outcome: "FINISH", laps: 0, paceSec: 300 },
       { athleteId: "ath-jm02", bib: "5", outcome: "FINISH", laps: 0, paceSec: 288 },
       { athleteId: "ath-jm03", bib: "6", outcome: "FINISH", laps: 0, paceSec: 292 },
+      ...genFillers({ ids: menFill(18), bibStart: 50, startPos: 0, zones: ["jud-01", "jud-02", "jud-03", "jud-04"], lapCount: 10, basePace: 300, mode: "scheduled" }),
     ],
   },
   {
@@ -242,6 +456,7 @@ const ROUNDS: RoundConfig[] = [
       { athleteId: "ath-jw05", bib: "13", outcome: "FINISH", laps: 0, paceSec: 310 },
       { athleteId: "ath-jw02", bib: "14", outcome: "FINISH", laps: 0, paceSec: 302 },
       { athleteId: "ath-jw03", bib: "15", outcome: "FINISH", laps: 0, paceSec: 308 },
+      ...genFillers({ ids: womenFill(18), bibStart: 50, startPos: 0, zones: ["jud-08", "jud-09", "jud-10", "jud-15"], lapCount: 10, basePace: 310, mode: "scheduled" }),
     ],
   },
 
@@ -260,6 +475,9 @@ const ROUNDS: RoundConfig[] = [
       { athleteId: "ath-m05", bib: "5", outcome: "FINISH", position: 6, laps: 20, paceSec: 277 },
       { athleteId: "ath-m08", bib: "8", outcome: "FINISH", position: 7, laps: 20, paceSec: 281, cards: [Y("K", "jud-04", 9)] },
       { athleteId: "ath-m06", bib: "6", outcome: "FINISH", position: 8, laps: 20, paceSec: 285 },
+      // DQ/DNF only on fillers 16–19 (outside the final's 0–15 slice) so prelim
+      // non-finishers don't reappear in the final.
+      ...genFillers({ ids: menFill(20), bibStart: 50, startPos: 9, zones: ["jud-01", "jud-02", "jud-03", "jud-04"], lapCount: 20, basePace: 288, mode: "finished", dqAt: [18], dnfAt: [16, 19] }),
     ],
   },
   {
@@ -286,6 +504,7 @@ const ROUNDS: RoundConfig[] = [
                 R("K", "jud-03", 4, "CONFIRMED"), R("F", "jud-04", 5, "CONFIRMED")] },
       { athleteId: "ath-m07", bib: "7", outcome: "FINISH", laps: 7, paceSec: 272, cards: [Y("K", "jud-03", 3), Y("F", "jud-04", 6)] },
       { athleteId: "ath-m06", bib: "6", outcome: "FINISH", laps: 8, paceSec: 266 },
+      ...genFillers({ ids: menFill(16), bibStart: 50, startPos: 0, zones: ["jud-01", "jud-02", "jud-03", "jud-04"], lapCount: 20, basePace: 290, mode: "ongoing", ongoingMaxLap: 8, dqAt: [9] }),
     ],
   },
 
@@ -303,6 +522,7 @@ const ROUNDS: RoundConfig[] = [
       { athleteId: "ath-w04", bib: "24", outcome: "FINISH", laps: 4, paceSec: 288 },
       { athleteId: "ath-w05", bib: "25", outcome: "FINISH", laps: 5, paceSec: 273, cards: [Y("K", "jud-09", 4)] },
       { athleteId: "ath-w06", bib: "26", outcome: "FINISH", laps: 4, paceSec: 291 },
+      ...genFillers({ ids: womenFill(15), bibStart: 50, startPos: 0, zones: ["jud-08", "jud-09", "jud-10", "jud-13"], lapCount: 10, basePace: 300, mode: "ongoing", ongoingMaxLap: 5 }),
     ],
   },
 
@@ -327,6 +547,7 @@ const ROUNDS: RoundConfig[] = [
                 R("K", "jud-03", 11, "CONFIRMED"), R("F", "jud-04", 14, "CONFIRMED")] },
       // DNF — withdrew
       { athleteId: "ath-m06", bib: "6", outcome: "DNF", laps: 12, paceSec: 286, reason: "บาดเจ็บกล้ามเนื้อน่อง" },
+      ...genFillers({ ids: menFill(18), bibStart: 50, startPos: 7, zones: ["jud-01", "jud-02", "jud-03", "jud-04"], lapCount: 20, basePace: 282, mode: "finished", dqAt: [8], dnfAt: [3, 14] }),
     ],
   },
   {
@@ -341,6 +562,7 @@ const ROUNDS: RoundConfig[] = [
       { athleteId: "ath-w05", bib: "25", outcome: "FINISH", position: 4, laps: 20, paceSec: 287, cards: [Y("K", "jud-09", 6), R("K", "jud-10", 10, "OVERRIDDEN")] },
       { athleteId: "ath-w04", bib: "24", outcome: "FINISH", position: 5, laps: 20, paceSec: 292 },
       { athleteId: "ath-w06", bib: "26", outcome: "DNF", laps: 9, paceSec: 296, reason: "ถอนตัว — เป็นตะคริว" },
+      ...genFillers({ ids: womenFill(16), bibStart: 50, startPos: 6, zones: ["jud-08", "jud-09", "jud-10", "jud-04"], lapCount: 20, basePace: 290, mode: "finished", dqAt: [10], dnfAt: [4] }),
     ],
   },
 
@@ -366,6 +588,7 @@ const ROUNDS: RoundConfig[] = [
                 R("K", "jud-12", 5, "CONFIRMED"), R("K", "jud-13", 6, "CONFIRMED")] },
       // DNF
       { athleteId: "ath-jm07", bib: "7", outcome: "DNF", laps: 7, paceSec: 305, reason: "บาดเจ็บข้อเท้า" },
+      ...genFillers({ ids: menFill(14), bibStart: 50, startPos: 6, zones: ["jud-01", "jud-02", "jud-12", "jud-13"], lapCount: 10, basePace: 300, mode: "finished", dqAt: [9], dnfAt: [5] }),
     ],
   },
   {
@@ -379,6 +602,45 @@ const ROUNDS: RoundConfig[] = [
       { athleteId: "ath-jw03", bib: "13", outcome: "FINISH", position: 3, laps: 10, paceSec: 309, cards: [Y("K", "jud-01", 4), Y("F", "jud-12", 8)] },
       { athleteId: "ath-jw05", bib: "15", outcome: "FINISH", position: 4, laps: 10, paceSec: 314 },
       { athleteId: "ath-jw04", bib: "14", outcome: "DNF", laps: 5, paceSec: 318, reason: "ถอนตัว — อ่อนเพลียจากความร้อน" },
+      ...genFillers({ ids: womenFill(14), bibStart: 50, startPos: 5, zones: ["jud-01", "jud-02", "jud-12", "jud-13"], lapCount: 10, basePace: 308, mode: "finished", dnfAt: [7] }),
+    ],
+  },
+
+  // ── evt-open (FINISHED) — large / edge field sizes (50 / 2 / 1 athletes) ────
+  {
+    id: "rnd-open-mass", eventId: "evt-open", name: "ชายมหาชน 10 กม.", heatName: "Open Mass Men 10 km",
+    status: "FINISHED", distanceKm: 10,
+    startedAt: new Date("2025-06-21T07:00:30Z"), endedAt: new Date("2025-06-21T08:12:00Z"),
+    scheduledTime: new Date("2025-06-21T07:00:00Z"),
+    note: "สนามใหญ่ 50 คน — 43 จบ, 3 DQ, 4 DNF (ทดสอบตาราง/รายงานสนามใหญ่ + กรรมการ 8 โซน)",
+    officials: { zones: OPEN_MASS_ZONES, head: "jud-05", logger: "jud-06" },
+    scenarios: genMassScenarios({
+      ids: MASS_IDS, zones: OPEN_MASS_ZONES, lapCount: 10, bibStart: 101, basePace: 268,
+      dqIdx: [13, 30, 47], dnfIdx: [6, 21, 38, 49],
+    }),
+  },
+  {
+    id: "rnd-open-duel", eventId: "evt-open", name: "ดวลชิงดำ ชาย 5 กม.", heatName: "Elite Duel Men 5 km",
+    status: "FINISHED", distanceKm: 5,
+    startedAt: new Date("2025-06-21T09:00:30Z"), endedAt: new Date("2025-06-21T09:23:00Z"),
+    scheduledTime: new Date("2025-06-21T09:00:00Z"),
+    note: "แมตช์ตัวต่อตัว 2 คน (ทดสอบสนามขนาดเล็กสุด)",
+    officials: { zones: ["jud-01", "jud-02", "jud-03", "jud-04"], head: "jud-05", logger: "jud-06" },
+    scenarios: [
+      { athleteId: DUEL_IDS[0]!, bib: "201", outcome: "FINISH", position: 1, laps: 5, paceSec: 254, cards: [Y("F", "jud-02", 3)] },
+      { athleteId: DUEL_IDS[1]!, bib: "202", outcome: "FINISH", position: 2, laps: 5, paceSec: 259,
+        cards: [Y("K", "jud-01", 2), R("F", "jud-03", 4, "CONFIRMED")] },
+    ],
+  },
+  {
+    id: "rnd-open-solo", eventId: "evt-open", name: "ทดสอบเวลาเดี่ยว 3 กม.", heatName: "Solo Time Trial 3 km",
+    status: "FINISHED", distanceKm: 3,
+    startedAt: new Date("2025-06-21T10:00:30Z"), endedAt: new Date("2025-06-21T10:14:00Z"),
+    scheduledTime: new Date("2025-06-21T10:00:00Z"),
+    note: "ทดสอบเวลาแบบเดี่ยว 1 คน (เคสสุดขั้ว — กรรมการ 3 โซน)",
+    officials: { zones: ["jud-01", "jud-02", "jud-03"], head: "jud-05", logger: "jud-06" },
+    scenarios: [
+      { athleteId: SOLO_ID, bib: "301", outcome: "FINISH", position: 1, laps: 3, paceSec: 268 },
     ],
   },
 ];
@@ -624,13 +886,13 @@ async function main() {
   }
   console.log(`[seed] affiliations: ${SEED_AFFILIATIONS.length}`);
 
-  for (const a of SEED_ATHLETES) {
+  for (const a of [...SEED_ATHLETES, ...OPEN_ATHLETES, ...MEN_FILL, ...WOMEN_FILL]) {
     await prisma.athlete.upsert({
       where: { id: a.id }, create: a,
       update: { name: a.name, country: a.country, province: a.province ?? null, club: a.club ?? null, note: a.note ?? null, affiliationId: a.affiliationId },
     });
   }
-  console.log(`[seed] athletes:     ${SEED_ATHLETES.length}`);
+  console.log(`[seed] athletes:     ${SEED_ATHLETES.length + OPEN_ATHLETES.length + MEN_FILL.length + WOMEN_FILL.length}`);
 
   for (const j of SEED_JUDGES) {
     await prisma.judge.upsert({
@@ -718,8 +980,9 @@ async function main() {
   }
 
   console.log("\n[seed] === Summary ===");
-  console.log(`  Events:    ${SEED_EVENTS.length} (1 DRAFT, 1 SCHEDULED, 2 ONGOING, 2 FINISHED)`);
-  console.log(`  Rounds:    ${ROUNDS.length}  |  Athletes: ${SEED_ATHLETES.length}  |  Judges: ${SEED_JUDGES.length}`);
+  console.log(`  Events:    ${SEED_EVENTS.length} (1 DRAFT, 1 SCHEDULED, 2 ONGOING, 3 FINISHED)`);
+  console.log(`  Rounds:    ${ROUNDS.length}  |  Athletes: ${SEED_ATHLETES.length + OPEN_ATHLETES.length + MEN_FILL.length + WOMEN_FILL.length}  |  Judges: ${SEED_JUDGES.length}`);
+  console.log(`  Field sizes: every heat is padded to a realistic 18–28; open meet adds a 50 / 2 / 1 field`);
   console.log(`  Cards:     ${GEN.cards.length}  |  Laps: ${GEN.laps.length}  |  Finishes: ${GEN.finishes.length}  |  Logs: ${GEN.logs.length}`);
   console.log("\n[seed] done");
 }
