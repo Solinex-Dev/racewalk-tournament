@@ -97,63 +97,60 @@ function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
 
       <table className="rwjs-grid">
         <colgroup>
-          <col style={{ width: "13%" }} />
+          <col style={{ width: "7%" }} />
           {slots.map((_, i) => (
             <Fragment key={i}>
               <col style={{ width: "2.3%" }} />
               <col style={{ width: "2.3%" }} />
-              <col style={{ width: "2.6%" }} />
+              <col style={{ width: "2.3%" }} />
             </Fragment>
           ))}
           <col style={{ width: "4%" }} />
           <col style={{ width: "4%" }} />
-          <col style={{ width: "4.5%" }} />
-          <col style={{ width: "5.5%" }} />
-          <col style={{ width: "5%" }} />
-          <col style={{ width: "3.2%" }} />
-          <col style={{ width: "3.2%" }} />
-          <col style={{ width: "3.6%" }} />
+          <col style={{ width: "4%" }} />
+          <col style={{ width: "4%" }} />
+          <col style={{ width: "4%" }} />
+          <col style={{ width: "4%" }} />
+          <col style={{ width: "4%" }} />
+          <col style={{ width: "4%" }} />
         </colgroup>
         <thead>
           <tr>
-            <th rowSpan={3}>
-              หมายเลข / นักกีฬา
+            <th rowSpan={4}>
+              หมายเลข
               <br />
-              Athlete
+              BIB
             </th>
             {slots.map((j, i) => (
-              <th key={i} colSpan={3} className="jhead">
-                <span className="jnum">{i + 1}</span>
-                {j ? (
-                  <>
-                    <br />
-                    <span className="jname">{j.name}</span>
-                  </>
-                ) : null}
+              <th key={i} colSpan={3} className="jname-cell">
+                {j ? j.name : ""}
               </th>
             ))}
-            <th colSpan={2}>Penalty Zone</th>
-            <th colSpan={2}>Chief Judge</th>
-            <th rowSpan={3}>
-              DQ notif.
-              <br />
-              Time
+            <th colSpan={2} rowSpan={2}>Penalty Zone</th>
+            <th colSpan={2} rowSpan={2}>Chief Judge</th>
+            <th rowSpan={4} className="th-vertical">
+              <span>DQ notif. Time</span>
+              {/* <span></span> */}
             </th>
-            <th rowSpan={3}>
-              CHECK OF
-              <br />
-              {SYM_LIFT}
+            <th rowSpan={4} className="th-vertical">
+              <span>CHECK OF</span>
+              {/* <span className="sym">{SYM_LIFT}</span> */}
             </th>
-            <th rowSpan={3}>
-              YELLOW PADDLES
-              <br />
-              {SYM_BENT}
+            <th rowSpan={4} className="th-vertical">
+              <span>YELLOW PADDLES</span>
+              {/* <span className="sym">{SYM_BENT}</span> */}
             </th>
-            <th rowSpan={3}>
-              DISQUAL.
-              <br />
-              RC
+            <th rowSpan={4} className="th-vertical">
+              <span>DISQUAL. RC</span>
+              {/* <span></span> */}
             </th>
+          </tr>
+          <tr>
+            {slots.map((_, i) => (
+              <th key={i} colSpan={3} className="jnum-cell">
+                {i + 1}
+              </th>
+            ))}
           </tr>
           <tr>
             {slots.map((_, i) => (
@@ -188,9 +185,7 @@ function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
               const cls = a.status === "DQ" ? "dq" : a.status === "DNF" ? "dnf" : "";
               return (
                 <tr key={a.bib} className={cls}>
-                  <td className="name">
-                    <span className="mono">{a.bib}</span> {a.name}
-                  </td>
+                  <td className="name mono">{a.bib}</td>
                   {slots.map((j, i) => {
                     const m = j ? a.marks[j.id] : undefined;
                     const rcCls = m?.red
@@ -330,8 +325,19 @@ table.rwjs-grid { display:table; width:100%; border-collapse:collapse; table-lay
 table.rwjs-grid th, table.rwjs-grid td { border:1px solid #000; padding:1.5px 1px; text-align:center; vertical-align:middle; overflow:hidden; line-height:1.15; }
 table.rwjs-grid thead th { background:#f2f2f2; font-weight:700; font-size:6.6pt; }
 table.rwjs-grid thead { display:table-header-group; }
-table.rwjs-grid th.jhead .jnum { font-size:8pt; }
-table.rwjs-grid th.jhead .jname { font-weight:500; font-size:6pt; }
+table.rwjs-grid th.jname-cell { font-weight:600; font-size:6.4pt; line-height:1.1; padding:15px 4px; vertical-align:middle; }
+table.rwjs-grid th.jnum-cell { font-weight:700; font-size:7pt; line-height:1; padding:0.5px 1px; }
+table.rwjs-grid th.th-vertical {
+  writing-mode: sideways-lr;
+  text-orientation: mixed;
+  white-space: nowrap;
+  padding: 4px 2px;
+  line-height: 1.15;
+  width: 1.5em;
+  max-width: 1.5em;
+}
+table.rwjs-grid th.th-vertical > span { display: block; }
+table.rwjs-grid th.th-vertical > span.sym { font-size: 9pt; font-weight: 800; margin-bottom: 0.2em; }
 table.rwjs-grid th.hide { border:none; background:transparent; padding:0; }
 table.rwjs-grid td.name { text-align:left; white-space:nowrap; font-weight:600; padding-left:4px; font-size:7pt; }
 table.rwjs-grid td.mono, table.rwjs-grid .mono { font-variant-numeric:tabular-nums; }
@@ -382,7 +388,10 @@ table.rwjs-grid tfoot td { background:#f2f2f2; font-weight:700; }
   table.rwjs-grid { font-size:5.6pt; }
   table.rwjs-grid thead th { font-size:5.2pt; }
   table.rwjs-grid th, table.rwjs-grid td { padding:0.5px 0.5px; }
-  table.rwjs-grid th.jhead .jname { font-size:4.8pt; }
+  table.rwjs-grid th.jname-cell { font-size:4.8pt; padding:0.5px; }
+  table.rwjs-grid th.jnum-cell { font-size:5.6pt; padding:0.3px 0.5px; }
+  table.rwjs-grid th.th-vertical { font-size:5pt; padding:3px 1px; width:1.35em; max-width:1.35em; }
+  table.rwjs-grid th.th-vertical > span.sym { font-size:7pt; }
   .rc, .rc.pending { font-size:6.4pt; }
   /* keep gridlines crisp & black */
   table.rwjs-grid th, table.rwjs-grid td, table.info td { border:0.5pt solid #000 !important; }

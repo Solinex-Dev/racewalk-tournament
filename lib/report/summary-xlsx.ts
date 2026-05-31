@@ -75,7 +75,7 @@ export function buildRoundWorksheet(
   const jcol = (j: number) => C_JUDGE0 + j * 3; // ~ ; +1 < ; +2 RC
 
   // ── widths ───────────────────────────────────────────────────────────────────
-  ws.getColumn(C_ATH).width = 26;
+  ws.getColumn(C_ATH).width = 15; // BIB only — just fits the "CHECK · TOTAL" label
   for (let j = 0; j < J; j++) {
     ws.getColumn(jcol(j)).width = 4;
     ws.getColumn(jcol(j) + 1).width = 4;
@@ -85,10 +85,11 @@ export function buildRoundWorksheet(
   ws.getColumn(C_PEN_OUT).width = 7;
   ws.getColumn(C_CHIEF_T).width = 8;
   ws.getColumn(C_CHIEF_O).width = 9;
-  ws.getColumn(C_DQ_T).width = 8;
-  ws.getColumn(C_TOT_LIFT).width = 5;
-  ws.getColumn(C_TOT_BENT).width = 5;
-  ws.getColumn(C_TOT_RC).width = 5.5;
+  // DQ / CHECK OF / YELLOW PADDLES / DISQUAL. — vertical-text headers (narrow)
+  ws.getColumn(C_DQ_T).width = 6;
+  ws.getColumn(C_TOT_LIFT).width = 6;
+  ws.getColumn(C_TOT_BENT).width = 6;
+  ws.getColumn(C_TOT_RC).width = 6;
 
   // ── helpers ──────────────────────────────────────────────────────────────────
   const head = (
@@ -173,14 +174,14 @@ export function buildRoundWorksheet(
   // ── column headers (rows 5–8) ───────────────────────────────────────────────────
   const H1 = 5;
   const H4 = 8;
-  ws.getRow(H1).height = 40;
+  ws.getRow(H1).height = 54; // tall enough for the vertical-text headers
   ws.getRow(6).height = 16;
-  ws.getRow(7).height = 16;
+  ws.getRow(7).height = 18;
   ws.getRow(8).height = 14;
 
   // Athlete identity column
   ws.mergeCells(H1, C_ATH, H4, C_ATH);
-  head(H1, C_ATH, "หมายเลข / นักกีฬา\nAthlete", { size: 8 });
+  head(H1, C_ATH, "หมายเลข\nBIB", { size: 8 });
   ws.getCell(H1, C_ATH).alignment = { vertical: "middle", horizontal: "center", wrapText: true };
 
   // Judge columns
@@ -216,20 +217,27 @@ export function buildRoundWorksheet(
     ws.mergeCells(7, col, 8, col);
     head(7, col, label, { size });
   };
+  // Vertical single-label header spanning all four header rows — mirrors the
+  // PDF's rotated DQ / CHECK OF / YELLOW PADDLES / DISQUAL. columns.
+  const vhead = (col: number, label: string) => {
+    ws.mergeCells(H1, col, H4, col);
+    const cell = ws.getCell(H1, col);
+    cell.value = label;
+    cell.font = { name: BASE_FONT, bold: true, size: 7, color: { argb: COLOR.ink } };
+    cell.alignment = { vertical: "middle", horizontal: "center", textRotation: 90 };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR.headFill } };
+    cell.border = ALL_BORDER;
+  };
   group2(C_PEN_IN, C_PEN_OUT, "Penalty Zone");
   sub2(C_PEN_IN, "Entrance");
   sub2(C_PEN_OUT, "Exit");
   group2(C_CHIEF_T, C_CHIEF_O, "Chief Judge");
   sub2(C_CHIEF_T, "Time");
   sub2(C_CHIEF_O, "Offence");
-  group2(C_DQ_T, C_DQ_T, "DQ notification");
-  sub2(C_DQ_T, "Time");
-  group2(C_TOT_LIFT, C_TOT_LIFT, "CHECK OF");
-  sub2(C_TOT_LIFT, "~", 9);
-  group2(C_TOT_BENT, C_TOT_BENT, "YELLOW PADDLES");
-  sub2(C_TOT_BENT, "<", 9);
-  group2(C_TOT_RC, C_TOT_RC, "DISQUAL.");
-  sub2(C_TOT_RC, "RC", 8);
+  vhead(C_DQ_T, "DQ notif. Time");
+  vhead(C_TOT_LIFT, "CHECK OF");
+  vhead(C_TOT_BENT, "YELLOW PADDLES");
+  vhead(C_TOT_RC, "DISQUAL. RC");
 
   // ── athlete rows ─────────────────────────────────────────────────────────────
   let r = H4 + 1;
@@ -248,7 +256,7 @@ export function buildRoundWorksheet(
       return cc;
     };
 
-    const ath = cell(C_ATH, `${a.bib}  ${a.name}`, "left");
+    const ath = cell(C_ATH, a.bib, "left");
     ath.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
     ath.font = { name: BASE_FONT, size: 9, bold: true, color: { argb: ink } };
 
