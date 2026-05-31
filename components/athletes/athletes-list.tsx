@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ListFiltersPanel } from "@/components/admin/list-filters-panel";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 type Athlete = {
@@ -130,32 +131,47 @@ export function AthletesList({ athletes }: AthletesListProps) {
     setCurrentPage(1);
   };
 
+  const hasActiveFilters =
+    Boolean(searchQuery) ||
+    countryFilter !== "all" ||
+    provinceFilter !== "all" ||
+    affiliationFilter !== "all" ||
+    clubFilter !== "all";
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setCountryFilter("all");
+    setProvinceFilter("all");
+    setAffiliationFilter("all");
+    setClubFilter("all");
+    setCurrentPage(1);
+  };
+
   return (
     <div className="space-y-4">
-      {/* Search and Filters */}
-      <Card className="rounded-2xl border-slate-200">
-        <CardContent className="p-4">
-          <div className="space-y-3">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                type="text"
-                placeholder="ค้นหาด้วย ชื่อ, สังกัด, ประเทศ, จังหวัด, สโมสร, หมายเหตุ..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-9 rounded-xl"
-              />
-            </div>
+      <ListFiltersPanel
+        filteredCount={filteredAthletes.length}
+        totalCount={athletes.length}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearFilters}
+      >
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <Input
+            type="text"
+            placeholder="ค้นหาด้วย ชื่อ, สังกัด, ประเทศ, จังหวัด, สโมสร, หมายเหตุ..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="h-8 rounded-lg pl-8 text-sm"
+          />
+        </div>
 
-            {/* Filters */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Country Filter */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-slate-600">
                   ประเทศ
                 </label>
                 <Select
@@ -164,7 +180,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     handleFilterChange(setCountryFilter, value)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -178,9 +194,8 @@ export function AthletesList({ athletes }: AthletesListProps) {
                 </Select>
               </div>
 
-              {/* Province Filter */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-slate-600">
                   จังหวัด
                 </label>
                 <Select
@@ -189,7 +204,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     handleFilterChange(setProvinceFilter, value)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -203,9 +218,8 @@ export function AthletesList({ athletes }: AthletesListProps) {
                 </Select>
               </div>
 
-              {/* Affiliation Filter */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-slate-600">
                   สังกัด
                 </label>
                 <Select
@@ -214,7 +228,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     handleFilterChange(setAffiliationFilter, value)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -228,9 +242,8 @@ export function AthletesList({ athletes }: AthletesListProps) {
                 </Select>
               </div>
 
-              {/* Club Filter */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-slate-600">
                   สโมสร
                 </label>
                 <Select
@@ -239,7 +252,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     handleFilterChange(setClubFilter, value)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -253,40 +266,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                 </Select>
               </div>
             </div>
-
-            {/* Results count */}
-            <div className="flex items-center justify-between border-t border-slate-200 pt-3">
-              <p className="text-xs text-slate-600">
-                แสดง {paginatedAthletes.length} จาก {filteredAthletes.length}{" "}
-                รายการ
-                {filteredAthletes.length !== athletes.length &&
-                  ` (กรองจากทั้งหมด ${athletes.length} รายการ)`}
-              </p>
-              {(searchQuery ||
-                countryFilter !== "all" ||
-                provinceFilter !== "all" ||
-                affiliationFilter !== "all" ||
-                clubFilter !== "all") && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setCountryFilter("all");
-                    setProvinceFilter("all");
-                    setAffiliationFilter("all");
-                    setClubFilter("all");
-                    setCurrentPage(1);
-                  }}
-                  className="h-7 rounded-lg text-xs"
-                >
-                  ล้างตัวกรอง
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      </ListFiltersPanel>
 
       {/* Athletes Table */}
       <Card className="overflow-hidden rounded-2xl border-slate-200">

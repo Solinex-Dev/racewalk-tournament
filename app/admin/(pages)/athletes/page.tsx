@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AthletesList } from "@/components/athletes/athletes-list";
-import { CsvImportButton } from "@/components/common/csv-import-button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
-import { bulkImportAthletes } from "@/app/actions/import";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -56,18 +54,11 @@ export default async function AthletesPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-end gap-2">
-            <CsvImportButton
-              label="Import CSV"
-              hint="คอลัมน์: name, country, affiliation_name"
-              importAction={bulkImportAthletes}
-            />
-            <Link href="/admin/athletes/new">
-              <Button className="rounded-xl px-4 py-2 text-sm font-medium">
-                + เพิ่มนักกีฬาใหม่
-              </Button>
-            </Link>
-          </div>
+          <Link href="/admin/athletes/new">
+            <Button className="rounded-xl px-4 py-2 text-sm font-medium">
+              + เพิ่มนักกีฬาใหม่
+            </Button>
+          </Link>
         </div>
 
         <AthletesList athletes={athletes} />

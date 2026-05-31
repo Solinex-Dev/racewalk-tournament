@@ -154,9 +154,9 @@ export default async function EventLivePage(props: Props) {
   const renderedAt = new Date().toISOString();
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <main className="h-screen overflow-hidden bg-slate-950 text-slate-100">
       <AutoRefresh intervalMs={5000} />
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-6 lg:py-10">
+      <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col gap-6 px-4 py-6 lg:py-10">
         <header className="flex flex-col gap-3 border-b border-slate-800 pb-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-lg font-semibold uppercase tracking-[0.2em] text-slate-400">

@@ -2,9 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { JudgesList } from "@/components/judges/judges-list";
-import { CsvImportButton } from "@/components/common/csv-import-button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
-import { bulkImportJudges } from "@/app/actions/import";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -56,18 +54,11 @@ export default async function JudgesPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-end gap-2">
-            <CsvImportButton
-              label="Import CSV"
-              hint="คอลัมน์: name (ชื่อกรรมการ)"
-              importAction={bulkImportJudges}
-            />
-            <Link href="/admin/judges/new">
-              <Button className="rounded-xl px-4 py-2 text-sm font-medium">
-                + เพิ่มกรรมการใหม่
-              </Button>
-            </Link>
-          </div>
+          <Link href="/admin/judges/new">
+            <Button className="rounded-xl px-4 py-2 text-sm font-medium">
+              + เพิ่มกรรมการใหม่
+            </Button>
+          </Link>
         </div>
 
         <JudgesList judges={judges} />

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -56,7 +57,7 @@ export function AdminLoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4">
       <Card className="w-full max-w-sm rounded-3xl px-6 py-10 pt-14 shadow-lg">
         <CardContent>
           <form className="flex flex-col items-center space-y-8" onSubmit={handleSubmit}>
@@ -164,6 +165,13 @@ export function AdminLoginForm() {
           </form>
         </CardContent>
       </Card>
+
+      <Link
+        href="/"
+        className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
+      >
+        ← กลับสู่หน้าหลัก
+      </Link>
     </div>
   );
 }
