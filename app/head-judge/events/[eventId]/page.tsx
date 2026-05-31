@@ -122,7 +122,7 @@ export default async function HeadJudgePage(props: Props) {
 
   return (
     <>
-      <AutoRefresh intervalMs={5000} />
+      <AutoRefresh intervalMs={2000} />
       <OfficialEndedDialog
         open={round.status === "FINISHED"}
         roundName={round.name}

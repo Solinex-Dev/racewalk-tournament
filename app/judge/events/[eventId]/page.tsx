@@ -69,7 +69,7 @@ export default async function JudgePage(props: Props) {
 
   return (
     <>
-      <AutoRefresh intervalMs={15000} />
+      <AutoRefresh intervalMs={2000} />
       <OfficialEndedDialog
         open={round.status === "FINISHED"}
         roundName={round.name}
