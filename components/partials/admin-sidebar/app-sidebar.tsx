@@ -185,7 +185,14 @@ export function DashboardSidebar({
   // Hide nav sections the admin cannot access; hide "new" sub-links without create.
   const user = { isRoot, permissions: permissions ?? emptyPermissions() };
   const routes = dashboardRoutes
-    .filter((r) => !RESOURCE_IDS.has(r.id) || canAccessResource(user, r.id as Resource))
+    .filter((r) => {
+      if (!RESOURCE_IDS.has(r.id)) return true;
+      // The events section is also visible to Moderator-only admins.
+      if (r.id === "events") {
+        return canAccessResource(user, "events") || hasPermission(user, "moderator", "view");
+      }
+      return canAccessResource(user, r.id as Resource);
+    })
     .map((r) => {
       if (!RESOURCE_IDS.has(r.id) || !r.subs) return r;
       const res = r.id as Resource;

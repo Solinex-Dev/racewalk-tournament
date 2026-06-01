@@ -7,6 +7,7 @@
 
 export const RESOURCES = [
   "events",
+  "moderator",
   "athletes",
   "judges",
   "affiliations",
@@ -22,6 +23,7 @@ export type PermissionMatrix = Record<Resource, Record<Action, boolean>>;
 
 export const RESOURCE_LABELS: Record<Resource, string> = {
   events: "กิจกรรม / รอบแข่ง",
+  moderator: "ควบคุมการแข่ง (Moderator)",
   athletes: "นักกีฬา",
   judges: "กรรมการ / องค์กร",
   affiliations: "สังกัด",
@@ -36,6 +38,25 @@ export const ACTION_LABELS: Record<Action, string> = {
   delete: "ลบ",
 };
 
+/**
+ * Which actions are meaningful per resource. Reports are read-only (view/export
+ * only) — they have no create/edit/delete, so only `view` is offered/enforced.
+ */
+export const RESOURCE_ACTIONS: Record<Resource, readonly Action[]> = {
+  events: ACTIONS,
+  // Moderator (race-day correction tool) is an access flag — view only.
+  moderator: ["view"],
+  athletes: ACTIONS,
+  judges: ACTIONS,
+  affiliations: ACTIONS,
+  admins: ACTIONS,
+  reports: ["view"],
+};
+
+export function resourceAllows(resource: Resource, action: Action): boolean {
+  return RESOURCE_ACTIONS[resource].includes(action);
+}
+
 function fill(value: boolean): PermissionMatrix {
   return RESOURCES.reduce((acc, r) => {
     acc[r] = { view: value, create: value, edit: value, delete: value };
@@ -48,7 +69,11 @@ export function emptyPermissions(): PermissionMatrix {
 }
 
 export function fullPermissions(): PermissionMatrix {
-  return fill(true);
+  const base = emptyPermissions();
+  for (const r of RESOURCES) {
+    for (const a of RESOURCE_ACTIONS[r]) base[r][a] = true;
+  }
+  return base;
 }
 
 /** Coerce arbitrary JSON (from the DB) into a complete, well-typed matrix. */
@@ -59,7 +84,7 @@ export function normalizePermissions(raw: unknown): PermissionMatrix {
     for (const r of RESOURCES) {
       const rv = obj[r];
       if (rv && typeof rv === "object") {
-        for (const a of ACTIONS) base[r][a] = Boolean(rv[a]);
+        for (const a of ACTIONS) base[r][a] = resourceAllows(r, a) && Boolean(rv[a]);
       }
     }
   }

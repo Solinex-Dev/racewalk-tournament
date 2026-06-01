@@ -12,7 +12,7 @@ import { formatRaceTime } from "@/lib/time-format";
  */
 
 async function requireAdmin() {
-  return requirePermission("events", "edit");
+  return requirePermission("moderator", "view");
 }
 
 async function logModeratorAction(

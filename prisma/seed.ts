@@ -65,13 +65,18 @@ const SEED_USERS = [
       affiliations: { view: true, create: true, edit: true, delete: true },
       reports: { view: true },
     }) },
-  // Score Officer — can view rosters and edit results, but not create/delete entities.
+  // Score Officer — views rosters and moderates the race (corrects results live).
   { email: "score@racewalk.local",     name: "เจ้าหน้าที่คะแนน",  title: "Score Officer", password: "score1234",     role: "ADMIN" as const, status: "ACTIVE" as const,    lastActiveAt: new Date(NOW - 3 * 24 * 60 * 60 * 1000), isRoot: false, permissions: normalizePermissions({
-      events: { view: true, edit: true },
+      events: { view: true },
+      moderator: { view: true },
       athletes: { view: true },
       judges: { view: true },
       affiliations: { view: true },
       reports: { view: true },
+    }) },
+  // Moderator-only — sees the events list and can ONLY open the Moderator tool.
+  { email: "moderator@racewalk.local", name: "ผู้ควบคุมการแข่ง",  title: "Moderator",     password: "moderator1234", role: "ADMIN" as const, status: "ACTIVE" as const,    lastActiveAt: new Date(NOW - 5 * 60 * 60 * 1000), isRoot: false, permissions: normalizePermissions({
+      moderator: { view: true },
     }) },
   { email: "suspended@racewalk.local", name: "อดีตผู้ดูแล",       title: "Former Admin",  password: "suspended1234", role: "ADMIN" as const, status: "SUSPENDED" as const, lastActiveAt: new Date("2024-08-01T00:00:00.000Z"), isRoot: false, permissions: normalizePermissions({ events: { view: true } }) },
 ];

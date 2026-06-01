@@ -48,8 +48,12 @@ type AdminEvent = {
 
 type EventsListProps = {
   events: AdminEvent[];
-  /** Whether the current admin may open the Moderator tool (events:edit). */
+  /** Whether the current admin may open the Moderator tool (moderator:view). */
   canModerate?: boolean;
+  /** Whether the current admin may open an event's detail/edit page (events:view). */
+  canViewEvents?: boolean;
+  /** Whether the current admin may open reports/exports (reports:view). */
+  canViewReports?: boolean;
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -78,7 +82,12 @@ function ActionIconTooltip({
   );
 }
 
-export function EventsList({ events, canModerate = false }: EventsListProps) {
+export function EventsList({
+  events,
+  canModerate = false,
+  canViewEvents = false,
+  canViewReports = false,
+}: EventsListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState<string>("all");
@@ -459,30 +468,34 @@ export function EventsList({ events, canModerate = false }: EventsListProps) {
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}
-                          <ActionIconTooltip label="รายละเอียด/แก้ไข">
-                            <Link href={`/admin/events/${event.id}`}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
-                                aria-label="รายละเอียด/แก้ไข"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                          </ActionIconTooltip>
-                          <ActionIconTooltip label="Export Report">
-                            <Link href={`/admin/events/${event.id}/report`}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
-                                aria-label="Export Report"
-                              >
-                                <FileText className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                          </ActionIconTooltip>
+                          {canViewEvents && (
+                            <ActionIconTooltip label="รายละเอียด/แก้ไข">
+                              <Link href={`/admin/events/${event.id}`}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
+                                  aria-label="รายละเอียด/แก้ไข"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            </ActionIconTooltip>
+                          )}
+                          {canViewReports && (
+                            <ActionIconTooltip label="Export Report">
+                              <Link href={`/admin/events/${event.id}/report`}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
+                                  aria-label="Export Report"
+                                >
+                                  <FileText className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            </ActionIconTooltip>
+                          )}
                           {event.status !== "draft" && canModerate && (
                             <ActionIconTooltip label="Moderator">
                               <Link href={`/admin/events/${event.id}/moderator`}>

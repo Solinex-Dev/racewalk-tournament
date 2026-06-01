@@ -78,7 +78,7 @@ export default async function ModeratorPage(props: Props) {
   const { eventId } = await props.params;
 
   const me = await getCurrentAdmin();
-  if (!hasPermission(me, "events", "edit")) return <NoAccess />;
+  if (!hasPermission(me, "moderator", "view")) return <NoAccess />;
 
   const event = await prisma.event.findUnique({
     where: { id: eventId, deletedAt: null },

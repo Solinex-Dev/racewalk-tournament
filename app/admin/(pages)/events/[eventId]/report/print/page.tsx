@@ -4,6 +4,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PrintButton } from "@/components/report/print-button";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "Print Report – การแข่งขันเดินทน",
@@ -34,6 +37,9 @@ const ROUND_STATUS_LABEL: Record<string, string> = {
 
 export default async function PrintReportPage(props: Props) {
   const { eventId } = await props.params;
+
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "reports", "view")) return <NoAccess />;
 
   const event = await prisma.event.findUnique({
     where: { id: eventId, deletedAt: null },

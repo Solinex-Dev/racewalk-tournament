@@ -8,7 +8,7 @@ import { revalidateRaceDayViews } from "@/lib/revalidate-race-day";
 import { syncEventStatus, finalizeRoundEnd } from "@/lib/round-lifecycle";
 
 async function requireAdmin() {
-  return requirePermission("events", "edit");
+  return requirePermission("moderator", "view");
 }
 
 /**

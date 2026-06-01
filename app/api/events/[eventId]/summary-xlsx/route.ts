@@ -8,8 +8,8 @@
  * Admin-only. Node runtime (exceljs).
  */
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 import { loadEventSummary } from "@/lib/report/summary-sheet";
 import { buildSummaryWorkbook } from "@/lib/report/summary-xlsx";
 import { attachmentContentDisposition } from "@/lib/content-disposition";
@@ -20,9 +20,9 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ eventId: string }> };
 
 export async function GET(request: Request, ctx: Ctx) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") {
-    return new NextResponse("Unauthorized", { status: 401 });
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "reports", "view")) {
+    return new NextResponse("Forbidden", { status: 403 });
   }
 
   const { eventId } = await ctx.params;

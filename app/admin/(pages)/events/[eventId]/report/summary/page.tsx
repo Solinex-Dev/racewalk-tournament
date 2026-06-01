@@ -4,6 +4,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Download } from "lucide-react";
 import { PrintButton } from "@/components/report/print-button";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 import {
   loadEventSummary,
   type RoundSummary,
@@ -265,6 +268,9 @@ function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
 export default async function SummaryPrintPage(props: Props) {
   const { eventId } = await props.params;
   const { round: roundId } = await props.searchParams;
+
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "reports", "view")) return <NoAccess />;
 
   const summary = await loadEventSummary(eventId, roundId);
   if (!summary) notFound();

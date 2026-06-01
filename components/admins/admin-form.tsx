@@ -18,6 +18,8 @@ import {
   emptyPermissions,
   fullPermissions,
   normalizePermissions,
+  RESOURCE_ACTIONS,
+  resourceAllows,
   type Action,
   type PermissionMatrix,
   type Resource,
@@ -96,8 +98,11 @@ export function AdminForm({
     }));
   const toggleRow = (r: Resource) =>
     setForm((p) => {
-      const allOn = ACTIONS.every((a) => p.permissions[r][a]);
-      return { ...p, permissions: { ...p.permissions, [r]: { view: !allOn, create: !allOn, edit: !allOn, delete: !allOn } } };
+      const allowed = RESOURCE_ACTIONS[r];
+      const allOn = allowed.every((a) => p.permissions[r][a]);
+      const next = { view: false, create: false, edit: false, delete: false };
+      for (const a of allowed) next[a] = !allOn;
+      return { ...p, permissions: { ...p.permissions, [r]: next } };
     });
   const setAll = (value: boolean) => setForm((p) => ({ ...p, permissions: value ? fullPermissions() : emptyPermissions() }));
 
@@ -294,7 +299,11 @@ export function AdminForm({
                           </td>
                           {ACTIONS.map((a) => (
                             <td key={a} className="px-2 py-1.5 text-center">
-                              <input type="checkbox" checked={form.permissions[r][a]} onChange={() => togglePerm(r, a)} disabled={matrixDisabled} className="h-4 w-4 accent-slate-900" />
+                              {resourceAllows(r, a) ? (
+                                <input type="checkbox" checked={form.permissions[r][a]} onChange={() => togglePerm(r, a)} disabled={matrixDisabled} className="h-4 w-4 accent-slate-900" />
+                              ) : (
+                                <span className="text-slate-300">—</span>
+                              )}
                             </td>
                           ))}
                         </tr>

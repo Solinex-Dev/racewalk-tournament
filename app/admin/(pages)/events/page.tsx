@@ -16,7 +16,10 @@ export const metadata: Metadata = {
 
 export default async function EventsPage() {
   const me = await getCurrentAdmin();
-  if (!canAccessResource(me, "events")) return <NoAccess />;
+  // Event managers (events:*) and Moderator-only admins (moderator:view) both reach
+  // this list — moderators just see the "Moderator" button on each row.
+  if (!canAccessResource(me, "events") && !hasPermission(me, "moderator", "view"))
+    return <NoAccess />;
 
   const rows = await prisma.event.findMany({
     where: { deletedAt: null },
@@ -57,7 +60,12 @@ export default async function EventsPage() {
           )}
         </div>
 
-        <EventsList events={events} canModerate={hasPermission(me, "events", "edit")} />
+        <EventsList
+          events={events}
+          canModerate={hasPermission(me, "moderator", "view")}
+          canViewEvents={hasPermission(me, "events", "view")}
+          canViewReports={hasPermission(me, "reports", "view")}
+        />
       </div>
     </main>
   );

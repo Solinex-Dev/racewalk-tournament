@@ -8,9 +8,9 @@
  * Admin-only.
  */
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 import { attachmentContentDisposition } from "@/lib/content-disposition";
 
 type Ctx = { params: Promise<{ eventId: string }> };
@@ -33,9 +33,9 @@ function formatMs(ms: number | null | undefined): string {
 }
 
 export async function GET(request: Request, ctx: Ctx) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") {
-    return new NextResponse("Unauthorized", { status: 401 });
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "reports", "view")) {
+    return new NextResponse("Forbidden", { status: 403 });
   }
 
   const { eventId } = await ctx.params;

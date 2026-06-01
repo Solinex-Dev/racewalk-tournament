@@ -34,7 +34,7 @@ function countUniqueIds(ids: string[]): number {
 
 export default async function AdminDashboardPage() {
   const me = await getCurrentAdmin();
-  const canModerate = hasPermission(me, "events", "edit");
+  const canModerate = hasPermission(me, "moderator", "view");
 
   const [eventsTotal, judgesTotal, athletesTotal, ongoingRows] =
     await Promise.all([

@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "รายงานกิจกรรม – การแข่งขันเดินทน",
@@ -30,6 +33,9 @@ const ROUND_STATUS_LABEL: Record<string, string> = {
 
 export default async function EventReportPage(props: Props) {
   const { eventId } = await props.params;
+
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "reports", "view")) return <NoAccess />;
 
   const event = await prisma.event.findUnique({
     where: { id: eventId, deletedAt: null },
