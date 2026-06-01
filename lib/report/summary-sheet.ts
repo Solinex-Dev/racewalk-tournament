@@ -234,7 +234,9 @@ export async function loadEventSummary(
       heatName: r.heatName,
       status: r.status,
       distanceKm: r.distanceKm,
-      startTime: formatClock(r.scheduledTime ?? r.startedAt),
+      // Show the ACTUAL race start (the moderator's editable source of truth);
+      // fall back to the scheduled time only for rounds that haven't started.
+      startTime: formatClock(r.startedAt ?? r.scheduledTime),
       startedAt: r.startedAt,
       endedAt: r.endedAt,
       chiefJudge,

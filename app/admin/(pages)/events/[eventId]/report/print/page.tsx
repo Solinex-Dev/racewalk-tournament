@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   title: "Print Report – การแข่งขันเดินทน",
 };
 
+// Always reflect the latest moderator edits (finish times, status) — never cache.
+export const dynamic = "force-dynamic";
+
 type Props = { params: Promise<{ eventId: string }> };
 
 function formatMs(ms: number | null | undefined): string {
