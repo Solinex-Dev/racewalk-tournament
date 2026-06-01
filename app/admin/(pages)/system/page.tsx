@@ -121,14 +121,7 @@ export default async function SystemMonitorPage(props: Props) {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">System Monitor</h1>
-            <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700">
-              Root Admin เท่านั้น
-            </span>
           </div>
-          <p className="mt-1 text-sm text-slate-600">
-            บันทึกการใช้งานระบบทั้งหมด — ใคร / ทำอะไร / ที่ไหน (หน้า + IP + อุปกรณ์) / เมื่อไหร่ / อย่างไร
-            (ทั้งหมด {total.toLocaleString("th-TH")} รายการตามตัวกรอง)
-          </p>
         </div>
 
         {/* Filters (GET form — works without JS, shareable URL) */}
@@ -194,15 +187,15 @@ export default async function SystemMonitorPage(props: Props) {
               <table className="min-w-full border-collapse text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs font-medium uppercase text-slate-500">
                   <tr>
-                    <th className="px-3 py-3 text-left">เวลา</th>
-                    <th className="px-3 py-3 text-left">ผู้ใช้</th>
-                    <th className="px-3 py-3 text-left">วิธี</th>
-                    <th className="px-3 py-3 text-left">ประเภท</th>
-                    <th className="px-3 py-3 text-left">การกระทำ</th>
-                    <th className="px-3 py-3 text-left">หน้า / Path</th>
-                    <th className="px-3 py-3 text-left">IP</th>
-                    <th className="px-3 py-3 text-left">อุปกรณ์</th>
-                    <th className="px-3 py-3 text-left">ข้อมูล</th>
+                    <th className="px-3 py-3 text-left">TIME</th>
+                    <th className="px-3 py-3 text-left">USER</th>
+                    <th className="px-3 py-3 text-left">METHOD</th>
+                    <th className="px-3 py-3 text-left">TYPE</th>
+                    <th className="px-3 py-3 text-left">ACTION</th>
+                    <th className="px-3 py-3 text-left">PAGE / PATH</th>
+                    <th className="px-3 py-3 text-left">IP ADDRESS</th>
+                    <th className="px-3 py-3 text-left">DEVICE</th>
+                    <th className="px-3 py-3 text-left">DETAILS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
