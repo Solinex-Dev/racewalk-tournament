@@ -19,6 +19,7 @@ import {
   Settings,
   Building2,
   History,
+  ShieldAlert,
   LogOut,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -45,6 +46,7 @@ const dashboardRoutes: Route[] = [
   { id: "athletes", title: "นักกีฬา", icon: <Medal className="size-4" />, link: "/admin/athletes" },
   { id: "affiliations", title: "สังกัด", icon: <Building2 className="size-4" />, link: "/admin/affiliations" },
   { id: "activity", title: "ประวัติการใช้งาน", icon: <History className="size-4" />, link: "/admin/activity" },
+  { id: "system", title: "System Monitor", icon: <ShieldAlert className="size-4" />, link: "/admin/system" },
   { id: "settings", title: "การตั้งค่า", icon: <Settings className="size-4" />, link: "/admin/settings" },
 ];
 
@@ -68,6 +70,8 @@ export function DashboardSidebar({
   // Hide nav sections the admin cannot access.
   const user = { isRoot, permissions: permissions ?? emptyPermissions() };
   const routes = dashboardRoutes.filter((r) => {
+    // The system monitor is Root-admin only.
+    if (r.id === "system") return user.isRoot;
     // The audit log sits under the "admins" permission.
     if (r.id === "activity") return canAccessResource(user, "admins");
     if (!RESOURCE_IDS.has(r.id)) return true;

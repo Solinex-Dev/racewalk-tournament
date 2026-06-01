@@ -46,7 +46,7 @@ export const authOptions: AuthOptions = {
         password: { label: "Password", type: "password" },
         rememberMe: { label: "Remember Me", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
@@ -71,6 +71,14 @@ export const authOptions: AuthOptions = {
           return null;
         }
         if (status === "SUSPENDED") return null;
+
+        // Capture the client IP + device so login can be shown in the system monitor
+        // and the UserSession row. req.headers is a lowercased plain object here.
+        const h = (req?.headers ?? {}) as Record<string, string | undefined>;
+        const fwd = h["x-forwarded-for"] ?? "";
+        const ip = fwd.split(",")[0]?.trim() || h["x-real-ip"] || null;
+        const ua = h["user-agent"] || null;
+
         return {
           id: user.id,
           email: user.email ?? undefined,
@@ -78,6 +86,8 @@ export const authOptions: AuthOptions = {
           image: user.image ?? undefined,
           rememberMe: credentials.rememberMe === "true",
           role: user.role,
+          ip,
+          ua,
         };
       },
     }),
@@ -135,8 +145,17 @@ export const authOptions: AuthOptions = {
           ? Number(process.env.REMEMBER_ME_TTL_DAYS ?? 30)
           : Number(process.env.DEFAULT_SESSION_TTL_HOURS ?? 24) / 24;
         const expiresAt = new Date(Date.now() + ttlDays * 86_400_000);
+        const loginIp = (user as { ip?: string | null }).ip ?? null;
+        const loginUa = (user as { ua?: string | null }).ua ?? null;
         await prisma.userSession.create({
-          data: { sessionId, userId: user.id, rememberMe, expiresAt },
+          data: {
+            sessionId,
+            userId: user.id,
+            rememberMe,
+            expiresAt,
+            ipAddress: loginIp,
+            userAgent: loginUa,
+          },
         });
         await prisma.user.update({
           where: { id: user.id },
@@ -149,6 +168,10 @@ export const authOptions: AuthOptions = {
           action: ActivityLogAction.USER_LOGGED_IN,
           entityType: "user",
           entityId: user.id,
+          method: "POST",
+          operation: "ACTION",
+          ipAddress: loginIp,
+          userAgent: loginUa,
         });
         return t as typeof token;
       }

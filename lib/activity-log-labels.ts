@@ -1,6 +1,7 @@
 /** Thai labels for the system ActivityLog (audit trail) display. */
 
 export const ACTIVITY_ACTION_LABELS: Record<string, string> = {
+  PAGE_VIEW: "เข้าดูหน้า",
   USER_REGISTERED: "ลงทะเบียนผู้ใช้",
   USER_LOGGED_IN: "เข้าสู่ระบบ",
   USER_LOGGED_OUT: "ออกจากระบบ",
@@ -66,6 +67,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   LapTime: "เวลา Lap",
   FinishTime: "เวลาเข้าเส้นชัย",
   RoundAthlete: "นักกีฬาในรอบ",
+  Page: "หน้า",
 };
 
 export function activityActionLabel(action: string): string {
@@ -84,5 +86,44 @@ export function activityDetailText(details: unknown): string {
   const name = typeof d.name === "string" ? d.name : "";
   const email = typeof d.email === "string" ? d.email : "";
   const reason = typeof d.reason === "string" ? d.reason : "";
-  return [name || email, reason].filter(Boolean).join(" — ");
+  const title = typeof d.title === "string" ? d.title : "";
+  return [name || email || title, reason].filter(Boolean).join(" — ");
+}
+
+/** Thai label for a CRUD operation. */
+export const OPERATION_LABELS: Record<string, string> = {
+  CREATE: "เพิ่ม",
+  READ: "เข้าดู",
+  UPDATE: "แก้ไข",
+  DELETE: "ลบ",
+  ACTION: "ดำเนินการ",
+};
+
+export function operationLabel(op: string | null | undefined): string {
+  if (!op) return "";
+  return OPERATION_LABELS[op] ?? op;
+}
+
+/**
+ * Best-effort short label for a User-Agent string, e.g. "Chrome • Windows".
+ * Falls back to a trimmed raw string for unknown agents.
+ */
+export function formatUserAgent(ua: string | null | undefined): string {
+  if (!ua) return "";
+  const browser =
+    /Edg\//.test(ua) ? "Edge"
+    : /OPR\/|Opera/.test(ua) ? "Opera"
+    : /Chrome\//.test(ua) ? "Chrome"
+    : /Firefox\//.test(ua) ? "Firefox"
+    : /Safari\//.test(ua) ? "Safari"
+    : "";
+  const os =
+    /Windows/.test(ua) ? "Windows"
+    : /Android/.test(ua) ? "Android"
+    : /iPhone|iPad|iOS/.test(ua) ? "iOS"
+    : /Mac OS X|Macintosh/.test(ua) ? "macOS"
+    : /Linux/.test(ua) ? "Linux"
+    : "";
+  const parts = [browser, os].filter(Boolean);
+  return parts.length ? parts.join(" • ") : ua.slice(0, 40);
 }

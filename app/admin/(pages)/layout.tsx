@@ -5,6 +5,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/partials/admin-sidebar/app-sidebar";
+import { ActivityTracker } from "@/components/admin/activity-tracker";
 import { getCurrentAdmin } from "@/lib/authz";
 import { normalizePermissions } from "@/lib/permissions";
 
@@ -27,6 +28,7 @@ export default async function AdminPagesLayout({
 
   return (
     <SidebarProvider>
+      <ActivityTracker />
       <div className="flex h-screen w-full bg-slate-50">
         <DashboardSidebar
           permissions={permissions}

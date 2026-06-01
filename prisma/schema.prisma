@@ -166,12 +166,23 @@ model ActivityLog {
   entityType String?
   entityId   String?
   details    Json?
+  // System-monitor metadata: how/where the action happened.
+  // method:    HTTP method ("GET" for page views, "POST" for actions).
+  // operation: CRUD classification ("CREATE" | "READ" | "UPDATE" | "DELETE" | "ACTION").
+  // path:      the route/page the action came from (e.g. /admin/events/x/rounds/new).
+  method     String?
+  operation  String?
+  path       String?  @db.Text
+  ipAddress  String?
+  userAgent  String?  @db.Text
   createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt])
+  @@index([action])
+  @@index([userId, createdAt])
 }
 
 // --- Domain models ---

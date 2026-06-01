@@ -1,10 +1,11 @@
 /**
- * Records a business-level event for audit.
+ * Records a business-level event for audit / the system monitor.
  * Failures are swallowed so the main request is not broken.
  */
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getRequestMeta } from "@/lib/request-meta";
 
 export const ActivityLogAction = {
   // Auth
@@ -19,6 +20,9 @@ export const ActivityLogAction = {
   ACCOUNT_DEACTIVATE: "ACCOUNT_DEACTIVATE",
   ACCOUNT_RESTORE: "ACCOUNT_RESTORE",
   ACCOUNT_DELETED: "ACCOUNT_DELETED",
+
+  // System monitor — page views (read access)
+  PAGE_VIEW: "PAGE_VIEW",
 
   // Admin domain mutations
   EVENT_CREATED: "EVENT_CREATED",
@@ -66,12 +70,36 @@ export const ActivityLogAction = {
 
 export type ActivityLogActionType = (typeof ActivityLogAction)[keyof typeof ActivityLogAction];
 
+export type ActivityOperation = "CREATE" | "READ" | "UPDATE" | "DELETE" | "ACTION";
+
+/**
+ * Classifies an action constant into a CRUD-style operation for the monitor.
+ * Best-effort string matching on the action name.
+ */
+export function classifyOperation(action: string): ActivityOperation {
+  const a = action.toUpperCase();
+  if (a === "PAGE_VIEW") return "READ";
+  if (/(CREATE|REGISTER|IMPORT)/.test(a)) return "CREATE";
+  if (/(DELETE|REVOK)/.test(a)) return "DELETE";
+  if (/(UPDATE|EDIT|OVERRIDE|CONFIRM|REJECT|RESTORE|CHANG|DEACTIVATE|POSITION|VERIFIED)/.test(a))
+    return "UPDATE";
+  return "ACTION";
+}
+
 export type CreateActivityLogParams = {
   userId: string;
   action: string;
   entityType?: string;
   entityId?: string;
   details?: object;
+  /** HTTP method — "GET" for page views, "POST" for actions. */
+  method?: string;
+  /** CRUD classification; derived from `action` when omitted. */
+  operation?: ActivityOperation;
+  /** Route/page the action came from. */
+  path?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
 };
 
 export async function createActivityLog(params: CreateActivityLogParams): Promise<void> {
@@ -83,6 +111,11 @@ export async function createActivityLog(params: CreateActivityLogParams): Promis
         entityType: params.entityType ?? null,
         entityId: params.entityId ?? null,
         details: params.details ?? undefined,
+        method: params.method ?? null,
+        operation: params.operation ?? classifyOperation(params.action),
+        path: params.path ?? null,
+        ipAddress: params.ipAddress ?? null,
+        userAgent: params.userAgent ?? null,
       },
     });
   } catch {
@@ -91,8 +124,9 @@ export async function createActivityLog(params: CreateActivityLogParams): Promis
 }
 
 /**
- * Helper for Server Actions: log the current admin's action.
- * Silently no-ops if no session — for use after admin mutations.
+ * Helper for Server Actions: log the current admin's action, auto-capturing the
+ * request metadata (IP, device, originating page) and the CRUD operation. Silently
+ * no-ops if there is no session.
  */
 export async function logCurrentAdmin(
   action: ActivityLogActionType,
@@ -104,7 +138,19 @@ export async function logCurrentAdmin(
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;
     if (!userId) return;
-    await createActivityLog({ userId, action, entityType, entityId, details });
+    const meta = await getRequestMeta();
+    await createActivityLog({
+      userId,
+      action,
+      entityType,
+      entityId,
+      details,
+      method: "POST",
+      operation: classifyOperation(action),
+      path: meta.path,
+      ipAddress: meta.ipAddress,
+      userAgent: meta.userAgent,
+    });
   } catch {
     // Swallow
   }
