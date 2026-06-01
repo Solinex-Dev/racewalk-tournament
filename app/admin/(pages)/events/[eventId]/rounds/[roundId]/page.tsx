@@ -50,6 +50,7 @@ export default async function RoundDetailPage(props: Props) {
     scheduledTime: round.scheduledTime ? toDatetimeLocal(round.scheduledTime) : "",
     distanceKm: round.distanceKm ?? "",
     lapCount: round.lapCount ?? 1,
+    note: round.note ?? "",
     status: round.status,
     athletes: round.roundAthletes.map((ra) => ({
       athleteId: ra.athleteId,

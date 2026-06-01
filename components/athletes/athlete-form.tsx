@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { PersonNameFields } from "@/components/common/person-name-fields";
 import { DetailField } from "@/components/common/detail-field";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { createAthlete, updateAthlete, deleteAthlete } from "@/app/actions/athletes";
 import { composeName } from "@/lib/person-name";
 
@@ -65,6 +66,7 @@ export function AthleteForm({
   const [form, setForm] = React.useState<AthleteFormValues>(saved);
   const [editing, setEditing] = React.useState(!isEdit);
   const [isPending, startTransition] = React.useTransition();
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
 
   const isThai = form.country === "TH";
   const affiliationOptions: ComboboxOption[] = affiliations.map((a) => ({ value: a.id, label: a.name }));
@@ -120,11 +122,11 @@ export function AthleteForm({
 
   const handleDelete = () => {
     if (!athleteId) return;
-    if (!window.confirm(`ลบนักกีฬา "${composeName(saved)}"?`)) return;
     startTransition(async () => {
       try {
         await deleteAthlete(athleteId);
         toast.success("ลบนักกีฬาเรียบร้อย");
+        setDeleteOpen(false);
         router.push("/admin/athletes");
         router.refresh();
       } catch (err) {
@@ -163,7 +165,7 @@ export function AthleteForm({
                 variant="outline"
                 size="sm"
                 disabled={isPending}
-                onClick={handleDelete}
+                onClick={() => setDeleteOpen(true)}
                 className="gap-1.5 rounded-lg border-red-200 text-xs text-red-600 hover:bg-red-50"
               >
                 <Trash2 className="h-3.5 w-3.5" /> ลบ
@@ -283,6 +285,22 @@ export function AthleteForm({
           </form>
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="ลบนักกีฬา"
+        description={
+          <>
+            ต้องการลบ <span className="font-medium text-slate-900">{composeName(saved)}</span>{" "}
+            ใช่หรือไม่? การลบไม่สามารถย้อนกลับได้
+          </>
+        }
+        destructive
+        confirmText="ลบ"
+        isPending={isPending}
+        onConfirm={handleDelete}
+      />
     </Card>
   );
 }

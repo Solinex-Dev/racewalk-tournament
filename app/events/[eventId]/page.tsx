@@ -220,7 +220,7 @@ export default async function EventLivePage(props: Props) {
           </div>
         </header>
 
-        <section className="grid flex-1 gap-4 min-h-0">
+        <section className="grid gap-4 min-h-0">
           <div className="flex items-end gap-4 ">
             <div className="flex w-full gap-2 justify-between text-right text-lg">
               {lapCount > 0 && (

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PersonNameFields } from "@/components/common/person-name-fields";
 import { DetailField } from "@/components/common/detail-field";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { createAdmin, updateAdmin, deleteAdmin } from "@/app/actions/admins";
 import { composeName } from "@/lib/person-name";
 import {
@@ -76,6 +77,7 @@ export function AdminForm({
   const [editing, setEditing] = React.useState(!isEdit);
   const [isPending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
 
   const matrixDisabled = form.isRoot || isPending;
   const set = (patch: Partial<AdminFormValues>) => setForm((p) => ({ ...p, ...patch }));
@@ -146,10 +148,10 @@ export function AdminForm({
 
   const handleDelete = () => {
     if (!adminId) return;
-    if (!window.confirm(`ลบผู้ดูแล "${composeName(saved)}"?`)) return;
     startTransition(async () => {
       try {
         await deleteAdmin(adminId);
+        setDeleteOpen(false);
         router.push("/admin/admins");
         router.refresh();
       } catch (err) {
@@ -175,7 +177,7 @@ export function AdminForm({
               </Button>
             )}
             {canDelete && (
-              <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={handleDelete} className="gap-1.5 rounded-lg border-red-200 text-xs text-red-600 hover:bg-red-50">
+              <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={() => setDeleteOpen(true)} className="gap-1.5 rounded-lg border-red-200 text-xs text-red-600 hover:bg-red-50">
                 <Trash2 className="h-3.5 w-3.5" /> ลบ
               </Button>
             )}
@@ -329,6 +331,22 @@ export function AdminForm({
           </form>
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="ลบผู้ดูแล"
+        description={
+          <>
+            ต้องการลบ <span className="font-medium text-slate-900">{composeName(saved)}</span>{" "}
+            ใช่หรือไม่? การลบไม่สามารถย้อนกลับได้
+          </>
+        }
+        destructive
+        confirmText="ลบ"
+        isPending={isPending}
+        onConfirm={handleDelete}
+      />
     </Card>
   );
 }

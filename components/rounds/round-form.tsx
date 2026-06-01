@@ -37,6 +37,7 @@ export type RoundFormValues = {
   scheduledTime: string;
   distanceKm: string;
   lapCount: number;
+  note: string;
   status: "SCHEDULED" | "ONGOING" | "FINISHED";
   athletes: AthleteEntry[];
   officials: OfficialEntry[];
@@ -56,6 +57,7 @@ const EMPTY: RoundFormValues = {
   scheduledTime: "",
   distanceKm: "",
   lapCount: 1,
+  note: "",
   status: "SCHEDULED",
   athletes: [],
   officials: [],
@@ -482,6 +484,21 @@ export function RoundForm({
                 <option value="ONGOING">กำลังดำเนินการ – กำลังแข่งขัน</option>
                 <option value="FINISHED">เสร็จสิ้น – แข่งขันเสร็จแล้ว</option>
               </select>
+            </div>
+
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-sm font-medium text-slate-800">หมายเหตุ</label>
+              <textarea
+                value={form.note}
+                onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
+                placeholder="เช่น รอ Admin กดเริ่มจับเวลา, หมายเหตุสำหรับผู้ดูแลรอบ"
+                rows={3}
+                disabled={isPending}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
+              />
+              <p className="text-[11px] text-slate-500">
+                แสดงในหน้าผู้ดูแลรอบ (Moderator) ใต้ชื่อรอบแข่ง
+              </p>
             </div>
           </div>
 

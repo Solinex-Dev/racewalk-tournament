@@ -356,7 +356,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                         )}
                       </div>
                       {displayRound.note && (
-                        <p className="mt-1 text-xs text-slate-500">{displayRound.note}</p>
+                        <p className="mt-1 text-xs text-slate-500">note : {displayRound.note}</p>
                       )}
                     </div>
                     <div className="flex flex-col items-end gap-2 text-xs">

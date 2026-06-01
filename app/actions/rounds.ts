@@ -19,10 +19,16 @@ export type RoundActionData = {
   scheduledTime?: string;
   distanceKm?: string;
   lapCount?: number;
+  note?: string;
   status: "SCHEDULED" | "ONGOING" | "FINISHED";
   athletes: AthleteInput[];
   officials: OfficialInput[];
 };
+
+function normalizeNote(note?: string): string | null {
+  const trimmed = note?.trim();
+  return trimmed ? trimmed : null;
+}
 
 /** Per-round official caps — 8 judges + 1 head judge + 1 event logger = 10 max. */
 const MAX_JUDGES_PER_ROUND = 8;
@@ -87,6 +93,7 @@ export async function createRound(eventId: string, data: RoundActionData) {
         distanceKm: data.distanceKm || null,
         lapCount: data.lapCount ? Math.max(1, Math.floor(data.lapCount)) : null,
         scheduledTime: data.scheduledTime ? new Date(data.scheduledTime) : null,
+        note: normalizeNote(data.note),
       },
     });
     createdId = round.id;
@@ -153,6 +160,7 @@ export async function updateRound(
         distanceKm: data.distanceKm || null,
         lapCount: data.lapCount ? Math.max(1, Math.floor(data.lapCount)) : null,
         scheduledTime: data.scheduledTime ? new Date(data.scheduledTime) : null,
+        note: normalizeNote(data.note),
       },
     });
 

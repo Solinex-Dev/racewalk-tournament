@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { PersonNameFields } from "@/components/common/person-name-fields";
 import { DetailField } from "@/components/common/detail-field";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { createAffiliation, updateAffiliation, deleteAffiliation } from "@/app/actions/affiliations";
 import { createJudge } from "@/app/actions/judges";
 import { composeName } from "@/lib/person-name";
@@ -75,6 +76,7 @@ export function AffiliationForm({
   const [judgeDialogOpen, setJudgeDialogOpen] = React.useState(false);
   const [judgeDraft, setJudgeDraft] = React.useState({ prefix: "", firstName: "", lastName: "", country: "TH" });
   const [judgeBusy, setJudgeBusy] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
 
   const isThai = form.country === "TH";
   const judgeOptions: ComboboxOption[] = judgeList.map((j) => ({ value: j.id, label: j.name }));
@@ -160,11 +162,11 @@ export function AffiliationForm({
 
   const handleDelete = () => {
     if (!affiliationId) return;
-    if (!window.confirm(`ลบสังกัด "${saved.name}"?`)) return;
     startTransition(async () => {
       try {
         await deleteAffiliation(affiliationId);
         toast.success("ลบสังกัดเรียบร้อย");
+        setDeleteOpen(false);
         router.push("/admin/affiliations");
         router.refresh();
       } catch (err) {
@@ -190,7 +192,7 @@ export function AffiliationForm({
               </Button>
             )}
             {canDelete && (
-              <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={handleDelete} className="gap-1.5 rounded-lg border-red-200 text-xs text-red-600 hover:bg-red-50">
+              <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={() => setDeleteOpen(true)} className="gap-1.5 rounded-lg border-red-200 text-xs text-red-600 hover:bg-red-50">
                 <Trash2 className="h-3.5 w-3.5" /> ลบ
               </Button>
             )}
@@ -354,6 +356,22 @@ export function AffiliationForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="ลบสังกัด"
+        description={
+          <>
+            ต้องการลบ <span className="font-medium text-slate-900">{saved.name}</span>{" "}
+            ใช่หรือไม่? การลบไม่สามารถย้อนกลับได้
+          </>
+        }
+        destructive
+        confirmText="ลบ"
+        isPending={isPending}
+        onConfirm={handleDelete}
+      />
     </Card>
   );
 }

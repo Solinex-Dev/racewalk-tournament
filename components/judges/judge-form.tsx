@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { PersonNameFields } from "@/components/common/person-name-fields";
 import { DetailField } from "@/components/common/detail-field";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { createJudge, updateJudge, deleteJudge } from "@/app/actions/judges";
 import { createOrganization, createDepartment } from "@/app/actions/organizations";
 import { composeName } from "@/lib/person-name";
@@ -80,6 +81,7 @@ export function JudgeForm({
   const [creating, setCreating] = React.useState<null | "org" | "department">(null);
   const [createName, setCreateName] = React.useState("");
   const [createBusy, setCreateBusy] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
 
   const isThai = form.country === "TH";
   const set = (patch: Partial<JudgeFormValues>) => setForm((p) => ({ ...p, ...patch }));
@@ -176,11 +178,11 @@ export function JudgeForm({
 
   const handleDelete = () => {
     if (!judgeId) return;
-    if (!window.confirm(`ลบกรรมการ "${composeName(saved)}"?`)) return;
     startTransition(async () => {
       try {
         await deleteJudge(judgeId);
         toast.success("ลบกรรมการเรียบร้อย");
+        setDeleteOpen(false);
         router.push("/admin/judges");
         router.refresh();
       } catch (err) {
@@ -208,7 +210,7 @@ export function JudgeForm({
               </Button>
             )}
             {canDelete && (
-              <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={handleDelete} className="gap-1.5 rounded-lg border-red-200 text-xs text-red-600 hover:bg-red-50">
+              <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={() => setDeleteOpen(true)} className="gap-1.5 rounded-lg border-red-200 text-xs text-red-600 hover:bg-red-50">
                 <Trash2 className="h-3.5 w-3.5" /> ลบ
               </Button>
             )}
@@ -393,6 +395,22 @@ export function JudgeForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="ลบกรรมการ"
+        description={
+          <>
+            ต้องการลบ <span className="font-medium text-slate-900">{composeName(saved)}</span>{" "}
+            ใช่หรือไม่? การลบไม่สามารถย้อนกลับได้
+          </>
+        }
+        destructive
+        confirmText="ลบ"
+        isPending={isPending}
+        onConfirm={handleDelete}
+      />
     </Card>
   );
 }
