@@ -57,7 +57,7 @@ export default async function PrintReportPage(props: Props) {
   if (!event) notFound();
 
   return (
-    <main className="print-page mx-auto max-w-4xl bg-white p-6 text-slate-900">
+    <main className="print-page mx-auto max-w-full overflow-x-auto bg-white p-6 text-slate-900">
       <style>{`
         @media print {
           .no-print { display: none !important; }

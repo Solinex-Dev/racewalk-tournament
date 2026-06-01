@@ -215,7 +215,7 @@ export function JudgeForm({
           </div>
         )}
       </CardHeader>
-      <CardContent className="pt-4">
+      <CardContent className="py-4">
         {!editing ? (
           <dl>
             <DetailField label="ชื่อ-นามสกุล" value={composeName(saved)} />
