@@ -38,7 +38,6 @@ export default async function EventsPage() {
     location: e.location,
     distance_km: e.distanceKm,
     status: e.status.toLowerCase() as "draft" | "scheduled" | "ongoing" | "finished",
-    isCurrent: e.isCurrent,
   }));
 
   return (

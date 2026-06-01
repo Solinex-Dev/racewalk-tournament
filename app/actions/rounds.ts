@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
 import { requirePermission } from "@/lib/authz";
-import { assertNoSameDayConflict } from "@/lib/scheduling";
+import { assertNoScheduleConflict, assertRoundWithinEvent } from "@/lib/scheduling";
 
 type AthleteInput = { athleteId: string; bib: string };
 type OfficialInput = {
@@ -17,6 +17,7 @@ type OfficialInput = {
 export type RoundActionData = {
   name: string;
   scheduledTime?: string;
+  expectedEndTime?: string;
   distanceKm?: string;
   lapCount?: number;
   note?: string;
@@ -92,9 +93,15 @@ export async function createRound(eventId: string, data: RoundActionData) {
 
   const event = await prisma.event.findUnique({ where: { id: eventId }, select: { date: true } });
   if (!event) throw new Error("ไม่พบกิจกรรม");
-  await assertNoSameDayConflict({
+
+  const scheduledTime = data.scheduledTime ? new Date(data.scheduledTime) : null;
+  const expectedEndTime = data.expectedEndTime ? new Date(data.expectedEndTime) : null;
+
+  assertRoundWithinEvent({ scheduledTime, expectedEndTime, eventDate: event.date });
+  await assertNoScheduleConflict({
     eventId,
     eventDate: event.date,
+    round: { scheduledTime, expectedEndTime, startedAt: null, endedAt: null, distanceKm: data.distanceKm || null },
     athleteIds: data.athletes.map((a) => a.athleteId),
     judgeIds: data.officials.map((o) => o.judgeId),
   });
@@ -108,7 +115,8 @@ export async function createRound(eventId: string, data: RoundActionData) {
         status: data.status,
         distanceKm: data.distanceKm || null,
         lapCount: data.lapCount ? Math.max(1, Math.floor(data.lapCount)) : null,
-        scheduledTime: data.scheduledTime ? new Date(data.scheduledTime) : null,
+        scheduledTime,
+        expectedEndTime,
         note: normalizeNote(data.note),
       },
     });
@@ -157,11 +165,26 @@ export async function updateRound(
   assertOfficialLimits(data.officials);
   if (data.status !== "SCHEDULED") assertStartableOfficials(data.officials);
 
-  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { date: true } });
+  const [event, existing] = await Promise.all([
+    prisma.event.findUnique({ where: { id: eventId }, select: { date: true } }),
+    prisma.round.findUnique({ where: { id: roundId }, select: { startedAt: true, endedAt: true } }),
+  ]);
   if (!event) throw new Error("ไม่พบกิจกรรม");
-  await assertNoSameDayConflict({
+
+  const scheduledTime = data.scheduledTime ? new Date(data.scheduledTime) : null;
+  const expectedEndTime = data.expectedEndTime ? new Date(data.expectedEndTime) : null;
+
+  assertRoundWithinEvent({ scheduledTime, expectedEndTime, eventDate: event.date });
+  await assertNoScheduleConflict({
     eventId,
     eventDate: event.date,
+    round: {
+      scheduledTime,
+      expectedEndTime,
+      startedAt: existing?.startedAt ?? null,
+      endedAt: existing?.endedAt ?? null,
+      distanceKm: data.distanceKm || null,
+    },
     athleteIds: data.athletes.map((a) => a.athleteId),
     judgeIds: data.officials.map((o) => o.judgeId),
   });
@@ -176,7 +199,8 @@ export async function updateRound(
         status: data.status,
         distanceKm: data.distanceKm || null,
         lapCount: data.lapCount ? Math.max(1, Math.floor(data.lapCount)) : null,
-        scheduledTime: data.scheduledTime ? new Date(data.scheduledTime) : null,
+        scheduledTime,
+        expectedEndTime,
         note: normalizeNote(data.note),
       },
     });

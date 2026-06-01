@@ -20,7 +20,6 @@ Admins create, list, edit, and delete **events**. An event is the top-level comp
   location: string;
   distance_km: string;
   status: "draft" | "scheduled" | "ongoing" | "finished";
-  isCurrent?: boolean;
 }
 ```
 
@@ -39,7 +38,7 @@ draft → scheduled → ongoing → finished
 | `ongoing` | Live | No (read during race) | Cards being issued |
 | `finished` | History | No | Read-only; results exportable |
 
-`isCurrent` is a flag on at most one event — the one shown as "the current event" on the admin dashboard.
+The admin dashboard "current activity" section lists events with `status: ongoing`.
 
 ## Pages
 

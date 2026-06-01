@@ -43,7 +43,6 @@ type AdminEvent = {
   location: string;
   distance_km: string;
   status: "draft" | "scheduled" | "ongoing" | "finished";
-  isCurrent?: boolean;
 };
 
 type EventsListProps = {

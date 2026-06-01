@@ -41,9 +41,7 @@ export default async function AdminDashboardPage() {
       prisma.event.count({ where: { deletedAt: null } }),
       prisma.judge.count({ where: { deletedAt: null } }),
       prisma.athlete.count({ where: { deletedAt: null } }),
-      // "กิจกรรมปัจจุบัน" = events actually ONGOING right now (can be more than one).
-      // The manual isCurrent flag is intentionally NOT used here — a finished event
-      // that still has isCurrent=true must not appear as a current activity.
+      // "กิจกรรมปัจจุบัน" = events with status ONGOING (can be more than one).
       prisma.event.findMany({
         where: { deletedAt: null, status: "ONGOING" },
         orderBy: { date: "desc" },

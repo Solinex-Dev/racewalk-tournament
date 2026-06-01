@@ -17,7 +17,7 @@ Landing page after admin login. Shows high-level stats and a quick link to the c
 
 ## Data Displayed
 
-Aggregated counts from mock pools. The "current event" comes from the `MOCK_EVENTS` row where `isCurrent === true`.
+Aggregated counts from the database. The "current activity" section lists events with `status: ONGOING`.
 
 ## Actions
 

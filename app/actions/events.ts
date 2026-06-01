@@ -12,17 +12,10 @@ export type EventActionData = {
   distanceKm: string;
   lapCount: number;
   status: "DRAFT" | "SCHEDULED" | "ONGOING" | "FINISHED";
-  isCurrent: boolean;
 };
 
 export async function createEvent(data: EventActionData) {
   const me = await requirePermission("events", "create");
-  if (data.isCurrent) {
-    await prisma.event.updateMany({
-      where: { isCurrent: true, deletedAt: null },
-      data: { isCurrent: false },
-    });
-  }
   const event = await prisma.event.create({
     data: {
       name: data.name,
@@ -31,7 +24,6 @@ export async function createEvent(data: EventActionData) {
       distanceKm: data.distanceKm,
       lapCount: Math.max(1, Math.floor(data.lapCount || 1)),
       status: data.status,
-      isCurrent: data.isCurrent,
       createdById: me.id,
       updatedById: me.id,
     },
@@ -46,12 +38,6 @@ export async function createEvent(data: EventActionData) {
 
 export async function updateEvent(id: string, data: EventActionData) {
   const me = await requirePermission("events", "edit");
-  if (data.isCurrent) {
-    await prisma.event.updateMany({
-      where: { isCurrent: true, id: { not: id }, deletedAt: null },
-      data: { isCurrent: false },
-    });
-  }
   await prisma.event.update({
     where: { id },
     data: {
@@ -61,14 +47,12 @@ export async function updateEvent(id: string, data: EventActionData) {
       distanceKm: data.distanceKm,
       lapCount: Math.max(1, Math.floor(data.lapCount || 1)),
       status: data.status,
-      isCurrent: data.isCurrent,
       updatedById: me.id,
     },
   });
   await logCurrentAdmin(ActivityLogAction.EVENT_UPDATED, "Event", id, {
     name: data.name,
     status: data.status,
-    isCurrent: data.isCurrent,
   });
   revalidatePath("/admin/events");
   revalidatePath(`/admin/events/${id}`);

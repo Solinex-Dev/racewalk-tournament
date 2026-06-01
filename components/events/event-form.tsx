@@ -16,7 +16,6 @@ export type EventFormValues = {
   distanceKm: string;
   lapCount: number;
   status: "DRAFT" | "SCHEDULED" | "ONGOING" | "FINISHED";
-  isCurrent: boolean;
 };
 
 type EventFormProps = {
@@ -33,7 +32,6 @@ const EMPTY: EventFormValues = {
   distanceKm: "",
   lapCount: 1,
   status: "DRAFT",
-  isCurrent: false,
 };
 
 const STATUS_LABEL: Record<EventFormValues["status"], string> = {
@@ -109,7 +107,6 @@ export function EventForm({ mode, eventId, canEdit = false, defaultValues }: Eve
               <DetailField label="ระยะทางรวม (กม.)" value={saved.distanceKm} />
               <DetailField label="จำนวนรอบสนาม" value={String(saved.lapCount)} />
               <DetailField label="สถานะ" value={STATUS_LABEL[saved.status]} />
-              <DetailField label="กิจกรรมปัจจุบัน" value={saved.isCurrent ? "ใช่" : "ไม่"} />
             </dl>
           </div>
         ) : (
@@ -184,36 +181,19 @@ export function EventForm({ mode, eventId, canEdit = false, defaultValues }: Eve
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-800">สถานะ Event</label>
-                <select
-                  className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5"
-                  value={form.status}
-                  onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as EventFormValues["status"] }))}
-                >
-                  <option value="DRAFT">ร่าง – ยังไม่เผยแพร่</option>
-                  <option value="SCHEDULED">กำหนดการ – ตั้งวันไว้แล้ว</option>
-                  <option value="ONGOING">กำลังดำเนินการ – กำลังแข่งขัน</option>
-                  <option value="FINISHED">เสร็จสิ้น – แข่งขันเสร็จแล้ว</option>
-                </select>
-                <p className="text-[11px] text-slate-500">ใช้กำหนด state หลักของ Event เพื่อแสดงผลและคุม flow อื่น ๆ</p>
-              </div>
-
-              <div className="flex flex-col justify-center space-y-1.5">
-                <label className="flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300"
-                    checked={form.isCurrent}
-                    onChange={(e) => setForm((p) => ({ ...p, isCurrent: e.target.checked }))}
-                  />
-                  <span className="text-sm font-medium text-slate-800">กิจกรรมปัจจุบัน (isCurrent)</span>
-                </label>
-                <p className="ml-6 text-[11px] text-slate-500">
-                  เปิดหน้าแสดงผลสาธารณะและหน้ากรรมการสำหรับ Event นี้ (จะยกเลิก Event อื่นที่เป็น isCurrent อยู่โดยอัตโนมัติ)
-                </p>
-              </div>
+            <div className="space-y-1.5 md:max-w-md">
+              <label className="text-sm font-medium text-slate-800">สถานะ Event</label>
+              <select
+                className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5"
+                value={form.status}
+                onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as EventFormValues["status"] }))}
+              >
+                <option value="DRAFT">ร่าง – ยังไม่เผยแพร่</option>
+                <option value="SCHEDULED">กำหนดการ – ตั้งวันไว้แล้ว</option>
+                <option value="ONGOING">กำลังดำเนินการ – กำลังแข่งขัน</option>
+                <option value="FINISHED">เสร็จสิ้น – แข่งขันเสร็จแล้ว</option>
+              </select>
+              <p className="text-[11px] text-slate-500">ใช้กำหนด state หลักของ Event เพื่อแสดงผลและคุม flow อื่น ๆ</p>
             </div>
 
             {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}

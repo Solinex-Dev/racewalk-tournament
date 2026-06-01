@@ -58,7 +58,6 @@ export default async function EventDetailPage(props: Props) {
     distanceKm: event.distanceKm,
     lapCount: event.lapCount,
     status: event.status,
-    isCurrent: event.isCurrent,
   };
 
   const rounds: Round[] = event.rounds.map((r) => ({

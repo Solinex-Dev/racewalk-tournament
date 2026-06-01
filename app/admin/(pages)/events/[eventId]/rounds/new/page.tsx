@@ -12,13 +12,20 @@ export const metadata: Metadata = {
 
 type Props = { params: Promise<{ eventId: string }> };
 
+/** Format a stored Date to a yyyy-mm-dd calendar day (local wall-clock). */
+function toDateInput(dt: Date) {
+  return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 10);
+}
+
 export default async function NewRoundPage(props: Props) {
   const { eventId } = await props.params;
 
   const [event, athletes, judges] = await Promise.all([
     prisma.event.findUnique({
       where: { id: eventId, deletedAt: null },
-      select: { name: true, lapCount: true, distanceKm: true },
+      select: { name: true, lapCount: true, distanceKm: true, date: true },
     }),
     prisma.athlete.findMany({
       where: { deletedAt: null },
@@ -76,6 +83,7 @@ export default async function NewRoundPage(props: Props) {
           eventId={eventId}
           athleteOptions={athletes}
           judgeOptions={judges}
+          eventDate={event ? toDateInput(event.date) : undefined}
           defaultValues={roundDefaults}
         />
       </div>

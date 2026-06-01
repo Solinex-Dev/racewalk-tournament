@@ -297,8 +297,6 @@ model Event {
   // so this is venue-specific configuration. Used as default for new rounds in this event.
   lapCount   Int         @default(1)
   status     EventStatus @default(DRAFT)
-  // At most one event should have isCurrent=true at a time (enforced at app level)
-  isCurrent  Boolean     @default(false)
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   deletedAt  DateTime?

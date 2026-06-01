@@ -47,7 +47,6 @@ Event {
   location: string
   distance_km: string
   status: "draft" | "scheduled" | "ongoing" | "finished"
-  isCurrent?: boolean  // at most one true across the table
   rounds: Round[]
 }
 ```

@@ -35,6 +35,7 @@ type OfficialEntry = {
 export type RoundFormValues = {
   name: string;
   scheduledTime: string;
+  expectedEndTime: string;
   distanceKm: string;
   lapCount: number;
   note: string;
@@ -49,12 +50,15 @@ type RoundFormProps = {
   roundId?: string;
   athleteOptions: AthleteOption[];
   judgeOptions: JudgeOption[];
+  /** Event start day (yyyy-mm-dd) — a round may not be scheduled before it. */
+  eventDate?: string;
   defaultValues?: Partial<RoundFormValues>;
 };
 
 const EMPTY: RoundFormValues = {
   name: "",
   scheduledTime: "",
+  expectedEndTime: "",
   distanceKm: "",
   lapCount: 1,
   note: "",
@@ -96,6 +100,7 @@ export function RoundForm({
   roundId,
   athleteOptions,
   judgeOptions,
+  eventDate,
   defaultValues,
 }: RoundFormProps) {
   const router = useRouter();
@@ -325,6 +330,23 @@ export function RoundForm({
       );
       return;
     }
+    // Round date/time must not fall before the event's start day.
+    if (eventDate && form.scheduledTime && form.scheduledTime.slice(0, 10) < eventDate) {
+      setError(`วันและเวลาเริ่มของรอบต้องไม่ก่อนวันเริ่มกิจกรรม (${eventDate})`);
+      return;
+    }
+    if (eventDate && form.expectedEndTime && form.expectedEndTime.slice(0, 10) < eventDate) {
+      setError(`วันและเวลาสิ้นสุดของรอบต้องไม่ก่อนวันเริ่มกิจกรรม (${eventDate})`);
+      return;
+    }
+    if (
+      form.scheduledTime &&
+      form.expectedEndTime &&
+      form.expectedEndTime < form.scheduledTime
+    ) {
+      setError("เวลาสิ้นสุด (โดยประมาณ) ต้องไม่ก่อนเวลาเริ่มของรอบ");
+      return;
+    }
     startTransition(async () => {
       try {
         if (isEdit && roundId) {
@@ -440,9 +462,30 @@ export function RoundForm({
               </label>
               <Input
                 type="datetime-local"
+                min={eventDate ? `${eventDate}T00:00` : undefined}
                 value={form.scheduledTime}
                 onChange={(e) => setForm((p) => ({ ...p, scheduledTime: e.target.value }))}
               />
+              {eventDate && (
+                <p className="text-[11px] text-slate-500">
+                  ต้องไม่ก่อนวันเริ่มกิจกรรม ({eventDate})
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-800">
+                วันและเวลาสิ้นสุด (โดยประมาณ)
+              </label>
+              <Input
+                type="datetime-local"
+                min={form.scheduledTime || (eventDate ? `${eventDate}T00:00` : undefined)}
+                value={form.expectedEndTime}
+                onChange={(e) => setForm((p) => ({ ...p, expectedEndTime: e.target.value }))}
+              />
+              <p className="text-[11px] text-slate-500">
+                ใช้ตรวจเวลาทับซ้อนกับรายการอื่น — ถ้าเว้นว่าง ระบบจะประมาณจากระยะทาง (~5 นาที/กม.)
+              </p>
             </div>
 
             <div className="space-y-1.5">

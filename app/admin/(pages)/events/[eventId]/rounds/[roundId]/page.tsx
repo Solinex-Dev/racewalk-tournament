@@ -19,6 +19,12 @@ function toDatetimeLocal(dt: Date) {
     .slice(0, 16);
 }
 
+function toDateInput(dt: Date) {
+  return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 10);
+}
+
 export default async function RoundDetailPage(props: Props) {
   const { eventId, roundId } = await props.params;
 
@@ -26,7 +32,7 @@ export default async function RoundDetailPage(props: Props) {
     prisma.round.findUnique({
       where: { id: roundId, deletedAt: null },
       include: {
-        event: { select: { name: true } },
+        event: { select: { name: true, date: true } },
         roundAthletes: { where: { deletedAt: null } },
         roundOfficials: { where: { deletedAt: null } },
       },
@@ -48,6 +54,7 @@ export default async function RoundDetailPage(props: Props) {
   const defaultValues: RoundFormValues = {
     name: round.name,
     scheduledTime: round.scheduledTime ? toDatetimeLocal(round.scheduledTime) : "",
+    expectedEndTime: round.expectedEndTime ? toDatetimeLocal(round.expectedEndTime) : "",
     distanceKm: round.distanceKm ?? "",
     lapCount: round.lapCount ?? 1,
     note: round.note ?? "",
@@ -102,6 +109,7 @@ export default async function RoundDetailPage(props: Props) {
           roundId={roundId}
           athleteOptions={athletes}
           judgeOptions={judges}
+          eventDate={toDateInput(round.event.date)}
           defaultValues={defaultValues}
         />
       </div>

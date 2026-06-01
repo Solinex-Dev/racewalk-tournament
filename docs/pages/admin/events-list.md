@@ -24,7 +24,6 @@ Source: `MOCK_EVENTS: AdminEvent[]` — 22 sample events from Dec 2024 to Dec 20
 AdminEvent {
   id, name, date, location, distance_km,
   status: "draft" | "scheduled" | "ongoing" | "finished",
-  isCurrent?: boolean
 }
 ```
 

@@ -479,13 +479,13 @@ function genFillers(opts: {
 // ─── Events ───────────────────────────────────────────────────────────────────
 
 const SEED_EVENTS = [
-  { id: "evt-draft",    name: "เทศกาลเดินทนสงกรานต์ 2026 (ร่าง)", date: new Date("2026-04-13T00:00:00Z"), location: "ถนนข้าวสาร กรุงเทพฯ",          distanceKm: "5",  lapCount: 5,  status: "DRAFT"     as const, isCurrent: false },
-  { id: "evt-sched",    name: "กรีฑาเดินทนเยาวชนชิงแชมป์ภาคกลาง 2026", date: new Date("2026-07-12T00:00:00Z"), location: "สนามกีฬาธรรมศาสตร์ รังสิต", distanceKm: "10", lapCount: 10, status: "SCHEDULED" as const, isCurrent: false },
-  { id: "evt-live",     name: "เดินทนชิงแชมป์ประเทศไทย 2026",       date: new Date(NOW),                    location: "สนามกีฬาแห่งชาติ ศุภชลาศัย",  distanceKm: "20", lapCount: 20, status: "ONGOING"   as const, isCurrent: true  },
-  { id: "evt-live2",    name: "เดินทนชิงแชมป์ประเทศไทย 2026 — รายการหญิง", date: new Date(NOW),             location: "สนามกีฬาแห่งชาติ ศุภชลาศัย",  distanceKm: "10", lapCount: 10, status: "ONGOING"   as const, isCurrent: false },
-  { id: "evt-fin-nat",  name: "เดินทนชิงแชมป์ประเทศไทย 2025",       date: new Date("2025-03-15T00:00:00Z"), location: "สนามกีฬาแห่งชาติ ศุภชลาศัย",  distanceKm: "20", lapCount: 20, status: "FINISHED"  as const, isCurrent: false },
-  { id: "evt-fin-asia", name: "Asian Junior Racewalk Championship 2024", date: new Date("2024-09-15T00:00:00Z"), location: "Suphachalasai Stadium, Bangkok", distanceKm: "10", lapCount: 10, status: "FINISHED" as const, isCurrent: false },
-  { id: "evt-open",     name: "เดินทนโอเพ่นมหาชน 2025",               date: new Date("2025-06-21T00:00:00Z"), location: "สวนสาธารณะสวนลุมพินี กรุงเทพฯ", distanceKm: "10", lapCount: 10, status: "FINISHED" as const, isCurrent: false },
+  { id: "evt-draft",    name: "เทศกาลเดินทนสงกรานต์ 2026 (ร่าง)", date: new Date("2026-04-13T00:00:00Z"), location: "ถนนข้าวสาร กรุงเทพฯ",          distanceKm: "5",  lapCount: 5,  status: "DRAFT"     as const },
+  { id: "evt-sched",    name: "กรีฑาเดินทนเยาวชนชิงแชมป์ภาคกลาง 2026", date: new Date("2026-07-12T00:00:00Z"), location: "สนามกีฬาธรรมศาสตร์ รังสิต", distanceKm: "10", lapCount: 10, status: "SCHEDULED" as const },
+  { id: "evt-live",     name: "เดินทนชิงแชมป์ประเทศไทย 2026",       date: new Date(NOW),                    location: "สนามกีฬาแห่งชาติ ศุภชลาศัย",  distanceKm: "20", lapCount: 20, status: "ONGOING"   as const },
+  { id: "evt-live2",    name: "เดินทนชิงแชมป์ประเทศไทย 2026 — รายการหญิง", date: new Date(NOW),             location: "สนามกีฬาแห่งชาติ ศุภชลาศัย",  distanceKm: "10", lapCount: 10, status: "ONGOING"   as const },
+  { id: "evt-fin-nat",  name: "เดินทนชิงแชมป์ประเทศไทย 2025",       date: new Date("2025-03-15T00:00:00Z"), location: "สนามกีฬาแห่งชาติ ศุภชลาศัย",  distanceKm: "20", lapCount: 20, status: "FINISHED"  as const },
+  { id: "evt-fin-asia", name: "Asian Junior Racewalk Championship 2024", date: new Date("2024-09-15T00:00:00Z"), location: "Suphachalasai Stadium, Bangkok", distanceKm: "10", lapCount: 10, status: "FINISHED" as const },
+  { id: "evt-open",     name: "เดินทนโอเพ่นมหาชน 2025",               date: new Date("2025-06-21T00:00:00Z"), location: "สวนสาธารณะสวนลุมพินี กรุงเทพฯ", distanceKm: "10", lapCount: 10, status: "FINISHED" as const },
 ];
 
 // ─── Rounds + scenarios ───────────────────────────────────────────────────────
@@ -1017,7 +1017,7 @@ async function main() {
   for (const e of SEED_EVENTS) {
     await prisma.event.upsert({
       where: { id: e.id }, create: { ...e, createdById: ownerId, updatedById: ownerId },
-      update: { name: e.name, status: e.status, isCurrent: e.isCurrent, date: e.date, location: e.location, distanceKm: e.distanceKm, lapCount: e.lapCount, updatedById: ownerId },
+      update: { name: e.name, status: e.status, date: e.date, location: e.location, distanceKm: e.distanceKm, lapCount: e.lapCount, updatedById: ownerId },
     });
   }
   console.log(`[seed] events:       ${SEED_EVENTS.length}`);

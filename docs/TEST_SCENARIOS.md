@@ -10,12 +10,12 @@
 
 ### Events
 
-| Event ID | สถานะ | isCurrent | Rounds | Test target |
-|----------|------|-----------|--------|-------------|
-| `evt-empty` | DRAFT | – | 0 rounds | UX สำหรับ event ที่ยังไม่มีอะไรเลย |
-| `evt-pre` | SCHEDULED | – | 1 (SCHEDULED) | Pre-race setup — judges join ก่อนเริ่ม |
-| `evt-001` | ONGOING | ✅ | 2 (FINISHED + ONGOING) | **หลัก — race-day live flow** |
-| `evt-past` | FINISHED | – | 1 (FINISHED) | ผลลัพธ์ + ประวัติ |
+| Event ID | สถานะ | Rounds | Test target |
+|----------|------|--------|-------------|
+| `evt-empty` | DRAFT | 0 rounds | UX สำหรับ event ที่ยังไม่มีอะไรเลย |
+| `evt-pre` | SCHEDULED | 1 (SCHEDULED) | Pre-race setup — judges join ก่อนเริ่ม |
+| `evt-001` | ONGOING | 2 (FINISHED + ONGOING) | **หลัก — race-day live flow** |
+| `evt-past` | FINISHED | 1 (FINISHED) | ผลลัพธ์ + ประวัติ |
 
 ### Users (Admin)
 
@@ -78,11 +78,10 @@
 2. **Suspended user blocked** — ลอง login ด้วย `suspended@racewalk.local` → ต้องถูกปฏิเสธ (ตรวจ `lib/user-status.ts` resolveUserStatus)
 3. **Events list** ที่ `/admin/events`
    - เห็น 4 events
-   - `evt-001` มี chip "กิจกรรมปัจจุบัน"
+   - event ที่ `ONGOING` มี badge LIVE
    - ปุ่ม "Moderator" เห็นเฉพาะ event ที่ดำเนินการได้
-4. **Sole event isCurrent** — แก้ไข `evt-pre` แล้วเปิด isCurrent=true → `evt-001` ต้องถูกเปลี่ยน isCurrent=false อัตโนมัติ
-5. **Create new event** — `/admin/events/new` → กรอกฟอร์ม → DB มี row ใหม่
-6. **Add round** — เข้า event ใหม่ → `/admin/events/{id}/rounds/new` → เลือก athletes + judges → generate secret codes → save → ดู secret codes ที่ออกมาในตาราง
+4. **Create new event** — `/admin/events/new` → กรอกฟอร์ม → DB มี row ใหม่
+5. **Add round** — เข้า event ใหม่ → `/admin/events/{id}/rounds/new` → เลือก athletes + judges → generate secret codes → save → ดู secret codes ที่ออกมาในตาราง
 
 ### 3.2 Pre-race join (evt-pre)
 
