@@ -155,7 +155,7 @@ export function AdminForm({
 
   return (
     <Card className="rounded-2xl border-slate-200">
-      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 border-b border-slate-200 pb-4">
+      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 border-b border-slate-200 py-4">
         <div className="space-y-1">
           <CardTitle className="text-base font-semibold text-slate-900">
             {isEdit ? "ข้อมูล Admin" : "สร้าง Admin ใหม่"}
