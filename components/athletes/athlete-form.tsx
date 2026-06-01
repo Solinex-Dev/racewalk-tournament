@@ -6,12 +6,16 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { PersonNameFields } from "@/components/common/person-name-fields";
 import { createAthlete, updateAthlete } from "@/app/actions/athletes";
 
 export type AffiliationOption = { id: string; name: string };
 
 export type AthleteFormValues = {
-  name: string;
+  prefix: string;
+  firstName: string;
+  lastName: string;
   country: string;
   affiliationId: string;
   province: string;
@@ -23,34 +27,55 @@ type AthleteFormProps = {
   mode: "create" | "edit";
   athleteId?: string;
   affiliations: AffiliationOption[];
+  countryOptions: ComboboxOption[];
+  provinceOptions: ComboboxOption[];
   defaultValues?: Partial<AthleteFormValues>;
 };
 
 const EMPTY: AthleteFormValues = {
-  name: "",
-  country: "THA",
+  prefix: "",
+  firstName: "",
+  lastName: "",
+  country: "TH",
   affiliationId: "",
   province: "",
   club: "",
   note: "",
 };
 
-export function AthleteForm({ mode, athleteId, affiliations, defaultValues }: AthleteFormProps) {
+export function AthleteForm({
+  mode,
+  athleteId,
+  affiliations,
+  countryOptions,
+  provinceOptions,
+  defaultValues,
+}: AthleteFormProps) {
   const router = useRouter();
   const [form, setForm] = React.useState<AthleteFormValues>({ ...EMPTY, ...defaultValues });
   const [isPending, startTransition] = React.useTransition();
 
   const isEdit = mode === "edit";
+  const isThai = form.country === "TH";
+  const affiliationOptions: ComboboxOption[] = affiliations.map((a) => ({ value: a.id, label: a.name }));
+
+  const set = (patch: Partial<AthleteFormValues>) => setForm((p) => ({ ...p, ...patch }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.firstName.trim()) {
+      toast.error("กรุณากรอกชื่อจริง");
+      return;
+    }
     startTransition(async () => {
       try {
         const payload = {
-          name: form.name.trim(),
-          country: form.country.trim() || "THA",
+          prefix: form.prefix.trim() || null,
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim() || null,
+          country: form.country || "TH",
           affiliationId: form.affiliationId || null,
-          province: form.province.trim() || null,
+          province: isThai ? form.province.trim() || null : null,
           club: form.club.trim() || null,
           note: form.note.trim() || null,
         };
@@ -62,6 +87,7 @@ export function AthleteForm({ mode, athleteId, affiliations, defaultValues }: At
           toast.success("เพิ่มนักกีฬาเรียบร้อย");
         }
         router.push("/admin/athletes");
+        router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
       }
@@ -80,60 +106,65 @@ export function AthleteForm({ mode, athleteId, affiliations, defaultValues }: At
       </CardHeader>
       <CardContent className="pt-4">
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-slate-800">
-              ชื่อ-นามสกุล นักกีฬา <span className="text-red-500">*</span>
-            </label>
-            <Input
-              required
-              value={form.name}
-              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              placeholder="เช่น Somchai Rakdee"
-              className="rounded-xl text-sm"
-            />
-            <p className="text-[11px] text-slate-500">
-              ชื่อเต็ม (ใส่ชื่อและนามสกุล คั่นด้วยช่องว่าง)
-            </p>
-          </div>
+          <PersonNameFields
+            prefix={form.prefix}
+            firstName={form.firstName}
+            lastName={form.lastName}
+            onChange={set}
+            disabled={isPending}
+          />
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
               <label className="block text-xs font-medium text-slate-800">สังกัด / สโมสรหลัก</label>
-              <select
+              <Combobox
+                options={affiliationOptions}
                 value={form.affiliationId}
-                onChange={(e) => setForm((p) => ({ ...p, affiliationId: e.target.value }))}
-                className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200"
-              >
-                <option value="">— ไม่ระบุ —</option>
-                {affiliations.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
+                onChange={(v) => set({ affiliationId: v })}
+                clearable
+                disabled={isPending}
+                placeholder="— ไม่ระบุ —"
+                searchPlaceholder="ค้นหาสังกัด…"
+                emptyText="ไม่พบสังกัด"
+              />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-800">
-                ประเทศ (ISO 3-letter)
-              </label>
-              <Input
+              <label className="block text-xs font-medium text-slate-800">ประเทศ</label>
+              <Combobox
+                options={countryOptions}
                 value={form.country}
-                onChange={(e) => setForm((p) => ({ ...p, country: e.target.value.toUpperCase() }))}
-                placeholder="เช่น THA, USA, JPN"
-                maxLength={3}
-                className="rounded-xl text-sm uppercase"
+                onChange={(v) => set({ country: v, province: v === "TH" ? form.province : "" })}
+                disabled={isPending}
+                placeholder="เลือกประเทศ"
+                searchPlaceholder="ค้นหาประเทศ (ไทย/อังกฤษ)…"
+                emptyText="ไม่พบประเทศ"
               />
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-800">จังหวัด (Province)</label>
-              <Input
-                value={form.province}
-                onChange={(e) => setForm((p) => ({ ...p, province: e.target.value }))}
-                placeholder="เช่น กรุงเทพมหานคร"
-                className="rounded-xl text-sm"
-              />
+              <label className="block text-xs font-medium text-slate-800">จังหวัด</label>
+              {isThai ? (
+                <Combobox
+                  options={provinceOptions}
+                  value={form.province}
+                  onChange={(v) => set({ province: v })}
+                  clearable
+                  disabled={isPending}
+                  placeholder="— ไม่ระบุ —"
+                  searchPlaceholder="ค้นหาจังหวัด…"
+                  emptyText="ไม่พบจังหวัด"
+                />
+              ) : (
+                <Input
+                  value=""
+                  disabled
+                  placeholder="(เฉพาะนักกีฬาในประเทศไทย)"
+                  className="rounded-xl text-sm"
+                />
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -142,9 +173,10 @@ export function AthleteForm({ mode, athleteId, affiliations, defaultValues }: At
               </label>
               <Input
                 value={form.club}
-                onChange={(e) => setForm((p) => ({ ...p, club: e.target.value }))}
+                onChange={(e) => set({ club: e.target.value })}
                 placeholder="ระบุชื่อสโมสรย่อยหรือทีมต้นสังกัด"
                 className="rounded-xl text-sm"
+                disabled={isPending}
               />
               <p className="text-[11px] text-slate-500">
                 ใช้แยกย่อยจากสังกัดหลัก (เช่น สโมสรในระดับโรงเรียน/มหาวิทยาลัย)
@@ -156,9 +188,10 @@ export function AthleteForm({ mode, athleteId, affiliations, defaultValues }: At
             <label className="block text-xs font-medium text-slate-800">หมายเหตุ (Note)</label>
             <textarea
               value={form.note}
-              onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
+              onChange={(e) => set({ note: e.target.value })}
               placeholder="ข้อมูลเพิ่มเติม เช่น หมายเลขเสื้อถาวร, ข้อจำกัดด้านสุขภาพ ฯลฯ"
               rows={3}
+              disabled={isPending}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
             />
           </div>

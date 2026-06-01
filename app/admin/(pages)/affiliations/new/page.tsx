@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import { AffiliationForm } from "@/components/affiliations/affiliation-form";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
+import { prisma } from "@/lib/prisma";
+import { getCountryComboboxOptions } from "@/lib/data/countries";
+import { getProvinceComboboxOptions } from "@/lib/data/provinces";
 
 export const metadata: Metadata = {
   title: "เพิ่มสังกัด / สโมสรใหม่ – การแข่งขันเดินทน",
@@ -10,7 +13,15 @@ export const metadata: Metadata = {
     "ฟอร์มเพิ่มข้อมูลสังกัด / สโมสรของนักกีฬา เพื่อให้เลือกใช้ในหน้าจัดการ Athletes ของ Racewalk Tournament.",
 };
 
-export default function NewAffiliationPage() {
+export default async function NewAffiliationPage() {
+  const judges = await prisma.judge.findMany({
+    where: { deletedAt: null },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+  const countryOptions = getCountryComboboxOptions();
+  const provinceOptions = getProvinceComboboxOptions();
+
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-4">
@@ -42,7 +53,12 @@ export default function NewAffiliationPage() {
           </Link>
         </div>
 
-        <AffiliationForm mode="create" />
+        <AffiliationForm
+          mode="create"
+          countryOptions={countryOptions}
+          provinceOptions={provinceOptions}
+          judges={judges}
+        />
       </div>
     </main>
   );

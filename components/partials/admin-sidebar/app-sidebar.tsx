@@ -27,6 +27,14 @@ import { Logo } from "@/components/partials/admin-sidebar/logo";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/partials/admin-sidebar/nav-main";
 import { NotificationsPopover } from "@/components/partials/admin-sidebar/nav-notifications";
+import {
+  canAccessResource,
+  emptyPermissions,
+  hasPermission,
+  RESOURCES,
+  type PermissionMatrix,
+  type Resource,
+} from "@/lib/permissions";
 
 const sampleNotifications = [
   {
@@ -157,10 +165,33 @@ const dashboardRoutes: Route[] = [
   },
 ];
 
-export function DashboardSidebar() {
+const RESOURCE_IDS = new Set<string>(RESOURCES);
+
+export function DashboardSidebar({
+  permissions,
+  isRoot = false,
+}: {
+  permissions?: PermissionMatrix;
+  isRoot?: boolean;
+} = {}) {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isLoggingOut, startLogout] = useTransition();
+
+  // Hide nav sections the admin cannot access; hide "new" sub-links without create.
+  const user = { isRoot, permissions: permissions ?? emptyPermissions() };
+  const routes = dashboardRoutes
+    .filter((r) => !RESOURCE_IDS.has(r.id) || canAccessResource(user, r.id as Resource))
+    .map((r) => {
+      if (!RESOURCE_IDS.has(r.id) || !r.subs) return r;
+      const res = r.id as Resource;
+      return {
+        ...r,
+        subs: r.subs.filter((s) =>
+          s.link.endsWith("/new") ? hasPermission(user, res, "create") : true,
+        ),
+      };
+    });
 
   const handleLogout = () => {
     startLogout(async () => {
@@ -203,7 +234,7 @@ export function DashboardSidebar() {
         </motion.div>
       </SidebarHeader>
       <SidebarContent className="gap-4 px-2 py-4">
-        <DashboardNavigation routes={dashboardRoutes} />
+        <DashboardNavigation routes={routes} />
       </SidebarContent>
       <SidebarFooter className="flex flex-col gap-2 px-2 pb-3 pt-0">
         {/* Current team / user display (no dropdown) */}

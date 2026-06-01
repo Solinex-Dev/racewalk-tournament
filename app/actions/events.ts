@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
+import { requirePermission } from "@/lib/authz";
 
 export type EventActionData = {
   name: string;
@@ -15,6 +16,7 @@ export type EventActionData = {
 };
 
 export async function createEvent(data: EventActionData) {
+  await requirePermission("events", "create");
   if (data.isCurrent) {
     await prisma.event.updateMany({
       where: { isCurrent: true, deletedAt: null },
@@ -41,6 +43,7 @@ export async function createEvent(data: EventActionData) {
 }
 
 export async function updateEvent(id: string, data: EventActionData) {
+  await requirePermission("events", "edit");
   if (data.isCurrent) {
     await prisma.event.updateMany({
       where: { isCurrent: true, id: { not: id }, deletedAt: null },

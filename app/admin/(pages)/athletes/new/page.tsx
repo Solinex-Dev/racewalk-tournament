@@ -4,6 +4,8 @@ import { AthleteForm } from "@/components/athletes/athlete-form";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { getCountryComboboxOptions } from "@/lib/data/countries";
+import { getProvinceComboboxOptions } from "@/lib/data/provinces";
 
 export const metadata: Metadata = {
   title: "เพิ่มนักกีฬาใหม่ – การแข่งขันเดินทน",
@@ -16,6 +18,8 @@ export default async function NewAthletePage() {
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
+  const countryOptions = getCountryComboboxOptions();
+  const provinceOptions = getProvinceComboboxOptions();
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -44,7 +48,12 @@ export default async function NewAthletePage() {
           </Link>
         </div>
 
-        <AthleteForm mode="create" affiliations={affiliations} />
+        <AthleteForm
+          mode="create"
+          affiliations={affiliations}
+          countryOptions={countryOptions}
+          provinceOptions={provinceOptions}
+        />
       </div>
     </main>
   );

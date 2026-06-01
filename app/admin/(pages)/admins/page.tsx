@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { AdminsList } from "@/components/admins/admins-list";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { canAccessResource } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "จัดการผู้ดูแลระบบ – การแข่งขันเดินทน",
@@ -12,6 +15,9 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminsPage() {
+  const me = await getCurrentAdmin();
+  if (!canAccessResource(me, "admins")) return <NoAccess />;
+
   const rows = await prisma.user.findMany({
     where: { role: "ADMIN", status: { not: "DELETED" } },
     orderBy: { name: "asc" },

@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { EventsList } from "@/components/events/events-list";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { canAccessResource } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "จัดการกิจกรรม – การแข่งขันเดินทน",
@@ -12,6 +15,9 @@ export const metadata: Metadata = {
 };
 
 export default async function EventsPage() {
+  const me = await getCurrentAdmin();
+  if (!canAccessResource(me, "events")) return <NoAccess />;
+
   const rows = await prisma.event.findMany({
     where: { deletedAt: null },
     orderBy: { date: "desc" },

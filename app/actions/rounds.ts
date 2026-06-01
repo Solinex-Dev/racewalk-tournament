@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
+import { requirePermission } from "@/lib/authz";
+import { assertNoSameDayConflict } from "@/lib/scheduling";
 
 type AthleteInput = { athleteId: string; bib: string };
 type OfficialInput = {
@@ -63,7 +65,18 @@ function rethrowFriendly(err: unknown): never {
 }
 
 export async function createRound(eventId: string, data: RoundActionData) {
+  await requirePermission("events", "create");
   assertOfficialLimits(data.officials);
+
+  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { date: true } });
+  if (!event) throw new Error("ไม่พบกิจกรรม");
+  await assertNoSameDayConflict({
+    eventId,
+    eventDate: event.date,
+    athleteIds: data.athletes.map((a) => a.athleteId),
+    judgeIds: data.officials.map((o) => o.judgeId),
+  });
+
   let createdId = "";
   await prisma.$transaction(async (tx) => {
     const round = await tx.round.create({
@@ -117,7 +130,18 @@ export async function updateRound(
   roundId: string,
   data: RoundActionData,
 ) {
+  await requirePermission("events", "edit");
   assertOfficialLimits(data.officials);
+
+  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { date: true } });
+  if (!event) throw new Error("ไม่พบกิจกรรม");
+  await assertNoSameDayConflict({
+    eventId,
+    eventDate: event.date,
+    athleteIds: data.athletes.map((a) => a.athleteId),
+    judgeIds: data.officials.map((o) => o.judgeId),
+  });
+
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {

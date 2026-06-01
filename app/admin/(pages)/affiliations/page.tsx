@@ -3,6 +3,10 @@ import { Button } from "@/components/ui/button";
 import { AffiliationsList } from "@/components/affiliations/affiliations-list";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { countryLabel } from "@/lib/data/countries";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { canAccessResource } from "@/lib/permissions";
 
 export const metadata = {
   title: "จัดการสังกัด / สโมสร (Affiliations)",
@@ -11,17 +15,21 @@ export const metadata = {
 };
 
 export default async function AffiliationsPage() {
+  const me = await getCurrentAdmin();
+  if (!canAccessResource(me, "affiliations")) return <NoAccess />;
+
   const rows = await prisma.affiliation.findMany({
     where: { deletedAt: null },
     orderBy: { name: "asc" },
+    include: { headJudge: { select: { name: true } } },
   });
 
   const affiliations = rows.map((a) => ({
     id: a.id,
     name: a.name,
-    country: a.country,
+    country: countryLabel(a.country),
     province: a.province ?? "",
-    head_of_affiliation: a.headOfAffiliation ?? "",
+    head_of_affiliation: a.headJudge?.name ?? "",
     join_at: (a.joinedAt ?? a.createdAt).toISOString().slice(0, 10),
     note: a.note ?? "",
   }));

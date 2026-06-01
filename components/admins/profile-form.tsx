@@ -8,9 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { updateMyProfile, changeMyPassword } from "@/app/actions/profile";
+import { PersonNameFields } from "@/components/common/person-name-fields";
+import { composeName } from "@/lib/person-name";
 
 type Props = {
-  defaultName: string;
+  defaultPrefix: string;
+  defaultFirstName: string;
+  defaultLastName: string;
   defaultEmail: string;
   defaultTitle: string;
 };
@@ -27,12 +31,20 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function ProfileForm({ defaultName, defaultEmail, defaultTitle }: Props) {
+export function ProfileForm({
+  defaultPrefix,
+  defaultFirstName,
+  defaultLastName,
+  defaultEmail,
+  defaultTitle,
+}: Props) {
   const router = useRouter();
 
   // Committed profile (what the display shows). Edit happens in a draft buffer.
   const [profile, setProfile] = React.useState({
-    name: defaultName,
+    prefix: defaultPrefix,
+    firstName: defaultFirstName,
+    lastName: defaultLastName,
     email: defaultEmail,
     title: defaultTitle,
   });
@@ -118,22 +130,19 @@ export function ProfileForm({ defaultName, defaultEmail, defaultTitle }: Props) 
 
           {!editing ? (
             <dl className="mt-4">
-              <Field label="ชื่อแสดงผล" value={profile.name} />
+              <Field label="ชื่อ-นามสกุล" value={composeName(profile)} />
               <Field label="บทบาท" value={profile.title} />
               <Field label="อีเมลสำหรับล็อกอิน" value={profile.email} />
             </dl>
           ) : (
             <form className="mt-4 space-y-4" onSubmit={handleProfileSubmit}>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">ชื่อแสดงผล</label>
-                <Input
-                  required
-                  value={draft.name}
-                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                  className="rounded-xl border-slate-200 text-sm"
-                  placeholder="เช่น ผู้ดูแลระบบ"
-                />
-              </div>
+              <PersonNameFields
+                prefix={draft.prefix}
+                firstName={draft.firstName}
+                lastName={draft.lastName}
+                onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+                disabled={isPending}
+              />
 
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-slate-700">บทบาท (label)</label>

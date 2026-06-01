@@ -5,6 +5,8 @@ import { AffiliationForm } from "@/components/affiliations/affiliation-form";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { getCountryComboboxOptions } from "@/lib/data/countries";
+import { getProvinceComboboxOptions } from "@/lib/data/provinces";
 
 export const metadata: Metadata = {
   title: "แก้ไขสังกัด / สโมสร – การแข่งขันเดินทน",
@@ -16,10 +18,18 @@ type Props = { params: Promise<{ affiliationId: string }> };
 export default async function AffiliationDetailPage(props: Props) {
   const { affiliationId } = await props.params;
 
-  const aff = await prisma.affiliation.findUnique({
-    where: { id: affiliationId, deletedAt: null },
-  });
+  const [aff, judges] = await Promise.all([
+    prisma.affiliation.findUnique({ where: { id: affiliationId, deletedAt: null } }),
+    prisma.judge.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
   if (!aff) notFound();
+
+  const countryOptions = getCountryComboboxOptions();
+  const provinceOptions = getProvinceComboboxOptions();
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -49,11 +59,14 @@ export default async function AffiliationDetailPage(props: Props) {
         <AffiliationForm
           mode="edit"
           affiliationId={affiliationId}
+          countryOptions={countryOptions}
+          provinceOptions={provinceOptions}
+          judges={judges}
           defaultValues={{
             name: aff.name,
             country: aff.country,
             province: aff.province ?? "",
-            headOfAffiliation: aff.headOfAffiliation ?? "",
+            headJudgeId: aff.headJudgeId ?? "",
             joinedAt: aff.joinedAt ? aff.joinedAt.toISOString().slice(0, 10) : "",
             note: aff.note ?? "",
           }}

@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 import { AthletesList } from "@/components/athletes/athletes-list";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { countryLabel } from "@/lib/data/countries";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { canAccessResource } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "จัดการนักกีฬา – การแข่งขันเดินทน",
@@ -12,27 +16,25 @@ export const metadata: Metadata = {
 };
 
 export default async function AthletesPage() {
+  const me = await getCurrentAdmin();
+  if (!canAccessResource(me, "athletes")) return <NoAccess />;
+
   const rows = await prisma.athlete.findMany({
     where: { deletedAt: null },
     include: { affiliation: { select: { name: true } } },
     orderBy: { name: "asc" },
   });
 
-  const athletes = rows.map((a) => {
-    const spaceIdx = a.name.indexOf(" ");
-    const first_name = spaceIdx >= 0 ? a.name.slice(0, spaceIdx) : a.name;
-    const last_name = spaceIdx >= 0 ? a.name.slice(spaceIdx + 1) : "";
-    return {
-      id: a.id,
-      first_name,
-      last_name,
-      affiliation: a.affiliation?.name ?? "",
-      club: a.club ?? "",
-      country: a.country,
-      province: a.province ?? "",
-      note: a.note ?? "",
-    };
-  });
+  const athletes = rows.map((a) => ({
+    id: a.id,
+    first_name: a.firstName ?? a.name,
+    last_name: a.lastName ?? "",
+    affiliation: a.affiliation?.name ?? "",
+    club: a.club ?? "",
+    country: countryLabel(a.country),
+    province: a.province ?? "",
+    note: a.note ?? "",
+  }));
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">

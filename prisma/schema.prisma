@@ -99,7 +99,11 @@ model Account {
 
 model User {
   id            String     @id @default(cuid())
+  // Denormalized display name (maintained from prefix/firstName/lastName).
   name          String?
+  prefix        String?
+  firstName     String?
+  lastName      String?
   email         String?    @unique
   emailVerified DateTime?
   image         String?
@@ -110,6 +114,10 @@ model User {
   title         String?
   lastActiveAt  DateTime?
   role          UserRole   @default(USER)
+  // Root Admin bypasses all fine-grained permission checks.
+  isRoot        Boolean    @default(false)
+  // Fine-grained permission matrix: { <resource>: { view, create, edit, delete } }.
+  permissions   Json?
   status        UserStatus @default(ACTIVE)
   suspendedAt   DateTime?
   deleteAfter   DateTime?
@@ -170,19 +178,27 @@ model Affiliation {
   name               String
   country            String    @default("TH")
   province           String?
-  headOfAffiliation  String?
+  // Head of affiliation references a Judge (people are managed as Judges).
+  headJudgeId        String?
   joinedAt           DateTime?
   note               String?   @db.Text
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?
 
-  athletes Athlete[]
+  headJudge Judge?    @relation("AffiliationHead", fields: [headJudgeId], references: [id])
+  athletes  Athlete[]
+
+  @@index([headJudgeId])
 }
 
 model Athlete {
   id            String    @id @default(cuid())
+  // Denormalized display name (maintained from prefix/firstName/lastName).
   name          String
+  prefix        String?
+  firstName     String?
+  lastName      String?
   country       String    @default("TH")
   province      String?
   club          String?
@@ -201,19 +217,60 @@ model Athlete {
 
 model Judge {
   id           String      @id @default(cuid())
+  // Denormalized display name (maintained from prefix/firstName/lastName).
   name         String
+  prefix       String?
+  firstName    String?
+  lastName     String?
   country      String      @default("TH")
   province     String?
-  department   String?
-  organization String?
+  // Department belongs to an Organization (Organization → Department hierarchy).
+  organizationId String?
+  departmentId   String?
   status       JudgeStatus @default(ACTIVE)
   note         String?     @db.Text
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   deletedAt    DateTime?
 
-  roundOfficials RoundOfficial[]
-  cards          Card[]
+  organization       Organization? @relation(fields: [organizationId], references: [id])
+  department         Department?   @relation(fields: [departmentId], references: [id])
+  headedAffiliations Affiliation[] @relation("AffiliationHead")
+  roundOfficials     RoundOfficial[]
+  cards              Card[]
+
+  @@index([organizationId])
+  @@index([departmentId])
+}
+
+// Managing body a judge belongs to (e.g. สมาคมกรีฑาแห่งประเทศไทย).
+model Organization {
+  id          String       @id @default(cuid())
+  name        String
+  note        String?      @db.Text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+
+  departments Department[]
+  judges      Judge[]
+}
+
+// A department/section under an Organization (e.g. ฝ่ายกรรมการสนาม).
+model Department {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  note           String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  judges       Judge[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
 model Event {

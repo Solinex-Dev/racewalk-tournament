@@ -5,6 +5,9 @@ import { JudgeForm } from "@/components/judges/judge-form";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { getCountryComboboxOptions } from "@/lib/data/countries";
+import { getProvinceComboboxOptions } from "@/lib/data/provinces";
+import { getOrganizationsTree } from "@/lib/organizations";
 
 export const metadata: Metadata = {
   title: "แก้ไขข้อมูลกรรมการ – การแข่งขันเดินทน",
@@ -16,10 +19,14 @@ type Props = { params: Promise<{ judgeId: string }> };
 export default async function JudgeDetailPage(props: Props) {
   const { judgeId } = await props.params;
 
-  const judge = await prisma.judge.findUnique({
-    where: { id: judgeId, deletedAt: null },
-  });
+  const [judge, organizations] = await Promise.all([
+    prisma.judge.findUnique({ where: { id: judgeId, deletedAt: null } }),
+    getOrganizationsTree(),
+  ]);
   if (!judge) notFound();
+
+  const countryOptions = getCountryComboboxOptions();
+  const provinceOptions = getProvinceComboboxOptions();
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -49,12 +56,17 @@ export default async function JudgeDetailPage(props: Props) {
         <JudgeForm
           mode="edit"
           judgeId={judgeId}
+          countryOptions={countryOptions}
+          provinceOptions={provinceOptions}
+          organizations={organizations}
           defaultValues={{
-            name: judge.name,
+            prefix: judge.prefix ?? "",
+            firstName: judge.firstName ?? judge.name,
+            lastName: judge.lastName ?? "",
             country: judge.country,
             province: judge.province ?? "",
-            department: judge.department ?? "",
-            organization: judge.organization ?? "",
+            organizationId: judge.organizationId ?? "",
+            departmentId: judge.departmentId ?? "",
             status: judge.status,
             note: judge.note ?? "",
           }}

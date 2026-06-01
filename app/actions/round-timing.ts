@@ -2,19 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth";
 import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
+import { requirePermission } from "@/lib/authz";
 import { revalidateRaceDayViews } from "@/lib/revalidate-race-day";
 import { syncEventStatus, finalizeRoundEnd } from "@/lib/round-lifecycle";
 
 async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) throw new Error("ต้องเข้าสู่ระบบเป็นผู้ดูแล");
-  if ((session.user as { role?: string }).role !== "ADMIN") {
-    throw new Error("ต้องเป็น Admin เท่านั้น");
-  }
-  return session.user;
+  return requirePermission("events", "edit");
 }
 
 /**

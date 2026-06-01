@@ -5,6 +5,9 @@ import { AdminForm } from "@/components/admins/admin-form";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission, normalizePermissions } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "แก้ไขผู้ดูแลระบบ – การแข่งขันเดินทน",
@@ -15,6 +18,9 @@ type Props = { params: Promise<{ adminId: string }> };
 
 export default async function AdminDetailPage(props: Props) {
   const { adminId } = await props.params;
+
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "admins", "edit")) return <NoAccess />;
 
   const user = await prisma.user.findUnique({
     where: { id: adminId },
@@ -47,12 +53,16 @@ export default async function AdminDetailPage(props: Props) {
         <AdminForm
           mode="edit"
           adminId={adminId}
+          currentUserIsRoot={me?.isRoot ?? false}
           defaultValues={{
-            name: user.name ?? "",
+            prefix: user.prefix ?? "",
+            firstName: user.firstName ?? user.name ?? "",
+            lastName: user.lastName ?? "",
             email: user.email ?? "",
             title: user.title ?? "",
             status: user.status === "ACTIVE" ? "ACTIVE" : "SUSPENDED",
-            password: "",
+            isRoot: user.isRoot,
+            permissions: normalizePermissions(user.permissions),
           }}
         />
       </div>

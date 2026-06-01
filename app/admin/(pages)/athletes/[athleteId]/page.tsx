@@ -5,6 +5,8 @@ import { AthleteForm } from "@/components/athletes/athlete-form";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { getCountryComboboxOptions } from "@/lib/data/countries";
+import { getProvinceComboboxOptions } from "@/lib/data/provinces";
 
 export const metadata: Metadata = {
   title: "แก้ไขข้อมูลนักกีฬา – การแข่งขันเดินทน",
@@ -28,6 +30,9 @@ export default async function AthleteDetailPage(props: Props) {
   ]);
 
   if (!athlete) notFound();
+
+  const countryOptions = getCountryComboboxOptions();
+  const provinceOptions = getProvinceComboboxOptions();
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -58,8 +63,12 @@ export default async function AthleteDetailPage(props: Props) {
           mode="edit"
           athleteId={athleteId}
           affiliations={affiliations}
+          countryOptions={countryOptions}
+          provinceOptions={provinceOptions}
           defaultValues={{
-            name: athlete.name,
+            prefix: athlete.prefix ?? "",
+            firstName: athlete.firstName ?? athlete.name,
+            lastName: athlete.lastName ?? "",
             country: athlete.country,
             affiliationId: athlete.affiliationId ?? "",
             province: athlete.province ?? "",

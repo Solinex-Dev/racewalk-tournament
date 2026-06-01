@@ -2,8 +2,14 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { JudgesList } from "@/components/judges/judges-list";
+import { OrgDepartmentManager } from "@/components/judges/org-department-manager";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { countryLabel } from "@/lib/data/countries";
+import { getOrganizationsTree } from "@/lib/organizations";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { canAccessResource } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "จัดการกรรมการ – การแข่งขันเดินทน",
@@ -12,27 +18,32 @@ export const metadata: Metadata = {
 };
 
 export default async function JudgesPage() {
-  const rows = await prisma.judge.findMany({
-    where: { deletedAt: null },
-    orderBy: { name: "asc" },
-  });
+  const me = await getCurrentAdmin();
+  if (!canAccessResource(me, "judges")) return <NoAccess />;
 
-  const judges = rows.map((j) => {
-    const spaceIdx = j.name.indexOf(" ");
-    const first_name = spaceIdx >= 0 ? j.name.slice(0, spaceIdx) : j.name;
-    const last_name = spaceIdx >= 0 ? j.name.slice(spaceIdx + 1) : "";
-    return {
-      id: j.id,
-      first_name,
-      last_name,
-      country: j.country,
-      province: j.province ?? "",
-      department: j.department ?? "",
-      organization: j.organization ?? "",
-      note: j.note ?? "",
-      status: (j.status === "ACTIVE" ? "active" : "inactive") as "active" | "inactive",
-    };
-  });
+  const [rows, organizations] = await Promise.all([
+    prisma.judge.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: "asc" },
+      include: {
+        organization: { select: { name: true } },
+        department: { select: { name: true } },
+      },
+    }),
+    getOrganizationsTree(),
+  ]);
+
+  const judges = rows.map((j) => ({
+    id: j.id,
+    first_name: j.firstName ?? j.name,
+    last_name: j.lastName ?? "",
+    country: countryLabel(j.country),
+    province: j.province ?? "",
+    department: j.department?.name ?? "",
+    organization: j.organization?.name ?? "",
+    note: j.note ?? "",
+    status: (j.status === "ACTIVE" ? "active" : "inactive") as "active" | "inactive",
+  }));
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -54,11 +65,14 @@ export default async function JudgesPage() {
             </p>
           </div>
 
-          <Link href="/admin/judges/new">
-            <Button className="rounded-xl px-4 py-2 text-sm font-medium">
-              + เพิ่มกรรมการใหม่
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <OrgDepartmentManager organizations={organizations} />
+            <Link href="/admin/judges/new">
+              <Button className="rounded-xl px-4 py-2 text-sm font-medium">
+                + เพิ่มกรรมการใหม่
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <JudgesList judges={judges} />

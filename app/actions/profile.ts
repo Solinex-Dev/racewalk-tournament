@@ -12,6 +12,7 @@ import {
 } from "@/lib/validation";
 import { createActivityLog, ActivityLogAction } from "@/lib/activity-log";
 import { isAdminSession } from "@/lib/admin-auth-redirect";
+import { composeName } from "@/lib/person-name";
 
 function requireAdminUserId(session: Session | null) {
   const role = session?.user?.role;
@@ -22,12 +23,20 @@ function requireAdminUserId(session: Session | null) {
   return userId!;
 }
 
-export async function updateMyProfile(data: { name: string; email: string; title: string }) {
+export async function updateMyProfile(data: {
+  prefix: string | null;
+  firstName: string;
+  lastName: string | null;
+  email: string;
+  title: string;
+}) {
   const session = await getServerSession(authOptions);
   const userId = requireAdminUserId(session);
 
   const email = normalizeEmail(data.email);
   if (!isValidEmailFormat(email)) throw new Error("รูปแบบอีเมลไม่ถูกต้อง");
+  const firstName = data.firstName.trim();
+  if (!firstName) throw new Error("กรุณากรอกชื่อจริง");
 
   // Check email uniqueness if changed
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -35,10 +44,16 @@ export async function updateMyProfile(data: { name: string; email: string; title
     throw new Error("อีเมลนี้ถูกใช้แล้ว");
   }
 
+  const prefix = data.prefix?.trim() || null;
+  const lastName = data.lastName?.trim() || null;
+
   await prisma.user.update({
     where: { id: userId },
     data: {
-      name: data.name.trim(),
+      name: composeName({ prefix, firstName, lastName }),
+      prefix,
+      firstName,
+      lastName,
       email,
       title: data.title.trim(),
     },

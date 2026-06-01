@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth";
 import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
+import { requirePermission } from "@/lib/authz";
+import { formatRaceTime } from "@/lib/time-format";
 
 /**
  * Admin/Moderator corrections — soft-deletes & edits with full audit trail.
@@ -12,12 +12,7 @@ import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
  */
 
 async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) throw new Error("ต้องเข้าสู่ระบบเป็นผู้ดูแล");
-  if ((session.user as { role?: string }).role !== "ADMIN") {
-    throw new Error("ต้องเป็น Admin เท่านั้น");
-  }
-  return session.user;
+  return requirePermission("events", "edit");
 }
 
 async function logModeratorAction(
@@ -366,7 +361,7 @@ export async function moderatorEditLapTime(lapTimeId: string, newTimeMs: number,
     lap.roundId,
     user,
     "moderator_edit_lap",
-    `แก้ไข Lap ${lap.lapNumber} ของ ${lap.athlete.name} จาก ${lap.timeMs}ms เป็น ${newTimeMs}ms — เหตุผล: ${reason}`,
+    `แก้ไข Lap ${lap.lapNumber} ของ ${lap.athlete.name} จาก ${formatRaceTime(lap.timeMs)} เป็น ${formatRaceTime(newTimeMs)} — เหตุผล: ${reason}`,
     lap.athleteId,
   );
   await logCurrentAdmin(ActivityLogAction.MODERATOR_EDIT_LAP, "LapTime", lapTimeId, {
@@ -438,7 +433,7 @@ export async function moderatorEditFinishTime(
     ft.roundId,
     user,
     "moderator_edit_finish",
-    `แก้ไขเวลาเข้าเส้นชัยของ ${ft.athlete.name} จาก ${ft.timeMs}ms เป็น ${newTimeMs}ms — เหตุผล: ${reason}`,
+    `แก้ไขเวลาเข้าเส้นชัยของ ${ft.athlete.name} จาก ${formatRaceTime(ft.timeMs)} เป็น ${formatRaceTime(newTimeMs)} — เหตุผล: ${reason}`,
     ft.athleteId,
   );
   await logCurrentAdmin(ActivityLogAction.MODERATOR_EDIT_FINISH, "FinishTime", finishTimeId, {

@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import { JudgeForm } from "@/components/judges/judge-form";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
+import { getCountryComboboxOptions } from "@/lib/data/countries";
+import { getProvinceComboboxOptions } from "@/lib/data/provinces";
+import { getOrganizationsTree } from "@/lib/organizations";
 
 export const metadata: Metadata = {
   title: "เพิ่มกรรมการใหม่ – การแข่งขันเดินทน",
@@ -10,7 +13,11 @@ export const metadata: Metadata = {
     "ฟอร์มเพิ่มข้อมูลกรรมการใหม่สำหรับใช้งานในระบบตัดสินและบันทึกผลการแข่งขันเดินทน.",
 };
 
-export default function NewJudgePage() {
+export default async function NewJudgePage() {
+  const [organizations] = await Promise.all([getOrganizationsTree()]);
+  const countryOptions = getCountryComboboxOptions();
+  const provinceOptions = getProvinceComboboxOptions();
+
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-4">
@@ -42,7 +49,12 @@ export default function NewJudgePage() {
           </Link>
         </div>
 
-        <JudgeForm mode="create" />
+        <JudgeForm
+          mode="create"
+          countryOptions={countryOptions}
+          provinceOptions={provinceOptions}
+          organizations={organizations}
+        />
       </div>
     </main>
   );

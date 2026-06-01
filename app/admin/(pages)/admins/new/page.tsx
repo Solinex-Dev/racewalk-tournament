@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import { AdminForm } from "@/components/admins/admin-form";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "สร้างผู้ดูแลระบบใหม่ – การแข่งขันเดินทน",
@@ -10,7 +13,10 @@ export const metadata: Metadata = {
     "ฟอร์มสร้างผู้ดูแลระบบใหม่สำหรับจัดการ Event, Judges และ Athletes ใน Racewalk Tournament.",
 };
 
-export default function NewAdminPage() {
+export default async function NewAdminPage() {
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "admins", "create")) return <NoAccess />;
+
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-4">
@@ -42,7 +48,7 @@ export default function NewAdminPage() {
           </Link>
         </div>
 
-        <AdminForm mode="create" />
+        <AdminForm mode="create" currentUserIsRoot={me?.isRoot ?? false} />
       </div>
     </main>
   );

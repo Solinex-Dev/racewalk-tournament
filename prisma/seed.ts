@@ -29,6 +29,7 @@
 import "./load-env";
 import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma";
+import { normalizePermissions } from "../lib/permissions";
 
 const RESET_FLAG = process.argv.includes("--reset");
 
@@ -37,29 +38,86 @@ const NOW = Date.now();
 const minutes = (n: number) => n * 60_000;
 const seconds = (n: number) => n * 1_000;
 
+// Country codes are written as 3-letter ISO in this file; the app stores 2-letter.
+const A3_TO_A2: Record<string, string> = {
+  THA: "TH", VNM: "VN", MYS: "MY", MMR: "MM", KOR: "KR", LAO: "LA", USA: "US", JPN: "JP",
+};
+const toAlpha2 = (c: string) => A3_TO_A2[c] ?? c;
+const splitName = (name: string): { firstName: string; lastName: string | null } => {
+  const i = name.indexOf(" ");
+  return i >= 0
+    ? { firstName: name.slice(0, i), lastName: name.slice(i + 1) }
+    : { firstName: name, lastName: null };
+};
+
 // ─── Auth users ───────────────────────────────────────────────────────────────
 
 const SEED_USER_LAST_ACTIVE = new Date(NOW - 2 * 60 * 60 * 1000);
 
 const SEED_USERS = [
-  { email: "owner@racewalk.local",     name: "ผู้ดูแลระบบหลัก",  title: "Owner",         password: "owner1234",     role: "ADMIN" as const, status: "ACTIVE" as const,    lastActiveAt: SEED_USER_LAST_ACTIVE },
-  { email: "events@racewalk.local",    name: "ผู้จัดการแข่งขัน",  title: "Event Manager", password: "events1234",    role: "ADMIN" as const, status: "ACTIVE" as const,    lastActiveAt: new Date(NOW - 26 * 60 * 60 * 1000) },
-  { email: "score@racewalk.local",     name: "เจ้าหน้าที่คะแนน",  title: "Score Officer", password: "score1234",     role: "ADMIN" as const, status: "ACTIVE" as const,    lastActiveAt: new Date(NOW - 3 * 24 * 60 * 60 * 1000) },
-  { email: "suspended@racewalk.local", name: "อดีตผู้ดูแล",       title: "Former Admin",  password: "suspended1234", role: "ADMIN" as const, status: "SUSPENDED" as const, lastActiveAt: new Date("2024-08-01T00:00:00.000Z") },
+  // Root Admin — bypasses all permission checks.
+  { email: "owner@racewalk.local",     name: "ผู้ดูแลระบบหลัก",  title: "Owner",         password: "owner1234",     role: "ADMIN" as const, status: "ACTIVE" as const,    lastActiveAt: SEED_USER_LAST_ACTIVE, isRoot: true,  permissions: normalizePermissions({}) },
+  // Event Manager — manages events/athletes/judges/affiliations but not admins.
+  { email: "events@racewalk.local",    name: "ผู้จัดการแข่งขัน",  title: "Event Manager", password: "events1234",    role: "ADMIN" as const, status: "ACTIVE" as const,    lastActiveAt: new Date(NOW - 26 * 60 * 60 * 1000), isRoot: false, permissions: normalizePermissions({
+      events: { view: true, create: true, edit: true, delete: true },
+      athletes: { view: true, create: true, edit: true, delete: true },
+      judges: { view: true, create: true, edit: true, delete: true },
+      affiliations: { view: true, create: true, edit: true, delete: true },
+      reports: { view: true },
+    }) },
+  // Score Officer — can view rosters and edit results, but not create/delete entities.
+  { email: "score@racewalk.local",     name: "เจ้าหน้าที่คะแนน",  title: "Score Officer", password: "score1234",     role: "ADMIN" as const, status: "ACTIVE" as const,    lastActiveAt: new Date(NOW - 3 * 24 * 60 * 60 * 1000), isRoot: false, permissions: normalizePermissions({
+      events: { view: true, edit: true },
+      athletes: { view: true },
+      judges: { view: true },
+      affiliations: { view: true },
+      reports: { view: true },
+    }) },
+  { email: "suspended@racewalk.local", name: "อดีตผู้ดูแล",       title: "Former Admin",  password: "suspended1234", role: "ADMIN" as const, status: "SUSPENDED" as const, lastActiveAt: new Date("2024-08-01T00:00:00.000Z"), isRoot: false, permissions: normalizePermissions({ events: { view: true } }) },
 ];
 
 // ─── Affiliations ─────────────────────────────────────────────────────────────
 
+// headJudgeId references a seeded Judge (heads of affiliation are managed as Judges).
 const SEED_AFFILIATIONS = [
-  { id: "aff-bkk",   name: "ชมรมเดินทนกรุงเทพมหานคร", country: "THA", province: "กรุงเทพมหานคร", headOfAffiliation: "นายสมชาย ใจดี",     joinedAt: new Date("2018-05-01"), note: "สโมสรหลักภาคกลาง" },
-  { id: "aff-army",  name: "สโมสรกีฬากองทัพบก",       country: "THA", province: "กรุงเทพมหานคร", headOfAffiliation: "พันเอก ภาคภูมิ มั่นคง", joinedAt: new Date("2016-04-22"), note: "ทีมต้นสังกัดมีทุนสนับสนุน" },
-  { id: "aff-ku",    name: "มหาวิทยาลัยเกษตรศาสตร์",  country: "THA", province: "กรุงเทพมหานคร", headOfAffiliation: "ผศ.ดร.วรรณา ขยันดี",  joinedAt: new Date("2019-08-10"), note: "ทีมนักกีฬามหาวิทยาลัย" },
-  { id: "aff-cm",    name: "สโมสรเดินทนเชียงใหม่",     country: "THA", province: "เชียงใหม่",      headOfAffiliation: "นางสาวชนิดา วิ่งไว",   joinedAt: new Date("2020-01-10"), note: "ตัวแทนภาคเหนือ" },
-  { id: "aff-kk",    name: "ขอนแก่นแอธเลติก",          country: "THA", province: "ขอนแก่น",        headOfAffiliation: "นางพิมพา ใจเย็น",     joinedAt: new Date("2021-11-05"), note: "ตัวแทนภาคอีสาน" },
-  { id: "aff-hy",    name: "หาดใหญ่แอธเลติกคลับ",      country: "THA", province: "สงขลา",          headOfAffiliation: "นายดนัย ทะเลใต้",     joinedAt: new Date("2022-06-20"), note: "ตัวแทนภาคใต้" },
-  { id: "aff-nat",   name: "ทีมชาติไทย (เดินทน)",       country: "THA", province: "กรุงเทพมหานคร", headOfAffiliation: "สมาคมกรีฑาฯ",         joinedAt: new Date("2015-01-01"), note: "นักกีฬาทีมชาติ" },
-  { id: "aff-vnm",   name: "Vietnam Athletics",        country: "VNM", province: null,             headOfAffiliation: "Mr. Tran Quoc",       joinedAt: new Date("2023-02-01"), note: "คณะนักกีฬาเวียดนาม" },
-  { id: "aff-mys",   name: "Malaysia Athletics",       country: "MYS", province: null,             headOfAffiliation: "Mr. Lim Wei",         joinedAt: new Date("2023-02-01"), note: "คณะนักกีฬามาเลเซีย" },
+  { id: "aff-bkk",   name: "ชมรมเดินทนกรุงเทพมหานคร", country: "THA", province: "กรุงเทพมหานคร", headJudgeId: "jud-03", joinedAt: new Date("2018-05-01"), note: "สโมสรหลักภาคกลาง" },
+  { id: "aff-army",  name: "สโมสรกีฬากองทัพบก",       country: "THA", province: "กรุงเทพมหานคร", headJudgeId: "jud-11", joinedAt: new Date("2016-04-22"), note: "ทีมต้นสังกัดมีทุนสนับสนุน" },
+  { id: "aff-ku",    name: "มหาวิทยาลัยเกษตรศาสตร์",  country: "THA", province: "กรุงเทพมหานคร", headJudgeId: null,     joinedAt: new Date("2019-08-10"), note: "ทีมนักกีฬามหาวิทยาลัย" },
+  { id: "aff-cm",    name: "สโมสรเดินทนเชียงใหม่",     country: "THA", province: "เชียงใหม่",      headJudgeId: "jud-08", joinedAt: new Date("2020-01-10"), note: "ตัวแทนภาคเหนือ" },
+  { id: "aff-kk",    name: "ขอนแก่นแอธเลติก",          country: "THA", province: "ขอนแก่น",        headJudgeId: "jud-09", joinedAt: new Date("2021-11-05"), note: "ตัวแทนภาคอีสาน" },
+  { id: "aff-hy",    name: "หาดใหญ่แอธเลติกคลับ",      country: "THA", province: "สงขลา",          headJudgeId: "jud-10", joinedAt: new Date("2022-06-20"), note: "ตัวแทนภาคใต้" },
+  { id: "aff-nat",   name: "ทีมชาติไทย (เดินทน)",       country: "THA", province: "กรุงเทพมหานคร", headJudgeId: "jud-05", joinedAt: new Date("2015-01-01"), note: "นักกีฬาทีมชาติ" },
+  { id: "aff-vnm",   name: "Vietnam Athletics",        country: "VNM", province: null,             headJudgeId: null,     joinedAt: new Date("2023-02-01"), note: "คณะนักกีฬาเวียดนาม" },
+  { id: "aff-mys",   name: "Malaysia Athletics",       country: "MYS", province: null,             headJudgeId: null,     joinedAt: new Date("2023-02-01"), note: "คณะนักกีฬามาเลเซีย" },
+];
+
+// ─── Organizations & Departments (Organization → Department hierarchy) ──────────
+
+const SEED_ORGANIZATIONS = [
+  { id: "org-aat",  name: "สมาคมกรีฑาแห่งประเทศไทย" },
+  { id: "org-bkk",  name: "ชมรมเดินทนกรุงเทพฯ" },
+  { id: "org-cm",   name: "สโมสรเดินทนเชียงใหม่" },
+  { id: "org-kk",   name: "ขอนแก่นแอธเลติก" },
+  { id: "org-hy",   name: "หาดใหญ่แอธเลติกคลับ" },
+  { id: "org-army", name: "สโมสรกีฬากองทัพบก" },
+  { id: "org-aaf",  name: "Asian Athletics Federation" },
+  { id: "org-iaaf", name: "IAAF Thailand" },
+];
+
+const SEED_DEPARTMENTS = [
+  { id: "dep-field-aat",  organizationId: "org-aat",  name: "ฝ่ายกรรมการสนาม" },
+  { id: "dep-chief-aat",  organizationId: "org-aat",  name: "หัวหน้ากรรมการ" },
+  { id: "dep-record-aat", organizationId: "org-aat",  name: "ฝ่ายบันทึกผล" },
+  { id: "dep-timing-aat", organizationId: "org-aat",  name: "ฝ่ายจับเวลา" },
+  { id: "dep-medic-aat",  organizationId: "org-aat",  name: "ฝ่ายแพทย์สนาม" },
+  { id: "dep-field-bkk",  organizationId: "org-bkk",  name: "ฝ่ายกรรมการสนาม" },
+  { id: "dep-field-cm",   organizationId: "org-cm",   name: "ฝ่ายกรรมการสนาม" },
+  { id: "dep-field-kk",   organizationId: "org-kk",   name: "ฝ่ายกรรมการสนาม" },
+  { id: "dep-youth-kk",   organizationId: "org-kk",   name: "ฝ่ายกรรมการเยาวชน" },
+  { id: "dep-field-hy",   organizationId: "org-hy",   name: "ฝ่ายกรรมการสนาม" },
+  { id: "dep-chief-army", organizationId: "org-army", name: "หัวหน้ากรรมการ" },
+  { id: "dep-intl-aaf",   organizationId: "org-aaf",  name: "International Panel" },
+  { id: "dep-intl-iaaf",  organizationId: "org-iaaf", name: "ฝ่ายกรรมการสากล" },
 ];
 
 // ─── Athletes ─────────────────────────────────────────────────────────────────
@@ -162,22 +220,24 @@ const womenFill = (n: number) => WOMEN_FILL.slice(0, n).map((a) => a.id);
 
 // ─── Judges ───────────────────────────────────────────────────────────────────
 
+// prefix/firstName/lastName feed the denormalized `name`; organizationId/departmentId
+// link to SEED_ORGANIZATIONS / SEED_DEPARTMENTS. country is 2-letter ISO.
 const SEED_JUDGES = [
-  { id: "jud-01", name: "สมศักดิ์ ตัดสิน",      country: "THA", province: "กรุงเทพมหานคร", department: "ฝ่ายกรรมการสนาม",   organization: "สมาคมกรีฑาแห่งประเทศไทย", status: "ACTIVE"   as const, note: "กรรมการอาวุโส โซน A" },
-  { id: "jud-02", name: "วิชัย มองทาง",         country: "THA", province: "นนทบุรี",        department: "ฝ่ายกรรมการสนาม",   organization: "สมาคมกรีฑาแห่งประเทศไทย", status: "ACTIVE"   as const, note: "โซน B" },
-  { id: "jud-03", name: "ประเสริฐ พินิจ",        country: "THA", province: "ปทุมธานี",       department: "ฝ่ายกรรมการสนาม",   organization: "ชมรมเดินทนกรุงเทพฯ",       status: "ACTIVE"   as const, note: "โซน C" },
-  { id: "jud-04", name: "อนุชา ฟ้าใส",          country: "THA", province: "กรุงเทพมหานคร", department: "ฝ่ายกรรมการสนาม",   organization: "สมาคมกรีฑาแห่งประเทศไทย", status: "ACTIVE"   as const, note: "โซน D" },
-  { id: "jud-05", name: "ดร.สมหวัง วินิจฉัย",    country: "THA", province: "กรุงเทพมหานคร", department: "หัวหน้ากรรมการ",    organization: "สมาคมกรีฑาแห่งประเทศไทย", status: "ACTIVE"   as const, note: "หัวหน้ากรรมการ (Chief)" },
-  { id: "jud-06", name: "มานพ จดบันทึก",        country: "THA", province: "กรุงเทพมหานคร", department: "ฝ่ายบันทึกผล",      organization: "สมาคมกรีฑาแห่งประเทศไทย", status: "ACTIVE"   as const, note: "Event Logger" },
-  { id: "jud-07", name: "สุรชัย จับเวลา",        country: "THA", province: "กรุงเทพมหานคร", department: "ฝ่ายจับเวลา",       organization: "สมาคมกรีฑาแห่งประเทศไทย", status: "ACTIVE"   as const, note: "Timekeeper" },
-  { id: "jud-08", name: "เกรียงไกร เคี่ยวเข็ญ",   country: "THA", province: "เชียงใหม่",      department: "ฝ่ายกรรมการสนาม",   organization: "สโมสรเดินทนเชียงใหม่",     status: "ACTIVE"   as const, note: "แผงกรรมการชุดสอง" },
-  { id: "jud-09", name: "ชัยวัฒน์ เฝ้าโค้ง",      country: "THA", province: "ขอนแก่น",        department: "ฝ่ายกรรมการสนาม",   organization: "ขอนแก่นแอธเลติก",          status: "ACTIVE"   as const, note: "แผงกรรมการชุดสอง" },
-  { id: "jud-10", name: "ธีรพล สังเกต",         country: "THA", province: "สงขลา",          department: "ฝ่ายกรรมการสนาม",   organization: "หาดใหญ่แอธเลติกคลับ",      status: "ACTIVE"   as const, note: "แผงกรรมการชุดสอง" },
-  { id: "jud-11", name: "พ.ต.อ.วิรัช ยุติธรรม",  country: "THA", province: "กรุงเทพมหานคร", department: "หัวหน้ากรรมการ",    organization: "สโมสรกีฬากองทัพบก",        status: "ACTIVE"   as const, note: "หัวหน้ากรรมการชุดสอง" },
-  { id: "jud-12", name: "Park Min-jun",         country: "KOR", province: null,             department: "International Panel", organization: "Asian Athletics Federation", status: "ACTIVE" as const, note: "กรรมการรับเชิญจากเกาหลี" },
-  { id: "jud-13", name: "ดร.อรพิน สากล",        country: "THA", province: "กรุงเทพมหานคร", department: "ฝ่ายกรรมการสากล",   organization: "IAAF Thailand",            status: "ACTIVE"   as const, note: "IAAF certified" },
-  { id: "jud-14", name: "นพ.ภานุวัฒน์ ดูแล",     country: "THA", province: "กรุงเทพมหานคร", department: "ฝ่ายแพทย์สนาม",     organization: "สมาคมกรีฑาแห่งประเทศไทย", status: "ACTIVE"   as const, note: "แพทย์สนาม + กรรมการรอง" },
-  { id: "jud-15", name: "ครูจิตรา เยาวชน",       country: "THA", province: "ขอนแก่น",        department: "ฝ่ายกรรมการเยาวชน",  organization: "ขอนแก่นแอธเลติก",          status: "INACTIVE" as const, note: "พักงานชั่วคราว (ทดสอบสถานะ INACTIVE)" },
+  { id: "jud-01", name: "สมศักดิ์ ตัดสิน",      prefix: null,       firstName: "สมศักดิ์",  lastName: "ตัดสิน",    country: "TH", province: "กรุงเทพมหานคร", organizationId: "org-aat",  departmentId: "dep-field-aat",  status: "ACTIVE"   as const, note: "กรรมการอาวุโส โซน A" },
+  { id: "jud-02", name: "วิชัย มองทาง",         prefix: null,       firstName: "วิชัย",     lastName: "มองทาง",    country: "TH", province: "นนทบุรี",        organizationId: "org-aat",  departmentId: "dep-field-aat",  status: "ACTIVE"   as const, note: "โซน B" },
+  { id: "jud-03", name: "ประเสริฐ พินิจ",        prefix: null,       firstName: "ประเสริฐ",  lastName: "พินิจ",     country: "TH", province: "ปทุมธานี",       organizationId: "org-bkk",  departmentId: "dep-field-bkk",  status: "ACTIVE"   as const, note: "โซน C" },
+  { id: "jud-04", name: "อนุชา ฟ้าใส",          prefix: null,       firstName: "อนุชา",     lastName: "ฟ้าใส",     country: "TH", province: "กรุงเทพมหานคร", organizationId: "org-aat",  departmentId: "dep-field-aat",  status: "ACTIVE"   as const, note: "โซน D" },
+  { id: "jud-05", name: "ดร.สมหวัง วินิจฉัย",    prefix: "ดร.",      firstName: "สมหวัง",    lastName: "วินิจฉัย",   country: "TH", province: "กรุงเทพมหานคร", organizationId: "org-aat",  departmentId: "dep-chief-aat",  status: "ACTIVE"   as const, note: "หัวหน้ากรรมการ (Chief)" },
+  { id: "jud-06", name: "มานพ จดบันทึก",        prefix: null,       firstName: "มานพ",      lastName: "จดบันทึก",  country: "TH", province: "กรุงเทพมหานคร", organizationId: "org-aat",  departmentId: "dep-record-aat", status: "ACTIVE"   as const, note: "Event Logger" },
+  { id: "jud-07", name: "สุรชัย จับเวลา",        prefix: null,       firstName: "สุรชัย",    lastName: "จับเวลา",   country: "TH", province: "กรุงเทพมหานคร", organizationId: "org-aat",  departmentId: "dep-timing-aat", status: "ACTIVE"   as const, note: "Timekeeper" },
+  { id: "jud-08", name: "เกรียงไกร เคี่ยวเข็ญ",   prefix: null,       firstName: "เกรียงไกร", lastName: "เคี่ยวเข็ญ", country: "TH", province: "เชียงใหม่",      organizationId: "org-cm",   departmentId: "dep-field-cm",   status: "ACTIVE"   as const, note: "แผงกรรมการชุดสอง" },
+  { id: "jud-09", name: "ชัยวัฒน์ เฝ้าโค้ง",      prefix: null,       firstName: "ชัยวัฒน์",  lastName: "เฝ้าโค้ง",   country: "TH", province: "ขอนแก่น",        organizationId: "org-kk",   departmentId: "dep-field-kk",   status: "ACTIVE"   as const, note: "แผงกรรมการชุดสอง" },
+  { id: "jud-10", name: "ธีรพล สังเกต",         prefix: null,       firstName: "ธีรพล",     lastName: "สังเกต",    country: "TH", province: "สงขลา",          organizationId: "org-hy",   departmentId: "dep-field-hy",   status: "ACTIVE"   as const, note: "แผงกรรมการชุดสอง" },
+  { id: "jud-11", name: "พ.ต.อ.วิรัช ยุติธรรม",  prefix: "พ.ต.อ.",   firstName: "วิรัช",     lastName: "ยุติธรรม",   country: "TH", province: "กรุงเทพมหานคร", organizationId: "org-army", departmentId: "dep-chief-army", status: "ACTIVE"   as const, note: "หัวหน้ากรรมการชุดสอง" },
+  { id: "jud-12", name: "Park Min-jun",         prefix: null,       firstName: "Park",      lastName: "Min-jun",   country: "KR", province: null,             organizationId: "org-aaf",  departmentId: "dep-intl-aaf",   status: "ACTIVE"   as const, note: "กรรมการรับเชิญจากเกาหลี" },
+  { id: "jud-13", name: "ดร.อรพิน สากล",        prefix: "ดร.",      firstName: "อรพิน",     lastName: "สากล",     country: "TH", province: "กรุงเทพมหานคร", organizationId: "org-iaaf", departmentId: "dep-intl-iaaf",  status: "ACTIVE"   as const, note: "IAAF certified" },
+  { id: "jud-14", name: "นพ.ภานุวัฒน์ ดูแล",     prefix: "นพ.",      firstName: "ภานุวัฒน์", lastName: "ดูแล",     country: "TH", province: "กรุงเทพมหานคร", organizationId: "org-aat",  departmentId: "dep-medic-aat",  status: "ACTIVE"   as const, note: "แพทย์สนาม + กรรมการรอง" },
+  { id: "jud-15", name: "ครูจิตรา เยาวชน",       prefix: "ครู",      firstName: "จิตรา",     lastName: "เยาวชน",   country: "TH", province: "ขอนแก่น",        organizationId: "org-kk",   departmentId: "dep-youth-kk",   status: "INACTIVE" as const, note: "พักงานชั่วคราว (ทดสอบสถานะ INACTIVE)" },
 ];
 
 // ─── Scenario DSL ─────────────────────────────────────────────────────────────
@@ -513,7 +573,8 @@ const ROUNDS: RoundConfig[] = [
     id: "rnd-live2", eventId: "evt-live2", name: "หญิง 10 กม. รอบชิงชนะเลิศ", heatName: "Women 10 km — Final",
     status: "ONGOING", distanceKm: 10, startedAt: live2Start, endedAt: null,
     scheduledTime: live2Start, note: "กำลังแข่ง ~รอบที่ 5 — มี pending red 1 ใบ (รายการที่สองทำงานพร้อมกัน)",
-    officials: { zones: ["jud-08", "jud-09", "jud-10", "jud-13"], head: "jud-11", logger: "jud-06" },
+    // logger = jud-07 (not jud-06) so no official is shared with evt-live on the same day.
+    officials: { zones: ["jud-08", "jud-09", "jud-10", "jud-13"], head: "jud-11", logger: "jud-07" },
     scenarios: [
       { athleteId: "ath-w01", bib: "21", outcome: "FINISH", laps: 5, paceSec: 270 },
       { athleteId: "ath-w02", bib: "22", outcome: "FINISH", laps: 5, paceSec: 276, cards: [Y("F", "jud-08", 3)] },
@@ -841,9 +902,11 @@ async function reset() {
   await prisma.roundAthlete.deleteMany({});
   await prisma.round.deleteMany({});
   await prisma.event.deleteMany({});
-  await prisma.judge.deleteMany({});
   await prisma.athlete.deleteMany({});
   await prisma.affiliation.deleteMany({});
+  await prisma.judge.deleteMany({});
+  await prisma.department.deleteMany({});
+  await prisma.organization.deleteMany({});
   await prisma.activityLog.deleteMany({});
   await prisma.userSession.deleteMany({});
   await prisma.account.deleteMany({});
@@ -855,15 +918,18 @@ async function reset() {
 
 async function upsertUser(input: (typeof SEED_USERS)[number]) {
   const passwordHash = await bcrypt.hash(input.password, 10);
+  const nameFields = { name: input.name, prefix: null, firstName: input.name, lastName: null };
   return prisma.user.upsert({
     where: { email: input.email },
     create: {
-      email: input.email, name: input.name, title: input.title, role: input.role,
-      status: input.status, password: passwordHash, emailVerified: new Date(),
+      email: input.email, ...nameFields, title: input.title, role: input.role,
+      status: input.status, isRoot: input.isRoot, permissions: input.permissions,
+      password: passwordHash, emailVerified: new Date(),
       lastActiveAt: input.lastActiveAt, suspendedAt: input.status === "SUSPENDED" ? new Date() : null,
     },
     update: {
-      name: input.name, title: input.title, role: input.role, status: input.status,
+      ...nameFields, title: input.title, role: input.role, status: input.status,
+      isRoot: input.isRoot, permissions: input.permissions,
       lastActiveAt: input.lastActiveAt, suspendedAt: input.status === "SUSPENDED" ? new Date() : null,
       ...(RESET_FLAG ? { password: passwordHash } : {}),
     },
@@ -878,29 +944,52 @@ async function main() {
   for (const u of SEED_USERS) await upsertUser(u);
   console.log(`[seed] users:        ${SEED_USERS.length}`);
 
-  for (const a of SEED_AFFILIATIONS) {
-    await prisma.affiliation.upsert({
-      where: { id: a.id }, create: a,
-      update: { name: a.name, country: a.country, province: a.province ?? null, headOfAffiliation: a.headOfAffiliation ?? null, joinedAt: a.joinedAt ?? null, note: a.note ?? null },
+  // Organizations → Departments → Judges → Affiliations → Athletes
+  // (ordered so foreign keys always resolve: dept→org, judge→org/dept,
+  //  affiliation→judge(head), athlete→affiliation).
+  for (const o of SEED_ORGANIZATIONS) {
+    await prisma.organization.upsert({ where: { id: o.id }, create: o, update: { name: o.name } });
+  }
+  console.log(`[seed] organizations: ${SEED_ORGANIZATIONS.length}`);
+
+  for (const d of SEED_DEPARTMENTS) {
+    await prisma.department.upsert({
+      where: { id: d.id }, create: d,
+      update: { name: d.name, organizationId: d.organizationId },
     });
+  }
+  console.log(`[seed] departments:  ${SEED_DEPARTMENTS.length}`);
+
+  for (const j of SEED_JUDGES) {
+    const payload = {
+      name: j.name, prefix: j.prefix ?? null, firstName: j.firstName, lastName: j.lastName ?? null,
+      country: toAlpha2(j.country), province: j.province ?? null,
+      organizationId: j.organizationId ?? null, departmentId: j.departmentId ?? null,
+      status: j.status, note: j.note ?? null,
+    };
+    await prisma.judge.upsert({ where: { id: j.id }, create: { id: j.id, ...payload }, update: payload });
+  }
+  console.log(`[seed] judges:       ${SEED_JUDGES.length}`);
+
+  for (const a of SEED_AFFILIATIONS) {
+    const payload = {
+      name: a.name, country: toAlpha2(a.country), province: a.province ?? null,
+      headJudgeId: a.headJudgeId ?? null, joinedAt: a.joinedAt ?? null, note: a.note ?? null,
+    };
+    await prisma.affiliation.upsert({ where: { id: a.id }, create: { id: a.id, ...payload }, update: payload });
   }
   console.log(`[seed] affiliations: ${SEED_AFFILIATIONS.length}`);
 
   for (const a of [...SEED_ATHLETES, ...OPEN_ATHLETES, ...MEN_FILL, ...WOMEN_FILL]) {
-    await prisma.athlete.upsert({
-      where: { id: a.id }, create: a,
-      update: { name: a.name, country: a.country, province: a.province ?? null, club: a.club ?? null, note: a.note ?? null, affiliationId: a.affiliationId },
-    });
+    const { firstName, lastName } = splitName(a.name);
+    const payload = {
+      name: a.name, prefix: null, firstName, lastName,
+      country: toAlpha2(a.country), province: a.province ?? null,
+      club: a.club ?? null, note: a.note ?? null, affiliationId: a.affiliationId,
+    };
+    await prisma.athlete.upsert({ where: { id: a.id }, create: { id: a.id, ...payload }, update: payload });
   }
   console.log(`[seed] athletes:     ${SEED_ATHLETES.length + OPEN_ATHLETES.length + MEN_FILL.length + WOMEN_FILL.length}`);
-
-  for (const j of SEED_JUDGES) {
-    await prisma.judge.upsert({
-      where: { id: j.id }, create: j,
-      update: { name: j.name, country: j.country, province: j.province ?? null, department: j.department ?? null, organization: j.organization ?? null, status: j.status, note: j.note ?? null },
-    });
-  }
-  console.log(`[seed] judges:       ${SEED_JUDGES.length}`);
 
   for (const e of SEED_EVENTS) {
     await prisma.event.upsert({
