@@ -6,6 +6,9 @@ import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 import { getCountryComboboxOptions } from "@/lib/data/countries";
 import { getProvinceComboboxOptions } from "@/lib/data/provinces";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "เพิ่มสังกัด / สโมสรใหม่ – การแข่งขันเดินทน",
@@ -14,6 +17,9 @@ export const metadata: Metadata = {
 };
 
 export default async function NewAffiliationPage() {
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "affiliations", "create")) return <NoAccess />;
+
   const judges = await prisma.judge.findMany({
     where: { deletedAt: null },
     orderBy: { name: "asc" },

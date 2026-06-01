@@ -6,6 +6,9 @@ import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { getCountryComboboxOptions } from "@/lib/data/countries";
 import { getProvinceComboboxOptions } from "@/lib/data/provinces";
 import { getOrganizationsTree } from "@/lib/organizations";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "เพิ่มกรรมการใหม่ – การแข่งขันเดินทน",
@@ -14,6 +17,9 @@ export const metadata: Metadata = {
 };
 
 export default async function NewJudgePage() {
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "judges", "create")) return <NoAccess />;
+
   const [organizations] = await Promise.all([getOrganizationsTree()]);
   const countryOptions = getCountryComboboxOptions();
   const provinceOptions = getProvinceComboboxOptions();

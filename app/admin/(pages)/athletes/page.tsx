@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { countryLabel } from "@/lib/data/countries";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
-import { canAccessResource } from "@/lib/permissions";
+import { canAccessResource, hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "จัดการนักกีฬา – การแข่งขันเดินทน",
@@ -56,11 +56,13 @@ export default async function AthletesPage() {
             </p>
           </div>
 
-          <Link href="/admin/athletes/new">
-            <Button className="rounded-xl px-4 py-2 text-sm font-medium">
-              + เพิ่มนักกีฬาใหม่
-            </Button>
-          </Link>
+          {hasPermission(me, "athletes", "create") && (
+            <Link href="/admin/athletes/new">
+              <Button className="rounded-xl px-4 py-2 text-sm font-medium">
+                + เพิ่มนักกีฬาใหม่
+              </Button>
+            </Link>
+          )}
         </div>
 
         <AthletesList athletes={athletes} />

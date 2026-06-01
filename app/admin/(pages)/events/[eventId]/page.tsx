@@ -6,6 +6,9 @@ import { RoundsList, type Round } from "@/components/rounds/rounds-list";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "จัดการกิจกรรม – การแข่งขันเดินทน",
@@ -40,6 +43,9 @@ export default async function EventDetailPage(props: Props) {
   });
 
   if (!event) notFound();
+
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "events", "view")) return <NoAccess />;
 
   const eventValues: EventFormValues = {
     name: event.name,
@@ -97,7 +103,12 @@ export default async function EventDetailPage(props: Props) {
           <h2 className="mb-3 text-base font-semibold text-slate-900">
             ข้อมูลพื้นฐานของ Event
           </h2>
-          <EventForm mode="edit" eventId={eventId} defaultValues={eventValues} />
+          <EventForm
+            mode="edit"
+            eventId={eventId}
+            canEdit={hasPermission(me, "events", "edit")}
+            defaultValues={eventValues}
+          />
         </div>
 
         <RoundsList eventId={eventId} rounds={rounds} />

@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import { EventForm } from "@/components/events/event-form";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "สร้างกิจกรรมใหม่ – การแข่งขันเดินทน",
@@ -10,7 +13,10 @@ export const metadata: Metadata = {
     "ฟอร์มสร้าง Event การแข่งขันเดินทนใหม่ ระบุชื่อ วันที่ สถานที่ ระยะทาง และโค้ดสำหรับกรรมการ.",
 };
 
-export default function NewEventPage() {
+export default async function NewEventPage() {
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "events", "create")) return <NoAccess />;
+
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-4">

@@ -7,6 +7,9 @@ import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 import { getCountryComboboxOptions } from "@/lib/data/countries";
 import { getProvinceComboboxOptions } from "@/lib/data/provinces";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "แก้ไขสังกัด / สโมสร – การแข่งขันเดินทน",
@@ -27,6 +30,9 @@ export default async function AffiliationDetailPage(props: Props) {
     }),
   ]);
   if (!aff) notFound();
+
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "affiliations", "view")) return <NoAccess />;
 
   const countryOptions = getCountryComboboxOptions();
   const provinceOptions = getProvinceComboboxOptions();
@@ -62,6 +68,8 @@ export default async function AffiliationDetailPage(props: Props) {
           countryOptions={countryOptions}
           provinceOptions={provinceOptions}
           judges={judges}
+          canEdit={hasPermission(me, "affiliations", "edit")}
+          canDelete={hasPermission(me, "affiliations", "delete")}
           defaultValues={{
             name: aff.name,
             country: aff.country,

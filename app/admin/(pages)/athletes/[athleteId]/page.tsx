@@ -7,6 +7,9 @@ import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 import { getCountryComboboxOptions } from "@/lib/data/countries";
 import { getProvinceComboboxOptions } from "@/lib/data/provinces";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "แก้ไขข้อมูลนักกีฬา – การแข่งขันเดินทน",
@@ -30,6 +33,9 @@ export default async function AthleteDetailPage(props: Props) {
   ]);
 
   if (!athlete) notFound();
+
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "athletes", "view")) return <NoAccess />;
 
   const countryOptions = getCountryComboboxOptions();
   const provinceOptions = getProvinceComboboxOptions();
@@ -65,6 +71,8 @@ export default async function AthleteDetailPage(props: Props) {
           affiliations={affiliations}
           countryOptions={countryOptions}
           provinceOptions={provinceOptions}
+          canEdit={hasPermission(me, "athletes", "edit")}
+          canDelete={hasPermission(me, "athletes", "delete")}
           defaultValues={{
             prefix: athlete.prefix ?? "",
             firstName: athlete.firstName ?? athlete.name,

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
@@ -95,12 +96,14 @@ export default async function EventReportPage(props: Props) {
             <div className="flex flex-wrap gap-2">
               <a href={`/api/events/${eventId}/summary-xlsx`} download>
                 <Button size="sm" className="rounded-lg bg-emerald-700 text-sm hover:bg-emerald-800">
-                  ⬇ ดาวน์โหลด Excel (.xlsx)
+                  <Download className="size-4" aria-hidden />
+                  ดาวน์โหลด Excel (.xlsx)
                 </Button>
               </a>
               <Link href={`/admin/events/${eventId}/report/summary`} target="_blank" rel="noopener">
                 <Button variant="outline" size="sm" className="rounded-lg border-emerald-300 text-sm">
-                  🖨️ พิมพ์ / บันทึก PDF
+                  <Printer className="size-4" aria-hidden />
+                  พิมพ์ / บันทึก PDF
                 </Button>
               </Link>
             </div>
@@ -137,7 +140,8 @@ export default async function EventReportPage(props: Props) {
                     <div className="flex flex-wrap items-center gap-2">
                       <a href={`/api/events/${eventId}/summary-xlsx?round=${round.id}`} download>
                         <Button variant="outline" size="sm" className="rounded-lg text-xs">
-                          ⬇ Excel
+                          <Download className="size-3.5" aria-hidden />
+                          Excel
                         </Button>
                       </a>
                       <Link
@@ -146,7 +150,8 @@ export default async function EventReportPage(props: Props) {
                         rel="noopener"
                       >
                         <Button variant="outline" size="sm" className="rounded-lg text-xs">
-                          🖨️ PDF
+                          <Printer className="size-3.5" aria-hidden />
+                          PDF
                         </Button>
                       </Link>
                       <a href={`/api/events/${eventId}/export?round=${round.id}`} download>
@@ -174,12 +179,14 @@ export default async function EventReportPage(props: Props) {
             <div className="flex flex-wrap gap-2">
               <a href={`/api/events/${eventId}/export`} download>
                 <Button variant="outline" size="sm" className="rounded-lg text-sm">
-                  ⬇ ดาวน์โหลด CSV (รวมทุกรอบ)
+                  <Download className="size-4" aria-hidden />
+                  ดาวน์โหลด CSV (รวมทุกรอบ)
                 </Button>
               </a>
               <Link href={`/admin/events/${eventId}/report/print`} target="_blank" rel="noopener">
                 <Button variant="ghost" size="sm" className="rounded-lg text-sm text-slate-500">
-                  🖨️ พิมพ์ตารางย่อ
+                  <Printer className="size-4" aria-hidden />
+                  พิมพ์ตารางย่อ
                 </Button>
               </Link>
             </div>

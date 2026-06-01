@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PrintButton } from "@/components/report/print-button";
 
@@ -72,12 +74,13 @@ export default async function PrintReportPage(props: Props) {
 
       <div className="no-print mb-4 flex items-center justify-between">
         <PrintButton />
-        <a
+        <Link
           href={`/admin/events/${eventId}/report`}
-          className="text-xs text-slate-600 hover:underline"
+          className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:underline"
         >
-          ← กลับไปหน้า Report
-        </a>
+          <ArrowLeft className="size-3.5" aria-hidden />
+          กลับไปหน้า Report
+        </Link>
       </div>
 
       <h1 className="text-2xl font-bold">รายงานผลการแข่งขัน</h1>

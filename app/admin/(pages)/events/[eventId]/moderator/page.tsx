@@ -1,6 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { compareAthletesByFinish } from "@/lib/athlete-sort";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 import {
   ModeratorView,
   type EventInfo,
@@ -73,6 +76,9 @@ function actionLabel(actionType: string): string {
 
 export default async function ModeratorPage(props: Props) {
   const { eventId } = await props.params;
+
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "events", "edit")) return <NoAccess />;
 
   const event = await prisma.event.findUnique({
     where: { id: eventId, deletedAt: null },

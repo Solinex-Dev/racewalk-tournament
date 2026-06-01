@@ -9,7 +9,7 @@ import { countryLabel } from "@/lib/data/countries";
 import { getOrganizationsTree } from "@/lib/organizations";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
-import { canAccessResource } from "@/lib/permissions";
+import { canAccessResource, hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "จัดการกรรมการ – การแข่งขันเดินทน",
@@ -66,12 +66,18 @@ export default async function JudgesPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <OrgDepartmentManager organizations={organizations} />
-            <Link href="/admin/judges/new">
-              <Button className="rounded-xl px-4 py-2 text-sm font-medium">
-                + เพิ่มกรรมการใหม่
-              </Button>
-            </Link>
+            {(hasPermission(me, "judges", "create") ||
+              hasPermission(me, "judges", "edit") ||
+              hasPermission(me, "judges", "delete")) && (
+              <OrgDepartmentManager organizations={organizations} />
+            )}
+            {hasPermission(me, "judges", "create") && (
+              <Link href="/admin/judges/new">
+                <Button className="rounded-xl px-4 py-2 text-sm font-medium">
+                  + เพิ่มกรรมการใหม่
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { countryLabel } from "@/lib/data/countries";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
-import { canAccessResource } from "@/lib/permissions";
+import { canAccessResource, hasPermission } from "@/lib/permissions";
 
 export const metadata = {
   title: "จัดการสังกัด / สโมสร (Affiliations)",
@@ -54,11 +54,13 @@ export default async function AffiliationsPage() {
             </p>
           </div>
 
-          <Link href="/admin/affiliations/new">
-            <Button className="rounded-xl px-4 py-2 text-sm font-medium">
-              + เพิ่มสังกัด / สโมสรใหม่
-            </Button>
-          </Link>
+          {hasPermission(me, "affiliations", "create") && (
+            <Link href="/admin/affiliations/new">
+              <Button className="rounded-xl px-4 py-2 text-sm font-medium">
+                + เพิ่มสังกัด / สโมสรใหม่
+              </Button>
+            </Link>
+          )}
         </div>
 
         <AffiliationsList affiliations={affiliations} />

@@ -48,6 +48,8 @@ type AdminEvent = {
 
 type EventsListProps = {
   events: AdminEvent[];
+  /** Whether the current admin may open the Moderator tool (events:edit). */
+  canModerate?: boolean;
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -76,7 +78,7 @@ function ActionIconTooltip({
   );
 }
 
-export function EventsList({ events }: EventsListProps) {
+export function EventsList({ events, canModerate = false }: EventsListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState<string>("all");
@@ -481,7 +483,7 @@ export function EventsList({ events }: EventsListProps) {
                               </Button>
                             </Link>
                           </ActionIconTooltip>
-                          {event.status !== "draft" && (
+                          {event.status !== "draft" && canModerate && (
                             <ActionIconTooltip label="Moderator">
                               <Link href={`/admin/events/${event.id}/moderator`}>
                                 <Button

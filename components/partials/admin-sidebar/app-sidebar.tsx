@@ -170,9 +170,13 @@ const RESOURCE_IDS = new Set<string>(RESOURCES);
 export function DashboardSidebar({
   permissions,
   isRoot = false,
+  displayName = "ผู้ดูแลระบบ",
+  roleLabel = "ผู้ดูแลระบบ",
 }: {
   permissions?: PermissionMatrix;
   isRoot?: boolean;
+  displayName?: string;
+  roleLabel?: string;
 } = {}) {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -243,10 +247,10 @@ export function DashboardSidebar({
             <Logo className="size-4" />
           </div>
           {!isCollapsed && (
-            <div className="flex flex-col">
-              <span className="truncate font-semibold">Mattrawoot Miadmo</span>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate font-semibold">{displayName}</span>
               <span className="truncate text-xs text-muted-foreground">
-                Event Admin
+                {roleLabel}
               </span>
             </div>
           )}

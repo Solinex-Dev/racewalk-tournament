@@ -8,6 +8,9 @@ import { prisma } from "@/lib/prisma";
 import { getCountryComboboxOptions } from "@/lib/data/countries";
 import { getProvinceComboboxOptions } from "@/lib/data/provinces";
 import { getOrganizationsTree } from "@/lib/organizations";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "แก้ไขข้อมูลกรรมการ – การแข่งขันเดินทน",
@@ -24,6 +27,9 @@ export default async function JudgeDetailPage(props: Props) {
     getOrganizationsTree(),
   ]);
   if (!judge) notFound();
+
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "judges", "view")) return <NoAccess />;
 
   const countryOptions = getCountryComboboxOptions();
   const provinceOptions = getProvinceComboboxOptions();
@@ -59,6 +65,8 @@ export default async function JudgeDetailPage(props: Props) {
           countryOptions={countryOptions}
           provinceOptions={provinceOptions}
           organizations={organizations}
+          canEdit={hasPermission(me, "judges", "edit")}
+          canDelete={hasPermission(me, "judges", "delete")}
           defaultValues={{
             prefix: judge.prefix ?? "",
             firstName: judge.firstName ?? judge.name,

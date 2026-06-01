@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AdminForm } from "@/components/admins/admin-form";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
@@ -20,12 +20,17 @@ export default async function AdminDetailPage(props: Props) {
   const { adminId } = await props.params;
 
   const me = await getCurrentAdmin();
-  if (!hasPermission(me, "admins", "edit")) return <NoAccess />;
+  if (!me || !hasPermission(me, "admins", "view")) return <NoAccess />;
 
   const user = await prisma.user.findUnique({
     where: { id: adminId },
   });
   if (!user || user.role !== "ADMIN" || user.status === "DELETED") notFound();
+
+  // Manage your own account via Settings — never through the admins list.
+  if (user.id === me.id) redirect("/admin/settings");
+  // Root Admins are hidden from everyone except other Root Admins.
+  if (user.isRoot && !me.isRoot) notFound();
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -54,6 +59,8 @@ export default async function AdminDetailPage(props: Props) {
           mode="edit"
           adminId={adminId}
           currentUserIsRoot={me?.isRoot ?? false}
+          canEdit={hasPermission(me, "admins", "edit")}
+          canDelete={hasPermission(me, "admins", "delete")}
           defaultValues={{
             prefix: user.prefix ?? "",
             firstName: user.firstName ?? user.name ?? "",

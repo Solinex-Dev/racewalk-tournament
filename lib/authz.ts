@@ -13,6 +13,8 @@ import { hasPermission, type Action, type Resource } from "@/lib/permissions";
 export type CurrentAdmin = {
   id: string;
   name: string | null;
+  email: string | null;
+  title: string | null;
   role: string;
   isRoot: boolean;
   permissions: unknown;
@@ -26,7 +28,16 @@ export async function getCurrentAdmin(): Promise<CurrentAdmin | null> {
   if (!userId) return null;
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, role: true, isRoot: true, permissions: true, status: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      title: true,
+      role: true,
+      isRoot: true,
+      permissions: true,
+      status: true,
+    },
   });
   if (!user || user.role !== "ADMIN" || user.status !== "ACTIVE") return null;
   return user;

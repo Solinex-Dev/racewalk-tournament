@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowLeft, Download } from "lucide-react";
 import { PrintButton } from "@/components/report/print-button";
 import {
   loadEventSummary,
@@ -270,7 +272,7 @@ export default async function SummaryPrintPage(props: Props) {
   const xlsxHref = `/api/events/${eventId}/summary-xlsx${roundId ? `?round=${roundId}` : ""}`;
 
   return (
-    <div id="summary-print" className="summary-root">
+    <div id="summary-print" className="summary-root flex min-h-full w-full flex-1 flex-col">
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link
         rel="stylesheet"
@@ -281,11 +283,13 @@ export default async function SummaryPrintPage(props: Props) {
       <div className="toolbar no-print">
         <PrintButton />
         <a className="tbtn" href={xlsxHref}>
-          ⬇ ดาวน์โหลด Excel
+          <Download className="size-4" aria-hidden />
+          ดาวน์โหลด Excel
         </a>
-        <a className="tlink" href={`/admin/events/${eventId}/report`}>
-          ← กลับไปหน้า Report
-        </a>
+        <Link className="tlink" href={`/admin/events/${eventId}/report`}>
+          <ArrowLeft className="size-3.5" aria-hidden />
+          กลับไปหน้า Report
+        </Link>
         <span className="thint">เคล็ดลับ: ในกล่อง Print เลือกแนวกระดาษ “แนวนอน” (Landscape) เพื่อให้ตารางเต็มหน้า</span>
       </div>
 
@@ -308,9 +312,9 @@ export default async function SummaryPrintPage(props: Props) {
 const CSS = `
 .summary-root { font-family: 'Sarabun','Tahoma','Leelawadee UI',sans-serif; color:#0f172a; }
 .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:12px 16px; }
-.toolbar .tbtn { background:#15803d; color:#fff; border-radius:8px; padding:8px 14px; font-size:14px; font-weight:600; text-decoration:none; }
+.toolbar .tbtn { display:inline-flex; align-items:center; gap:8px; background:#15803d; color:#fff; border-radius:8px; padding:8px 14px; font-size:14px; font-weight:600; text-decoration:none; }
 .toolbar .tbtn:hover { background:#166534; }
-.toolbar .tlink { color:#475569; font-size:13px; text-decoration:none; }
+.toolbar .tlink { display:inline-flex; align-items:center; gap:6px; color:#475569; font-size:13px; text-decoration:none; }
 .toolbar .tlink:hover { text-decoration:underline; }
 .toolbar .thint { color:#64748b; font-size:12px; }
 
@@ -355,7 +359,7 @@ table.rwjs-grid tfoot td { background:#f2f2f2; font-weight:700; }
 .sign .line { border-bottom:1px solid #000; margin:0 8px 3px; padding-top:30px; }
 
 @media screen {
-  .summary-root { background:#eef2f7; min-height:100vh; padding-bottom:24px; }
+  .summary-root { flex:1 1 auto; width:100%; min-height:100%; padding-bottom:24px; }
   .sheet { background:#fff; max-width:1200px; margin:0 auto 22px; padding:20px 22px 24px; box-shadow:0 1px 10px rgba(15,23,42,.14); border-radius:6px; }
 }
 

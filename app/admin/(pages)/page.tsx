@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import type { EventStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
 
 // Reflect live ONGOING status without serving a stale cached dashboard.
 export const dynamic = "force-dynamic";
@@ -31,6 +33,9 @@ function countUniqueIds(ids: string[]): number {
 }
 
 export default async function AdminDashboardPage() {
+  const me = await getCurrentAdmin();
+  const canModerate = hasPermission(me, "events", "edit");
+
   const [eventsTotal, judgesTotal, athletesTotal, ongoingRows] =
     await Promise.all([
       prisma.event.count({ where: { deletedAt: null } }),
@@ -173,12 +178,14 @@ export default async function AdminDashboardPage() {
                       </div>
                     </div>
                     <div className="mt-3 flex gap-2 text-xs">
-                      <Link
-                        href={`/admin/events/${ev.id}/moderator`}
-                        className="inline-flex flex-1 items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
-                      >
-                        Moderator
-                      </Link>
+                      {canModerate && (
+                        <Link
+                          href={`/admin/events/${ev.id}/moderator`}
+                          className="inline-flex flex-1 items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                        >
+                          Moderator
+                        </Link>
+                      )}
                       <Link
                         href={`/events/${ev.id}`}
                         className="inline-flex flex-1 items-center justify-center rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50"

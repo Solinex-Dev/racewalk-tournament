@@ -6,7 +6,7 @@ import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
-import { canAccessResource } from "@/lib/permissions";
+import { canAccessResource, hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "จัดการกิจกรรม – การแข่งขันเดินทน",
@@ -48,14 +48,16 @@ export default async function EventsPage() {
             </p>
           </div>
 
-          <Link href="/admin/events/new">
-            <Button className="rounded-xl px-4 py-2 text-sm font-medium">
-              + สร้าง Event ใหม่
-            </Button>
-          </Link>
+          {hasPermission(me, "events", "create") && (
+            <Link href="/admin/events/new">
+              <Button className="rounded-xl px-4 py-2 text-sm font-medium">
+                + สร้าง Event ใหม่
+              </Button>
+            </Link>
+          )}
         </div>
 
-        <EventsList events={events} />
+        <EventsList events={events} canModerate={hasPermission(me, "events", "edit")} />
       </div>
     </main>
   );
