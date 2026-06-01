@@ -9,6 +9,8 @@ import { prisma } from "@/lib/prisma";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission } from "@/lib/permissions";
+import { resolveAudit } from "@/lib/audit";
+import { AuditInfo } from "@/components/common/audit-info";
 
 export const metadata: Metadata = {
   title: "จัดการกิจกรรม – การแข่งขันเดินทน",
@@ -46,6 +48,8 @@ export default async function EventDetailPage(props: Props) {
 
   const me = await getCurrentAdmin();
   if (!hasPermission(me, "events", "view")) return <NoAccess />;
+
+  const audit = await resolveAudit(event);
 
   const eventValues: EventFormValues = {
     name: event.name,
@@ -109,6 +113,9 @@ export default async function EventDetailPage(props: Props) {
             canEdit={hasPermission(me, "events", "edit")}
             defaultValues={eventValues}
           />
+          <div className="mt-3">
+            <AuditInfo {...audit} />
+          </div>
         </div>
 
         <RoundsList eventId={eventId} rounds={rounds} />

@@ -122,6 +122,9 @@ model User {
   suspendedAt   DateTime?
   deleteAfter   DateTime?
   deletedAt     DateTime?
+  // Audit: which admin created / last updated this record.
+  createdById   String?
+  updatedById   String?
 
   accounts     Account[]
   userSessions UserSession[]
@@ -185,6 +188,8 @@ model Affiliation {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?
+  createdById        String?
+  updatedById        String?
 
   headJudge Judge?    @relation("AffiliationHead", fields: [headJudgeId], references: [id])
   athletes  Athlete[]
@@ -207,6 +212,8 @@ model Athlete {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
+  createdById   String?
+  updatedById   String?
 
   affiliation   Affiliation?   @relation(fields: [affiliationId], references: [id])
   roundAthletes RoundAthlete[]
@@ -232,6 +239,8 @@ model Judge {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   deletedAt    DateTime?
+  createdById  String?
+  updatedById  String?
 
   organization       Organization? @relation(fields: [organizationId], references: [id])
   department         Department?   @relation(fields: [departmentId], references: [id])
@@ -251,6 +260,8 @@ model Organization {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   deletedAt   DateTime?
+  createdById String?
+  updatedById String?
 
   departments Department[]
   judges      Judge[]
@@ -265,6 +276,8 @@ model Department {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
+  createdById    String?
+  updatedById    String?
 
   organization Organization @relation(fields: [organizationId], references: [id])
   judges       Judge[]
@@ -289,6 +302,8 @@ model Event {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   deletedAt  DateTime?
+  createdById String?
+  updatedById String?
 
   rounds Round[]
 }

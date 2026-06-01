@@ -24,6 +24,20 @@ export async function startRound(roundId: string) {
   if (!round) throw new Error("ไม่พบรอบที่ระบุ");
   if (round.status === "FINISHED") throw new Error("รอบนี้จบไปแล้ว");
 
+  // A round can only start with at least 1 head judge, 1 judge and 1 event logger.
+  const officials = await prisma.roundOfficial.findMany({
+    where: { roundId, deletedAt: null },
+    select: { position: true },
+  });
+  const heads = officials.filter((o) => o.position === "HEAD_JUDGE").length;
+  const judges = officials.filter((o) => o.position === "JUDGE").length;
+  const loggers = officials.filter((o) => o.position === "EVENT_LOGGER").length;
+  if (heads < 1 || judges < 1 || loggers < 1) {
+    throw new Error(
+      "ยังเริ่มไม่ได้ — รอบนี้ต้องมีหัวหน้ากรรมการ, กรรมการ และผู้เก็บ Lap Time อย่างน้อยอย่างละ 1 คน",
+    );
+  }
+
   const now = new Date();
   await prisma.round.update({
     where: { id: roundId },

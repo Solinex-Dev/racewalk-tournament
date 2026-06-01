@@ -26,11 +26,13 @@ function buildAffiliationData(data: AffiliationActionData) {
 }
 
 export async function createAffiliation(data: AffiliationActionData) {
-  await requirePermission("affiliations", "create");
+  const me = await requirePermission("affiliations", "create");
   const payload = buildAffiliationData(data);
   if (!payload.name) throw new Error("กรุณากรอกชื่อสังกัด");
 
-  const aff = await prisma.affiliation.create({ data: payload });
+  const aff = await prisma.affiliation.create({
+    data: { ...payload, createdById: me.id, updatedById: me.id },
+  });
   await logCurrentAdmin(ActivityLogAction.AFFILIATION_CREATED, "Affiliation", aff.id, {
     name: aff.name,
   });
@@ -39,11 +41,11 @@ export async function createAffiliation(data: AffiliationActionData) {
 }
 
 export async function updateAffiliation(id: string, data: AffiliationActionData) {
-  await requirePermission("affiliations", "edit");
+  const me = await requirePermission("affiliations", "edit");
   const payload = buildAffiliationData(data);
   if (!payload.name) throw new Error("กรุณากรอกชื่อสังกัด");
 
-  await prisma.affiliation.update({ where: { id }, data: payload });
+  await prisma.affiliation.update({ where: { id }, data: { ...payload, updatedById: me.id } });
   await logCurrentAdmin(ActivityLogAction.AFFILIATION_UPDATED, "Affiliation", id, {
     name: payload.name,
   });

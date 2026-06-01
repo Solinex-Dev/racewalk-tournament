@@ -67,6 +67,8 @@ export async function createAdmin(data: AdminActionData) {
       permissions: normalizePermissions(data.permissions),
       password: passwordHash,
       emailVerified: new Date(),
+      createdById: me.id,
+      updatedById: me.id,
     },
   });
   await logCurrentAdmin(ActivityLogAction.ADMIN_CREATED, "User", user.id, {
@@ -120,6 +122,7 @@ export async function updateAdmin(id: string, data: AdminActionData) {
     suspendedAt: data.status === "SUSPENDED" ? new Date() : null,
     isRoot,
     permissions: normalizePermissions(data.permissions),
+    updatedById: me.id,
   };
 
   if (data.password && data.password.length > 0) {

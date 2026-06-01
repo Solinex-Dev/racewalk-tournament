@@ -35,11 +35,13 @@ function buildAthleteData(data: AthleteActionData) {
 }
 
 export async function createAthlete(data: AthleteActionData) {
-  await requirePermission("athletes", "create");
+  const me = await requirePermission("athletes", "create");
   const payload = buildAthleteData(data);
   if (!payload.firstName) throw new Error("กรุณากรอกชื่อจริง");
 
-  const athlete = await prisma.athlete.create({ data: payload });
+  const athlete = await prisma.athlete.create({
+    data: { ...payload, createdById: me.id, updatedById: me.id },
+  });
   await logCurrentAdmin(ActivityLogAction.ATHLETE_CREATED, "Athlete", athlete.id, {
     name: athlete.name,
     country: athlete.country,
@@ -49,11 +51,11 @@ export async function createAthlete(data: AthleteActionData) {
 }
 
 export async function updateAthlete(id: string, data: AthleteActionData) {
-  await requirePermission("athletes", "edit");
+  const me = await requirePermission("athletes", "edit");
   const payload = buildAthleteData(data);
   if (!payload.firstName) throw new Error("กรุณากรอกชื่อจริง");
 
-  await prisma.athlete.update({ where: { id }, data: payload });
+  await prisma.athlete.update({ where: { id }, data: { ...payload, updatedById: me.id } });
   await logCurrentAdmin(ActivityLogAction.ATHLETE_UPDATED, "Athlete", id, {
     name: payload.name,
     country: payload.country,

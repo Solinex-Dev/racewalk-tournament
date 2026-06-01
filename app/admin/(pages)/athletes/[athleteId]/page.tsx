@@ -10,6 +10,8 @@ import { getProvinceComboboxOptions } from "@/lib/data/provinces";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission } from "@/lib/permissions";
+import { resolveAudit } from "@/lib/audit";
+import { AuditInfo } from "@/components/common/audit-info";
 
 export const metadata: Metadata = {
   title: "แก้ไขข้อมูลนักกีฬา – การแข่งขันเดินทน",
@@ -39,6 +41,7 @@ export default async function AthleteDetailPage(props: Props) {
 
   const countryOptions = getCountryComboboxOptions();
   const provinceOptions = getProvinceComboboxOptions();
+  const audit = await resolveAudit(athlete);
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -84,6 +87,8 @@ export default async function AthleteDetailPage(props: Props) {
             note: athlete.note ?? "",
           }}
         />
+
+        <AuditInfo {...audit} />
       </div>
     </main>
   );

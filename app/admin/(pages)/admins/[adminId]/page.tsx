@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission, normalizePermissions } from "@/lib/permissions";
+import { resolveAudit } from "@/lib/audit";
+import { AuditInfo } from "@/components/common/audit-info";
 
 export const metadata: Metadata = {
   title: "แก้ไขผู้ดูแลระบบ – การแข่งขันเดินทน",
@@ -31,6 +33,8 @@ export default async function AdminDetailPage(props: Props) {
   if (user.id === me.id) redirect("/admin/settings");
   // Root Admins are hidden from everyone except other Root Admins.
   if (user.isRoot && !me.isRoot) notFound();
+
+  const audit = await resolveAudit(user);
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -72,6 +76,8 @@ export default async function AdminDetailPage(props: Props) {
             permissions: normalizePermissions(user.permissions),
           }}
         />
+
+        <AuditInfo {...audit} />
       </div>
     </main>
   );

@@ -187,6 +187,8 @@ export function RoundForm({
   const judgeCount = form.officials.filter((o) => o.position === "JUDGE").length;
   const headCount = form.officials.filter((o) => o.position === "HEAD_JUDGE").length;
   const loggerCount = form.officials.filter((o) => o.position === "EVENT_LOGGER").length;
+  // A round can only be "started" (ONGOING/FINISHED) with ≥1 of each official.
+  const officialsComplete = headCount >= 1 && judgeCount >= 1 && loggerCount >= 1;
 
   // Duplicate detection — warns in red but NEVER blocks input or submission.
   // Bib: compared by trimmed value. Zone/โต๊ะ: compared case-insensitively, and
@@ -315,6 +317,12 @@ export function RoundForm({
     }
     if (loggerCount > MAX_EVENT_LOGGER) {
       setError(`ผู้เก็บ Lap Time เลือกได้สูงสุด ${MAX_EVENT_LOGGER} คนต่อรอบ — ปัจจุบัน ${loggerCount} คน`);
+      return;
+    }
+    if (form.status !== "SCHEDULED" && !officialsComplete) {
+      setError(
+        'ต้องมีหัวหน้ากรรมการ, กรรมการ และผู้เก็บ Lap Time อย่างน้อยอย่างละ 1 คน ก่อนตั้งสถานะเป็น "กำลังแข่งขัน" — มิฉะนั้นเลือกได้แค่ "กำหนดการ"',
+      );
       return;
     }
     startTransition(async () => {
@@ -481,9 +489,19 @@ export function RoundForm({
                 }
               >
                 <option value="SCHEDULED">กำหนดการ – ตั้งเวลาไว้แล้ว</option>
-                <option value="ONGOING">กำลังดำเนินการ – กำลังแข่งขัน</option>
-                <option value="FINISHED">เสร็จสิ้น – แข่งขันเสร็จแล้ว</option>
+                <option value="ONGOING" disabled={!officialsComplete}>
+                  กำลังดำเนินการ – กำลังแข่งขัน
+                </option>
+                <option value="FINISHED" disabled={!officialsComplete}>
+                  เสร็จสิ้น – แข่งขันเสร็จแล้ว
+                </option>
               </select>
+              {!officialsComplete && (
+                <p className="text-[11px] text-amber-600">
+                  ต้องมีหัวหน้ากรรมการ, กรรมการ และผู้เก็บ Lap Time อย่างน้อยอย่างละ 1 คน
+                  จึงจะตั้งสถานะเป็น “กำลังแข่งขัน” ได้
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5 md:col-span-2">

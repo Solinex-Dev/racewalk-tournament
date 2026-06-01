@@ -953,18 +953,29 @@ async function main() {
   for (const u of SEED_USERS) await upsertUser(u);
   console.log(`[seed] users:        ${SEED_USERS.length}`);
 
+  // Attribute seed records to the Root owner for the created/updated-by audit.
+  const ownerRow = await prisma.user.findUnique({
+    where: { email: "owner@racewalk.local" },
+    select: { id: true },
+  });
+  const ownerId = ownerRow?.id ?? null;
+
   // Organizations → Departments → Judges → Affiliations → Athletes
   // (ordered so foreign keys always resolve: dept→org, judge→org/dept,
   //  affiliation→judge(head), athlete→affiliation).
   for (const o of SEED_ORGANIZATIONS) {
-    await prisma.organization.upsert({ where: { id: o.id }, create: o, update: { name: o.name } });
+    await prisma.organization.upsert({
+      where: { id: o.id },
+      create: { ...o, createdById: ownerId, updatedById: ownerId },
+      update: { name: o.name, updatedById: ownerId },
+    });
   }
   console.log(`[seed] organizations: ${SEED_ORGANIZATIONS.length}`);
 
   for (const d of SEED_DEPARTMENTS) {
     await prisma.department.upsert({
-      where: { id: d.id }, create: d,
-      update: { name: d.name, organizationId: d.organizationId },
+      where: { id: d.id }, create: { ...d, createdById: ownerId, updatedById: ownerId },
+      update: { name: d.name, organizationId: d.organizationId, updatedById: ownerId },
     });
   }
   console.log(`[seed] departments:  ${SEED_DEPARTMENTS.length}`);
@@ -975,6 +986,7 @@ async function main() {
       country: toAlpha2(j.country), province: j.province ?? null,
       organizationId: j.organizationId ?? null, departmentId: j.departmentId ?? null,
       status: j.status, note: j.note ?? null,
+      createdById: ownerId, updatedById: ownerId,
     };
     await prisma.judge.upsert({ where: { id: j.id }, create: { id: j.id, ...payload }, update: payload });
   }
@@ -984,6 +996,7 @@ async function main() {
     const payload = {
       name: a.name, country: toAlpha2(a.country), province: a.province ?? null,
       headJudgeId: a.headJudgeId ?? null, joinedAt: a.joinedAt ?? null, note: a.note ?? null,
+      createdById: ownerId, updatedById: ownerId,
     };
     await prisma.affiliation.upsert({ where: { id: a.id }, create: { id: a.id, ...payload }, update: payload });
   }
@@ -995,6 +1008,7 @@ async function main() {
       name: a.name, prefix: null, firstName, lastName,
       country: toAlpha2(a.country), province: a.province ?? null,
       club: a.club ?? null, note: a.note ?? null, affiliationId: a.affiliationId,
+      createdById: ownerId, updatedById: ownerId,
     };
     await prisma.athlete.upsert({ where: { id: a.id }, create: { id: a.id, ...payload }, update: payload });
   }
@@ -1002,8 +1016,8 @@ async function main() {
 
   for (const e of SEED_EVENTS) {
     await prisma.event.upsert({
-      where: { id: e.id }, create: e,
-      update: { name: e.name, status: e.status, isCurrent: e.isCurrent, date: e.date, location: e.location, distanceKm: e.distanceKm, lapCount: e.lapCount },
+      where: { id: e.id }, create: { ...e, createdById: ownerId, updatedById: ownerId },
+      update: { name: e.name, status: e.status, isCurrent: e.isCurrent, date: e.date, location: e.location, distanceKm: e.distanceKm, lapCount: e.lapCount, updatedById: ownerId },
     });
   }
   console.log(`[seed] events:       ${SEED_EVENTS.length}`);

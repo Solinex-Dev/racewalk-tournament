@@ -16,7 +16,7 @@ export type EventActionData = {
 };
 
 export async function createEvent(data: EventActionData) {
-  await requirePermission("events", "create");
+  const me = await requirePermission("events", "create");
   if (data.isCurrent) {
     await prisma.event.updateMany({
       where: { isCurrent: true, deletedAt: null },
@@ -32,6 +32,8 @@ export async function createEvent(data: EventActionData) {
       lapCount: Math.max(1, Math.floor(data.lapCount || 1)),
       status: data.status,
       isCurrent: data.isCurrent,
+      createdById: me.id,
+      updatedById: me.id,
     },
   });
   await logCurrentAdmin(ActivityLogAction.EVENT_CREATED, "Event", event.id, {
@@ -43,7 +45,7 @@ export async function createEvent(data: EventActionData) {
 }
 
 export async function updateEvent(id: string, data: EventActionData) {
-  await requirePermission("events", "edit");
+  const me = await requirePermission("events", "edit");
   if (data.isCurrent) {
     await prisma.event.updateMany({
       where: { isCurrent: true, id: { not: id }, deletedAt: null },
@@ -60,6 +62,7 @@ export async function updateEvent(id: string, data: EventActionData) {
       lapCount: Math.max(1, Math.floor(data.lapCount || 1)),
       status: data.status,
       isCurrent: data.isCurrent,
+      updatedById: me.id,
     },
   });
   await logCurrentAdmin(ActivityLogAction.EVENT_UPDATED, "Event", id, {

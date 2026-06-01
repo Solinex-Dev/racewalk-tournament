@@ -55,22 +55,24 @@ async function buildJudgeData(data: JudgeActionData) {
 }
 
 export async function createJudge(data: JudgeActionData) {
-  await requirePermission("judges", "create");
+  const me = await requirePermission("judges", "create");
   const payload = await buildJudgeData(data);
   if (!payload.firstName) throw new Error("กรุณากรอกชื่อจริง");
 
-  const judge = await prisma.judge.create({ data: payload });
+  const judge = await prisma.judge.create({
+    data: { ...payload, createdById: me.id, updatedById: me.id },
+  });
   await logCurrentAdmin(ActivityLogAction.JUDGE_CREATED, "Judge", judge.id, { name: judge.name });
   revalidatePath("/admin/judges");
   return { ok: true, id: judge.id };
 }
 
 export async function updateJudge(id: string, data: JudgeActionData) {
-  await requirePermission("judges", "edit");
+  const me = await requirePermission("judges", "edit");
   const payload = await buildJudgeData(data);
   if (!payload.firstName) throw new Error("กรุณากรอกชื่อจริง");
 
-  await prisma.judge.update({ where: { id }, data: payload });
+  await prisma.judge.update({ where: { id }, data: { ...payload, updatedById: me.id } });
   await logCurrentAdmin(ActivityLogAction.JUDGE_UPDATED, "Judge", id, { name: payload.name });
   revalidatePath("/admin/judges");
   revalidatePath(`/admin/judges/${id}`);

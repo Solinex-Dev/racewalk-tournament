@@ -51,6 +51,21 @@ function assertOfficialLimits(officials: OfficialInput[]) {
 }
 
 /**
+ * A round may only be ONGOING/FINISHED (i.e. "started") when it has at least one
+ * head judge, one judge and one event logger. Otherwise it can only be SCHEDULED.
+ */
+function assertStartableOfficials(officials: OfficialInput[]) {
+  const judges = officials.filter((o) => o.position === "JUDGE").length;
+  const heads = officials.filter((o) => o.position === "HEAD_JUDGE").length;
+  const loggers = officials.filter((o) => o.position === "EVENT_LOGGER").length;
+  if (heads < 1 || judges < 1 || loggers < 1) {
+    throw new Error(
+      'ต้องมีหัวหน้ากรรมการ, กรรมการ และผู้เก็บ Lap Time อย่างน้อยอย่างละ 1 คน จึงจะเริ่มการแข่งขันได้ — ถ้ายังไม่ครบ บันทึกได้แค่สถานะ "กำหนดการ"',
+    );
+  }
+}
+
+/**
  * Converts a Prisma unique-constraint failure (P2002) into a friendly Thai
  * message. RoundAthlete has @@unique([roundId, bib]) and RoundOfficial has
  * @@unique([roundId, secretCode]) — so a duplicate Bib or secret code surfaces
@@ -73,6 +88,7 @@ function rethrowFriendly(err: unknown): never {
 export async function createRound(eventId: string, data: RoundActionData) {
   await requirePermission("events", "create");
   assertOfficialLimits(data.officials);
+  if (data.status !== "SCHEDULED") assertStartableOfficials(data.officials);
 
   const event = await prisma.event.findUnique({ where: { id: eventId }, select: { date: true } });
   if (!event) throw new Error("ไม่พบกิจกรรม");
@@ -139,6 +155,7 @@ export async function updateRound(
 ) {
   await requirePermission("events", "edit");
   assertOfficialLimits(data.officials);
+  if (data.status !== "SCHEDULED") assertStartableOfficials(data.officials);
 
   const event = await prisma.event.findUnique({ where: { id: eventId }, select: { date: true } });
   if (!event) throw new Error("ไม่พบกิจกรรม");
