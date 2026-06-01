@@ -78,6 +78,10 @@ const SEED_USERS = [
   { email: "moderator@racewalk.local", name: "ผู้ควบคุมการแข่ง",  title: "Moderator",     password: "moderator1234", role: "ADMIN" as const, status: "ACTIVE" as const,    lastActiveAt: new Date(NOW - 5 * 60 * 60 * 1000), isRoot: false, permissions: normalizePermissions({
       moderator: { view: true },
     }) },
+  // Reports-only — sees the events list and can ONLY open reports/exports (Excel/CSV/print).
+  { email: "reports@racewalk.local",   name: "เจ้าหน้าที่รายงาน", title: "Reports",       password: "reports1234",   role: "ADMIN" as const, status: "ACTIVE" as const,    lastActiveAt: new Date(NOW - 6 * 60 * 60 * 1000), isRoot: false, permissions: normalizePermissions({
+      reports: { view: true },
+    }) },
   { email: "suspended@racewalk.local", name: "อดีตผู้ดูแล",       title: "Former Admin",  password: "suspended1234", role: "ADMIN" as const, status: "SUSPENDED" as const, lastActiveAt: new Date("2024-08-01T00:00:00.000Z"), isRoot: false, permissions: normalizePermissions({ events: { view: true } }) },
 ];
 

@@ -187,9 +187,13 @@ export function DashboardSidebar({
   const routes = dashboardRoutes
     .filter((r) => {
       if (!RESOURCE_IDS.has(r.id)) return true;
-      // The events section is also visible to Moderator-only admins.
+      // The events section is also visible to Moderator-only and Reports-only admins.
       if (r.id === "events") {
-        return canAccessResource(user, "events") || hasPermission(user, "moderator", "view");
+        return (
+          canAccessResource(user, "events") ||
+          hasPermission(user, "moderator", "view") ||
+          hasPermission(user, "reports", "view")
+        );
       }
       return canAccessResource(user, r.id as Resource);
     })

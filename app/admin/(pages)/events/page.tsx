@@ -16,9 +16,14 @@ export const metadata: Metadata = {
 
 export default async function EventsPage() {
   const me = await getCurrentAdmin();
-  // Event managers (events:*) and Moderator-only admins (moderator:view) both reach
-  // this list — moderators just see the "Moderator" button on each row.
-  if (!canAccessResource(me, "events") && !hasPermission(me, "moderator", "view"))
+  // The events list is a shared hub: event managers (events:*), Moderator-only
+  // (moderator:view) and Reports-only (reports:view) admins all reach it — each
+  // just sees their own row buttons (edit / Moderator / Report).
+  if (
+    !canAccessResource(me, "events") &&
+    !hasPermission(me, "moderator", "view") &&
+    !hasPermission(me, "reports", "view")
+  )
     return <NoAccess />;
 
   const rows = await prisma.event.findMany({
