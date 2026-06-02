@@ -35,6 +35,7 @@ export default async function JudgesPage() {
 
   const judges = rows.map((j) => ({
     id: j.id,
+    prefix: j.prefix ?? "",
     first_name: j.firstName ?? j.name,
     last_name: j.lastName ?? "",
     country: countryLabel(j.country),

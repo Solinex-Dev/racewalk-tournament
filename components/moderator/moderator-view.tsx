@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { startRound, endRound } from "@/app/actions/round-timing";
 import { SectionToc, type TocItem } from "@/components/common/section-toc";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
+import { Play, Goal } from "lucide-react";
 
 const MAIN_TOC: TocItem[] = [
   { id: "m-control", label: "ควบคุมการแข่งขัน" },
@@ -389,7 +390,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                           onClick={() => handleStartRound(displayRound.id)}
                           className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                         >
-                          ▶ เริ่มจับเวลาการแข่งขัน
+                          <Play className="h-4 w-4" />เริ่มจับเวลาการแข่งขัน
                         </button>
                       )}
                       {displayRound.status === "ongoing" && (
@@ -399,7 +400,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                           onClick={() => setShowEndConfirm(true)}
                           className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
                         >
-                          ■ จบการแข่งขัน
+                          <Goal className="h-4 w-4" /> จบการแข่งขัน
                         </button>
                       )}
                       {displayRound.status === "finished" && (

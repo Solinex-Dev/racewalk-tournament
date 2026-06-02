@@ -22,6 +22,7 @@ import {
   Pencil,
   FileText,
   Radio,
+  MonitorDot,
 } from "lucide-react";
 import { ListFiltersPanel } from "@/components/admin/list-filters-panel";
 import {
@@ -389,13 +390,13 @@ export function EventsList({
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {event.distance_km || "-"}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
+                      <td className="px-4 py-3 text-xs text-slate-600 text-nowrap">
                         {STATUS_LABEL[event.status]}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex flex-wrap justify-end gap-2">
                           {/* Prominent live-action buttons — only while the event is ongoing */}
-                          {event.status === "ongoing" && (
+                          {/* {event.status === "ongoing" && (
                             <>
                               <Link
                                 href={`/events/${event.id}`}
@@ -424,10 +425,10 @@ export function EventsList({
                                 </Button>
                               </Link>
                             </>
-                          )}
+                          )} */}
 
                           {/* 3-dot menu for scheduled / finished (not draft, not ongoing) */}
-                          {event.status !== "ongoing" && event.status !== "draft" && (
+                          {event.status !== "draft" && (
                             <DropdownMenu>
                               <ActionIconTooltip label="เมนูเพิ่มเติม">
                                 <DropdownMenuTrigger asChild>
@@ -481,7 +482,7 @@ export function EventsList({
                               </Link>
                             </ActionIconTooltip>
                           )}
-                          {canViewReports && (
+                          {canViewReports && event.status != "draft" && (
                             <ActionIconTooltip label="Export Report">
                               <Link href={`/admin/events/${event.id}/report`}>
                                 <Button
@@ -504,7 +505,7 @@ export function EventsList({
                                   className="h-8 w-8 rounded-lg border-emerald-200 p-0 text-emerald-700 hover:bg-emerald-50"
                                   aria-label="Moderator"
                                 >
-                                  <Radio className="h-4 w-4" />
+                                  <MonitorDot className="h-4 w-4" />
                                 </Button>
                               </Link>
                             </ActionIconTooltip>
@@ -533,7 +534,7 @@ export function EventsList({
                   className="h-8 rounded-lg text-xs"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  ก่อนหน้า
+                  
                 </Button>
                 <Button
                   variant="outline"
@@ -544,7 +545,7 @@ export function EventsList({
                   disabled={currentPage === totalPages}
                   className="h-8 rounded-lg text-xs"
                 >
-                  ถัดไป
+                  
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

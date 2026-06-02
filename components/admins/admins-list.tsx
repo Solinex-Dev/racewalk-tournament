@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ListFiltersPanel } from "@/components/admin/list-filters-panel";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 
 type Admin = {
   id: string;
@@ -196,7 +196,7 @@ export function AdminsList({ admins }: AdminsListProps) {
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {admin.role}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-nowrap">
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
                             admin.status === "active"
@@ -214,9 +214,11 @@ export function AdminsList({ admins }: AdminsListProps) {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="rounded-lg border-slate-200 text-xs"
+                            className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
+                            aria-label="ดู / แก้ไข"
+                            title="ดู / แก้ไข"
                           >
-                            ดู / แก้ไข
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
                       </td>
@@ -242,7 +244,7 @@ export function AdminsList({ admins }: AdminsListProps) {
                   className="h-8 rounded-lg text-xs"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  ก่อนหน้า
+                  
                 </Button>
                 <Button
                   variant="outline"
@@ -253,7 +255,7 @@ export function AdminsList({ admins }: AdminsListProps) {
                   disabled={currentPage === totalPages}
                   className="h-8 rounded-lg text-xs"
                 >
-                  ถัดไป
+                  
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

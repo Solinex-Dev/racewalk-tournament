@@ -248,7 +248,7 @@ export function AffiliationForm({
                     onChange={(v) => set({ province: v })}
                     clearable
                     disabled={isPending}
-                    placeholder="— ไม่ระบุ —"
+                    placeholder="ไม่ระบุ"
                     searchPlaceholder="ค้นหาจังหวัด…"
                     emptyText="ไม่พบจังหวัด"
                   />
@@ -266,14 +266,14 @@ export function AffiliationForm({
                 onChange={(v) => set({ headJudgeId: v })}
                 clearable
                 disabled={isPending}
-                placeholder="— ไม่ระบุ —"
+                placeholder="ไม่ระบุ"
                 searchPlaceholder="ค้นหากรรมการ…"
                 emptyText="ไม่พบกรรมการ"
                 onCreateNew={() => {
                   setJudgeDraft({ prefix: "", firstName: "", lastName: "", country: "TH" });
                   setJudgeDialogOpen(true);
                 }}
-                createNewLabel="+ สร้างกรรมการใหม่"
+                createNewLabel="สร้างกรรมการใหม่"
               />
               <p className="text-[11px] text-slate-500">
                 หัวหน้าสังกัดถูกจัดเก็บเป็นรายชื่อกรรมการ — เลือกจากที่มี หรือกดสร้างใหม่ได้ทันที

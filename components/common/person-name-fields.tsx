@@ -39,7 +39,7 @@ export function PersonNameFields({
           creatable
           clearable
           disabled={disabled}
-          placeholder="— ไม่ระบุ —"
+          placeholder="ไม่ระบุ"
           searchPlaceholder="นาย / ดร. / พิมพ์เอง…"
           emptyText="พิมพ์เพื่อใช้คำนำหน้าเอง"
         />

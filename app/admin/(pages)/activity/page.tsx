@@ -92,24 +92,24 @@ export default async function ActivityLogPage(props: Props) {
                       const detail = activityDetailText(r.details);
                       return (
                         <tr key={r.id} className="hover:bg-slate-50/80">
-                          <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-slate-500">
+                          <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-slate-500 text-nowrap">
                             {fmt(r.createdAt)}
                           </td>
-                          <td className="px-4 py-2.5 text-xs font-medium text-slate-800">
+                          <td className="px-4 py-2.5 text-xs font-medium text-slate-800 text-nowrap">
                             {r.user?.name?.trim() || r.user?.email || "—"}
                           </td>
-                          <td className="px-4 py-2.5 text-xs text-slate-700">
+                          <td className="px-4 py-2.5 text-xs text-slate-700 text-nowrap">
                             {activityActionLabel(r.action)}
                           </td>
-                          <td className="px-4 py-2.5 text-xs text-slate-600">
+                          <td className="px-4 py-2.5 text-xs text-slate-600 text-nowrap">
                             {entityTypeLabel(r.entityType)}
                             {r.entityId ? (
-                              <span className="ml-1 font-mono text-[10px] text-slate-400">
+                              <span className="ml-1 font-mono text-[10px] text-slate-400 text-nowrap">
                                 {r.entityId.slice(0, 10)}
                               </span>
                             ) : null}
                           </td>
-                          <td className="max-w-xs truncate px-4 py-2.5 text-xs text-slate-500">
+                          <td className="max-w-xs truncate px-4 py-2.5 text-xs text-slate-500 text-nowrap">
                             {detail || "—"}
                           </td>
                         </tr>
@@ -133,7 +133,7 @@ export default async function ActivityLogPage(props: Props) {
                       disabled={page <= 1}
                       className="h-8 rounded-lg text-xs"
                     >
-                      <ChevronLeft className="h-4 w-4" /> ก่อนหน้า
+                      <ChevronLeft className="h-4 w-4" /> 
                     </Button>
                   </Link>
                   <Link
@@ -146,7 +146,7 @@ export default async function ActivityLogPage(props: Props) {
                       disabled={page >= totalPages}
                       className="h-8 rounded-lg text-xs"
                     >
-                      ถัดไป <ChevronRight className="h-4 w-4" />
+                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </Link>
                 </div>

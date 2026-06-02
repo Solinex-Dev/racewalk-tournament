@@ -89,7 +89,7 @@
 2. กรอกรหัส **`PA2345`** → ต้องถูก redirect ไป `/judge/events/evt-pre`
 3. ใน workspace เห็นนักกีฬา 4 คน (BIB 11-14) — ทั้งหมด clean ไม่มี cards
 4. **ทดสอบ logout** — กดออกจากระบบ → กลับ join page
-5. กรอกรหัสผิด เช่น `XXXXXX` → ได้ error "รหัสลับไม่ถูกต้องสำหรับ Event นี้"
+5. กรอกรหัสผิด เช่น `XXXXXX` → ได้ error "รหัสกรรมการไม่ถูกต้องสำหรับ Event นี้"
 
 ### 3.3 Race-day Judge flow (evt-001 / round-2)
 

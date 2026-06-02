@@ -59,7 +59,7 @@ export function EventLoggerJoinForm({ eventId, event }: Props) {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <label className="block text-sm font-medium text-slate-200">
-              รหัสลับของคนเก็บ Lap Time
+              รหัสกรรมการของคนเก็บ Lap Time
             </label>
             <div className="flex justify-center">
               <InputOTP

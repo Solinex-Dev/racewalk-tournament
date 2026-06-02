@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "เข้าร่วมเป็นกรรมการ – การแข่งขันเดินทน",
-  description: "หน้าให้กรรมการกรอกรหัสลับเพื่อเข้าร่วม Event บน Racewalk Tournament",
+  description: "หน้าให้กรรมการกรอกรหัสกรรมการเพื่อเข้าร่วม Event บน Racewalk Tournament",
 };
 
 type Props = { params: Promise<{ eventId: string }> };

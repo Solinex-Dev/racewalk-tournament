@@ -203,7 +203,7 @@ export function AthleteForm({
                   onChange={(v) => set({ affiliationId: v })}
                   clearable
                   disabled={isPending}
-                  placeholder="— ไม่ระบุ —"
+                  placeholder="ไม่ระบุ"
                   searchPlaceholder="ค้นหาสังกัด…"
                   emptyText="ไม่พบสังกัด"
                 />
@@ -233,7 +233,7 @@ export function AthleteForm({
                     onChange={(v) => set({ province: v })}
                     clearable
                     disabled={isPending}
-                    placeholder="— ไม่ระบุ —"
+                    placeholder="ไม่ระบุ"
                     searchPlaceholder="ค้นหาจังหวัด…"
                     emptyText="ไม่พบจังหวัด"
                   />

@@ -74,7 +74,7 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-3">
               <label className="block text-sm font-medium text-slate-200">
-                รหัสลับของกรรมการใน Event นี้
+                รหัสกรรมการของกรรมการใน Event นี้
               </label>
 
               <div className="flex justify-center">
@@ -97,7 +97,7 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
               </div>
 
               <p className="text-center text-[11px] text-slate-400">
-                ใช้รหัสลับ 6 ตัวที่ได้รับจาก Admin ของ Event
+                ใช้รหัสกรรมการ 6 ตัวที่ได้รับจาก Admin ของ Event
               </p>
             </div>
 

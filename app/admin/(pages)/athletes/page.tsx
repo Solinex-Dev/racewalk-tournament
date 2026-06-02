@@ -27,6 +27,7 @@ export default async function AthletesPage() {
 
   const athletes = rows.map((a) => ({
     id: a.id,
+    prefix: a.prefix ?? "",
     first_name: a.firstName ?? a.name,
     last_name: a.lastName ?? "",
     affiliation: a.affiliation?.name ?? "",

@@ -199,7 +199,7 @@ export function JudgeForm({
             {isEdit ? "ข้อมูลกรรมการ" : "เพิ่มกรรมการใหม่"}
           </CardTitle>
           <p className="text-xs text-slate-600">
-            ระบุข้อมูลของกรรมการ เพื่อใช้กำหนดเข้ารอบแข่งและออกรหัสลับสำหรับ login ในวันแข่ง
+            ระบุข้อมูลของกรรมการ เพื่อใช้กำหนดเข้ารอบแข่งและออกรหัสกรรมการสำหรับ login ในวันแข่ง
           </p>
         </div>
         {isEdit && !editing && (
@@ -261,7 +261,7 @@ export function JudgeForm({
                     onChange={(v) => set({ province: v })}
                     clearable
                     disabled={isPending}
-                    placeholder="— ไม่ระบุ —"
+                    placeholder="ไม่ระบุ"
                     searchPlaceholder="ค้นหาจังหวัด…"
                     emptyText="ไม่พบจังหวัด"
                   />
@@ -280,14 +280,14 @@ export function JudgeForm({
                   onChange={onSelectOrg}
                   clearable
                   disabled={isPending}
-                  placeholder="— ไม่ระบุ —"
+                  placeholder="ไม่ระบุ"
                   searchPlaceholder="ค้นหาองค์กร…"
                   emptyText="ไม่พบองค์กร"
                   onCreateNew={() => {
                     setCreateName("");
                     setCreating("org");
                   }}
-                  createNewLabel="+ สร้างองค์กรใหม่"
+                  createNewLabel="สร้างองค์กรใหม่"
                 />
               </div>
 
@@ -299,7 +299,7 @@ export function JudgeForm({
                   onChange={(v) => set({ departmentId: v })}
                   clearable
                   disabled={isPending || !form.organizationId}
-                  placeholder={form.organizationId ? "— ไม่ระบุ —" : "เลือกองค์กรก่อน"}
+                  placeholder={form.organizationId ? "ไม่ระบุ" : "เลือกองค์กรก่อน"}
                   searchPlaceholder="ค้นหาแผนก…"
                   emptyText="ยังไม่มีแผนกในองค์กรนี้"
                   onCreateNew={

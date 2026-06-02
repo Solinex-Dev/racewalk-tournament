@@ -371,9 +371,9 @@ export function RoundForm({
       >
         <DialogContent className="border-slate-200 sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-slate-900">ยืนยันรีเซ็ตรหัสลับ?</DialogTitle>
+            <DialogTitle className="text-slate-900">ยืนยันรีเซ็ตรหัสกรรมการ?</DialogTitle>
             <DialogDescription className="text-left text-slate-600">
-              รหัสลับของ{" "}
+              รหัสกรรมการของ{" "}
               <span className="font-medium text-slate-900">{resetSecretJudgeName}</span>{" "}
               จะถูกสร้างใหม่ รหัสเดิมจะใช้เข้าระบบไม่ได้อีก
               {resetSecretOfficial?.secretCode && (
@@ -682,7 +682,7 @@ export function RoundForm({
                   กรรมการ / เจ้าหน้าที่ในรอบนี้
                 </h2>
                 <p className="mt-0.5 text-[11px] text-slate-600">
-                  เลือกกรรมการ กำหนดตำแหน่ง โซน และรหัสลับสำหรับ join — สูงสุด {MAX_JUDGES} กรรมการ +{" "}
+                  เลือกกรรมการ กำหนดตำแหน่ง โซน และรหัสกรรมการสำหรับ join — สูงสุด {MAX_JUDGES} กรรมการ +{" "}
                   {MAX_HEAD_JUDGE} หัวหน้ากรรมการ + {MAX_EVENT_LOGGER} ผู้เก็บ Lap Time (รวม{" "}
                   {MAX_JUDGES + MAX_HEAD_JUDGE + MAX_EVENT_LOGGER} คน)
                 </p>
@@ -731,7 +731,7 @@ export function RoundForm({
                     <th className="px-3 py-2 text-left">กรรมการ</th>
                     <th className="px-3 py-2 text-left">ตำแหน่ง</th>
                     <th className="px-3 py-2 text-left">โซน / โต๊ะ</th>
-                    <th className="px-3 py-2 text-left">รหัสลับ (6 ตัว)</th>
+                    <th className="px-3 py-2 text-left">รหัสกรรมการ (6 ตัว)</th>
                     <th className="px-3 py-2 text-right">ลบ</th>
                   </tr>
                 </thead>
@@ -807,7 +807,7 @@ export function RoundForm({
                                   size="sm"
                                   className="h-7 w-7 rounded-lg border-slate-200 p-0"
                                   disabled={!row.secretCode}
-                                  aria-label="คัดลอกรหัสลับ"
+                                  aria-label="คัดลอกรหัสกรรมการ"
                                   onClick={() => handleCopySecret(i, row.secretCode)}
                                 >
                                   <Copy className="h-3.5 w-3.5 text-slate-600" />

@@ -31,7 +31,7 @@ export type ComboboxProps = {
   emptyText?: string;
   disabled?: boolean;
   className?: string;
-  /** Show a "— ไม่ระบุ —" entry that clears the value. */
+  /** Show a "ไม่ระบุ" entry that clears the value. */
   clearable?: boolean;
   clearLabel?: string;
   /** Allow selecting a typed value not in the list (e.g. a custom prefix). */
@@ -52,7 +52,7 @@ export function Combobox({
   disabled,
   className,
   clearable,
-  clearLabel = "— ไม่ระบุ —",
+  clearLabel = "ไม่ระบุ",
   creatable,
   onCreateNew,
   createNewLabel,

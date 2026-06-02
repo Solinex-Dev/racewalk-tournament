@@ -15,6 +15,12 @@ const InputOTP = React.forwardRef<
 >(({ className, containerClassName, ...props }, ref) => (
   <OTPInput
     ref={ref}
+    // Secret codes are alphanumeric (A–Z, 2–9). input-otp defaults inputMode to
+    // "numeric", which makes mobile keyboards show digits only and hide letters.
+    // Force a text (uppercase) keyboard here; still overridable via {...props}.
+    inputMode="text"
+    autoCapitalize="characters"
+    spellCheck={false}
     containerClassName={cn(
       "flex items-center justify-center gap-2 has-[:disabled]:opacity-50",
       containerClassName,

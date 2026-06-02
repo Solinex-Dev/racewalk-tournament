@@ -61,7 +61,7 @@ export function HeadJudgeJoinForm({ eventId, event }: Props) {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <label className="block text-sm font-medium text-slate-200">
-              รหัสลับของหัวหน้ากรรมการ
+              รหัสกรรมการของหัวหน้ากรรมการ
             </label>
             <div className="flex justify-center">
               <InputOTP

@@ -214,7 +214,7 @@ export default async function SystemMonitorPage(props: Props) {
                           <td className="whitespace-nowrap px-3 py-2.5 font-mono text-[11px] text-slate-500">
                             {fmt(r.createdAt)}
                           </td>
-                          <td className="px-3 py-2.5 text-xs">
+                          <td className="px-3 py-2.5 text-xs flex gap-3 text-nowrap">
                             <div className="font-medium text-slate-800">
                               {r.user?.name?.trim() || r.user?.email || "—"}
                             </div>
@@ -235,14 +235,14 @@ export default async function SystemMonitorPage(props: Props) {
                           </td>
                           <td className="px-3 py-2.5">
                             <span
-                              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium text-nowrap ${
                                 OP_BADGE[r.operation ?? ""] ?? "border-slate-200 bg-slate-100 text-slate-600"
                               }`}
                             >
                               {operationLabel(r.operation) || "—"}
                             </span>
                           </td>
-                          <td className="px-3 py-2.5 text-xs text-slate-700">
+                          <td className="px-3 py-2.5 text-xs text-slate-700 text-nowrap">
                             {activityActionLabel(r.action)}
                             {entity ? (
                               <span className="ml-1 text-[10px] text-slate-400">· {entity}</span>
@@ -254,11 +254,11 @@ export default async function SystemMonitorPage(props: Props) {
                           <td className="whitespace-nowrap px-3 py-2.5 font-mono text-[11px] text-slate-500">
                             {r.ipAddress ?? "—"}
                           </td>
-                          <td className="px-3 py-2.5 text-[11px] text-slate-500" title={r.userAgent ?? ""}>
+                          <td className="px-3 py-2.5 text-[11px] text-slate-500 text-nowrap" title={r.userAgent ?? ""}>
                             {formatUserAgent(r.userAgent) || "—"}
                           </td>
                           <td
-                            className="max-w-[16rem] truncate px-3 py-2.5 text-[11px] text-slate-500"
+                            className="max-w-[16rem] truncate px-3 py-2.5 text-[11px] text-slate-500 text-wrap"
                             title={r.details ? JSON.stringify(r.details) : ""}
                           >
                             {detail || "—"}
@@ -279,7 +279,7 @@ export default async function SystemMonitorPage(props: Props) {
                 <div className="flex gap-2">
                   <Link href={pageHref(Math.max(1, page - 1))} aria-disabled={page <= 1}>
                     <Button variant="outline" size="sm" disabled={page <= 1} className="h-8 rounded-lg text-xs">
-                      <ChevronLeft className="h-4 w-4" /> ก่อนหน้า
+                      <ChevronLeft className="h-4 w-4" /> 
                     </Button>
                   </Link>
                   <Link href={pageHref(Math.min(totalPages, page + 1))} aria-disabled={page >= totalPages}>
@@ -289,7 +289,7 @@ export default async function SystemMonitorPage(props: Props) {
                       disabled={page >= totalPages}
                       className="h-8 rounded-lg text-xs"
                     >
-                      ถัดไป <ChevronRight className="h-4 w-4" />
+                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </Link>
                 </div>
