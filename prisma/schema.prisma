@@ -1,0 +1,471 @@
+// Prisma schema — MySQL (works with MariaDB via @prisma/adapter-mariadb).
+// Round 1: auth models (User/UserSession/Account/VerificationToken/ActivityLog).
+// Round 2: domain models (Event/Round/Athlete/Judge/Card/LapTime/FinishTime/RoundActivityLog).
+//
+// Local sync: npx prisma db push (or npm run db:push)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// --- Enums ---
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+// --- Domain enums ---
+
+enum EventStatus {
+  DRAFT
+  SCHEDULED
+  ONGOING
+  FINISHED
+}
+
+enum RoundStatus {
+  SCHEDULED
+  ONGOING
+  FINISHED
+}
+
+enum AthleteRoundStatus {
+  OK
+  DQ
+  DNF
+}
+
+enum OfficialPosition {
+  JUDGE
+  HEAD_JUDGE
+  EVENT_LOGGER
+}
+
+enum CardColor {
+  YELLOW
+  RED
+}
+
+// LIFTED_FOOT = ~ (ยกเท้า), BENT_KNEE = > (เข่างอ)
+enum CardSymbol {
+  LIFTED_FOOT
+  BENT_KNEE
+}
+
+enum RedCardState {
+  PENDING
+  CONFIRMED
+  OVERRIDDEN
+}
+
+// Operational status of a Judge — distinct from soft-delete (deletedAt).
+// INACTIVE judges are hidden from selection dropdowns but kept in DB.
+enum JudgeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// --- Auth.js (NextAuth) required models ---
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model User {
+  id            String     @id @default(cuid())
+  // Denormalized display name (maintained from prefix/firstName/lastName).
+  name          String?
+  prefix        String?
+  firstName     String?
+  lastName      String?
+  email         String?    @unique
+  emailVerified DateTime?
+  image         String?
+  // Credentials: hashed password (null for OAuth-only users)
+  password      String?    @db.Text
+  // Free-text role label for display ("Owner", "Event Manager", "Score Officer").
+  // Distinct from `role` enum — that is the auth-level gate. This is a label.
+  title         String?
+  lastActiveAt  DateTime?
+  role          UserRole   @default(USER)
+  // Root Admin bypasses all fine-grained permission checks.
+  isRoot        Boolean    @default(false)
+  // Fine-grained permission matrix: { <resource>: { view, create, edit, delete } }.
+  permissions   Json?
+  status        UserStatus @default(ACTIVE)
+  suspendedAt   DateTime?
+  deleteAfter   DateTime?
+  deletedAt     DateTime?
+  // Audit: which admin created / last updated this record.
+  createdById   String?
+  updatedById   String?
+
+  accounts     Account[]
+  userSessions UserSession[]
+  activityLogs ActivityLog[]
+}
+
+// Tracks active JWT sessions per user (sessionId in JWT cookie).
+// Used for "active sessions" list and revoke-one/revoke-all.
+// revokedAt: null = active; set when user revokes (soft delete).
+model UserSession {
+  id           String    @id @default(cuid())
+  sessionId    String    @unique
+  userId       String
+  userAgent    String?   @db.Text
+  ipAddress    String?
+  lastActiveAt DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  revokedAt    DateTime?
+  rememberMe   Boolean   @default(false)
+  expiresAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// --- Activity Log (audit trail) ---
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  entityType String?
+  entityId   String?
+  details    Json?
+  // System-monitor metadata: how/where the action happened.
+  // method:    HTTP method ("GET" for page views, "POST" for actions).
+  // operation: CRUD classification ("CREATE" | "READ" | "UPDATE" | "DELETE" | "ACTION").
+  // path:      the route/page the action came from (e.g. /admin/events/x/rounds/new).
+  method     String?
+  operation  String?
+  path       String?  @db.Text
+  ipAddress  String?
+  userAgent  String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
+  @@index([userId, createdAt])
+}
+
+// --- Domain models ---
+
+model Affiliation {
+  id                 String    @id @default(cuid())
+  name               String
+  country            String    @default("TH")
+  province           String?
+  // Head of affiliation references a Judge (people are managed as Judges).
+  headJudgeId        String?
+  joinedAt           DateTime?
+  note               String?   @db.Text
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+  createdById        String?
+  updatedById        String?
+
+  headJudge Judge?    @relation("AffiliationHead", fields: [headJudgeId], references: [id])
+  athletes  Athlete[]
+
+  @@index([headJudgeId])
+}
+
+model Athlete {
+  id            String    @id @default(cuid())
+  // Denormalized display name (maintained from prefix/firstName/lastName).
+  name          String
+  prefix        String?
+  firstName     String?
+  lastName      String?
+  country       String    @default("TH")
+  province      String?
+  club          String?
+  note          String?   @db.Text
+  affiliationId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  createdById   String?
+  updatedById   String?
+
+  affiliation   Affiliation?   @relation(fields: [affiliationId], references: [id])
+  roundAthletes RoundAthlete[]
+  cards         Card[]
+  lapTimes      LapTime[]
+  finishTimes   FinishTime[]
+}
+
+model Judge {
+  id           String      @id @default(cuid())
+  // Denormalized display name (maintained from prefix/firstName/lastName).
+  name         String
+  prefix       String?
+  firstName    String?
+  lastName     String?
+  country      String      @default("TH")
+  province     String?
+  // Department belongs to an Organization (Organization → Department hierarchy).
+  organizationId String?
+  departmentId   String?
+  status       JudgeStatus @default(ACTIVE)
+  note         String?     @db.Text
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  deletedAt    DateTime?
+  createdById  String?
+  updatedById  String?
+
+  organization       Organization? @relation(fields: [organizationId], references: [id])
+  department         Department?   @relation(fields: [departmentId], references: [id])
+  headedAffiliations Affiliation[] @relation("AffiliationHead")
+  roundOfficials     RoundOfficial[]
+  cards              Card[]
+
+  @@index([organizationId])
+  @@index([departmentId])
+}
+
+// Managing body a judge belongs to (e.g. สมาคมกรีฑาแห่งประเทศไทย).
+model Organization {
+  id          String       @id @default(cuid())
+  name        String
+  note        String?      @db.Text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  departments Department[]
+  judges      Judge[]
+}
+
+// A department/section under an Organization (e.g. ฝ่ายกรรมการสนาม).
+model Department {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  note           String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+  createdById    String?
+  updatedById    String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  judges       Judge[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model Event {
+  id         String      @id @default(cuid())
+  name       String
+  date       DateTime
+  location   String
+  distanceKm String
+  // Number of laps that make up the full race distance for this venue.
+  // Different venues have different per-lap distances (400m track vs 1km road loop, etc.),
+  // so this is venue-specific configuration. Used as default for new rounds in this event.
+  lapCount   Int         @default(1)
+  status     EventStatus @default(DRAFT)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+  createdById String?
+  updatedById String?
+
+  rounds Round[]
+}
+
+model Round {
+  id              String      @id @default(cuid())
+  eventId         String
+  name            String
+  status          RoundStatus @default(SCHEDULED)
+  distanceKm      String?
+  scheduledTime   DateTime?
+  expectedEndTime DateTime?
+  // Actual race start/end timestamps — single source of truth for elapsed time.
+  // Moderator sets startedAt when race begins (status SCHEDULED → ONGOING),
+  // and endedAt when race finishes (status ONGOING → FINISHED).
+  startedAt       DateTime?
+  endedAt         DateTime?
+  heatName        String?
+  lapCount        Int?
+  currentLap      Int         @default(0)
+  note            String?     @db.Text
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  deletedAt       DateTime?
+
+  event          Event              @relation(fields: [eventId], references: [id])
+  roundAthletes  RoundAthlete[]
+  roundOfficials RoundOfficial[]
+  cards          Card[]
+  lapTimes       LapTime[]
+  finishTimes    FinishTime[]
+  activityLogs   RoundActivityLog[]
+
+  @@index([eventId])
+}
+
+// Join: Athlete in a Round. bib uniqueness is per round (enforced by @@unique).
+model RoundAthlete {
+  id        String             @id @default(cuid())
+  roundId   String
+  athleteId String
+  bib       String
+  status    AthleteRoundStatus @default(OK)
+  position  Int?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  deletedAt DateTime?
+
+  round   Round   @relation(fields: [roundId], references: [id])
+  athlete Athlete @relation(fields: [athleteId], references: [id])
+
+  @@unique([roundId, athleteId])
+  @@unique([roundId, bib])
+  @@index([roundId])
+}
+
+// Join: Official in a Round. Each judge may serve in only one position per round.
+model RoundOfficial {
+  id         String           @id @default(cuid())
+  roundId    String
+  judgeId    String
+  position   OfficialPosition
+  secretCode String
+  zone       String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  deletedAt  DateTime?
+
+  round Round @relation(fields: [roundId], references: [id])
+  judge Judge @relation(fields: [judgeId], references: [id])
+
+  @@unique([roundId, judgeId])
+  @@unique([roundId, secretCode])
+  @@index([roundId])
+}
+
+// Card issuance — always soft-delete; red card overrides use state=OVERRIDDEN.
+model Card {
+  id        String       @id @default(cuid())
+  roundId   String
+  athleteId String
+  judgeId   String
+  color     CardColor
+  symbol    CardSymbol
+  issuedAt  DateTime     @default(now())
+  // Red cards only
+  state     RedCardState?
+  decidedBy String?
+  decidedAt DateTime?
+  deletedAt DateTime?
+
+  round   Round   @relation(fields: [roundId], references: [id])
+  athlete Athlete @relation(fields: [athleteId], references: [id])
+  judge   Judge   @relation(fields: [judgeId], references: [id])
+
+  @@index([roundId])
+  @@index([roundId, athleteId])
+  @@index([judgeId])
+}
+
+// Lap time in milliseconds.
+model LapTime {
+  id         String    @id @default(cuid())
+  roundId    String
+  athleteId  String
+  lapNumber  Int
+  timeMs     Int
+  recordedAt DateTime  @default(now())
+  recordedBy String
+  source     String
+  deletedAt  DateTime?
+
+  round   Round   @relation(fields: [roundId], references: [id])
+  athlete Athlete @relation(fields: [athleteId], references: [id])
+
+  @@index([roundId, athleteId])
+}
+
+// Finish time in milliseconds.
+model FinishTime {
+  id         String    @id @default(cuid())
+  roundId    String
+  athleteId  String
+  timeMs     Int
+  position   Int
+  recordedAt DateTime  @default(now())
+  deletedAt  DateTime?
+
+  round   Round   @relation(fields: [roundId], references: [id])
+  athlete Athlete @relation(fields: [athleteId], references: [id])
+
+  @@unique([roundId, athleteId])
+  @@index([roundId])
+}
+
+// Per-round event timeline (distinct from the system ActivityLog audit table).
+model RoundActivityLog {
+  id              String    @id @default(cuid())
+  roundId         String
+  timestamp       DateTime  @default(now())
+  actorId         String
+  actorName       String
+  actorRole       String
+  actionType      String
+  targetAthleteId String?
+  targetBib       String?
+  lapNumber       Int?
+  details         String?   @db.Text
+  canOverride     Boolean   @default(false)
+  deletedAt       DateTime?
+
+  round Round @relation(fields: [roundId], references: [id])
+
+  @@index([roundId])
+  @@index([roundId, timestamp])
+}

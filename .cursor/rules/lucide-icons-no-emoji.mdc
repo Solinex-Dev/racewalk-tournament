@@ -1,0 +1,39 @@
+---
+description: Use Lucide icons in UI; never emoji or emoticon characters as icons
+alwaysApply: true
+---
+
+# Icons: Lucide only — no emoji
+
+Do **not** use emoji or emoticon characters (e.g. 🖨️, ⬇, 📄, ✅) as UI icons, button prefixes, or navigation affordances.
+
+Use **`lucide-react`** icons instead, consistent with the rest of this codebase.
+
+## Examples
+
+```tsx
+// ❌ BAD
+<Button>⬇ ดาวน์โหลด</Button>
+<a href="/back">← กลับ</a>
+
+// ✅ GOOD
+import { Download, ArrowLeft } from "lucide-react";
+
+<Button className="inline-flex items-center gap-2">
+  <Download className="size-4" aria-hidden />
+  ดาวน์โหลด
+</Button>
+<Link href="/back" className="inline-flex items-center gap-1.5">
+  <ArrowLeft className="size-3.5" aria-hidden />
+  กลับ
+</Link>
+```
+
+## Accessibility
+
+- Decorative icons: `aria-hidden` on the SVG.
+- Icon-only controls: add `aria-label` on the button/link.
+
+## Exceptions
+
+- **Printed / exported documents** (PDF, Excel, official summary sheets) may use plain text marks required by the format (e.g. `✓` in a judges grid cell) when they are data notation, not decorative UI chrome.

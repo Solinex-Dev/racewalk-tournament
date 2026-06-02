@@ -1,0 +1,84 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
+import { AdminForm } from "@/components/admins/admin-form";
+import { Button } from "@/components/ui/button";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
+import { prisma } from "@/lib/prisma";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission, normalizePermissions } from "@/lib/permissions";
+import { resolveAudit } from "@/lib/audit";
+import { AuditInfo } from "@/components/common/audit-info";
+
+export const metadata: Metadata = {
+  title: "แก้ไขผู้ดูแลระบบ – การแข่งขันเดินทน",
+  description: "หน้าแก้ไขข้อมูลผู้ดูแลระบบ",
+};
+
+type Props = { params: Promise<{ adminId: string }> };
+
+export default async function AdminDetailPage(props: Props) {
+  const { adminId } = await props.params;
+
+  const me = await getCurrentAdmin();
+  if (!me || !hasPermission(me, "admins", "view")) return <NoAccess />;
+
+  const user = await prisma.user.findUnique({
+    where: { id: adminId },
+  });
+  if (!user || user.role !== "ADMIN" || user.status === "DELETED") notFound();
+
+  // Manage your own account via Settings — never through the admins list.
+  if (user.id === me.id) redirect("/admin/settings");
+  // Root Admins are hidden from everyone except other Root Admins.
+  if (user.isRoot && !me.isRoot) notFound();
+
+  const audit = await resolveAudit(user);
+
+  return (
+    <main className="flex-1 overflow-auto p-6 lg:p-8">
+      <div className="mx-auto flex max-w-full flex-col gap-4">
+        <PageBreadcrumb
+          items={[
+            { label: "แดชบอร์ด", href: "/admin" },
+            { label: "ผู้ดูแลระบบ", href: "/admin/admins" },
+            { label: user.name || user.email || "" },
+          ]}
+        />
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">แก้ไข Admin</h1>
+            <p className="mt-1 text-sm text-slate-600">ดูและอัปเดตข้อมูลผู้ดูแลระบบที่เลือก</p>
+          </div>
+
+          <Link href="/admin/admins">
+            <Button variant="outline" size="sm" className="rounded-lg border-slate-200 text-xs">
+              กลับไปหน้ารายการ
+            </Button>
+          </Link>
+        </div>
+
+        <AdminForm
+          mode="edit"
+          adminId={adminId}
+          currentUserIsRoot={me?.isRoot ?? false}
+          canEdit={hasPermission(me, "admins", "edit")}
+          canDelete={hasPermission(me, "admins", "delete")}
+          defaultValues={{
+            prefix: user.prefix ?? "",
+            firstName: user.firstName ?? user.name ?? "",
+            lastName: user.lastName ?? "",
+            email: user.email ?? "",
+            title: user.title ?? "",
+            status: user.status === "ACTIVE" ? "ACTIVE" : "SUSPENDED",
+            isRoot: user.isRoot,
+            permissions: normalizePermissions(user.permissions),
+          }}
+        />
+
+        <AuditInfo {...audit} />
+      </div>
+    </main>
+  );
+}
