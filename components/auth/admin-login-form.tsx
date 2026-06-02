@@ -11,9 +11,12 @@ import { useState } from "react";
 
 const DEV_QUICK_LOGIN_EMAIL = "owner@racewalk.local";
 const DEV_QUICK_LOGIN_PASSWORD = "owner1234";
-const isDev = process.env.NODE_ENV === "development";
 
-export function AdminLoginForm() {
+type AdminLoginFormProps = {
+  showDevQuickLogin?: boolean;
+};
+
+export function AdminLoginForm({ showDevQuickLogin = false }: AdminLoginFormProps) {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -136,7 +139,7 @@ export function AdminLoginForm() {
               สำหรับผู้ดูแลระบบ Racewalk Tournament เท่านั้น
             </p>
 
-            {isDev && (
+            {showDevQuickLogin && (
               <div className="flex w-full flex-col items-center gap-2">
                 <button
                   type="button"

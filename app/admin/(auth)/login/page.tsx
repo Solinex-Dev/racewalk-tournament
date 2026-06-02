@@ -29,7 +29,7 @@ export default async function Login({ searchParams }: LoginPageProps) {
 
   return (
     <Suspense>
-      <AdminLoginForm />
+      <AdminLoginForm showDevQuickLogin={process.env.APP_ENV === "development"} />
     </Suspense>
   );
 }
