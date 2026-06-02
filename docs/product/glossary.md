@@ -1,6 +1,6 @@
 # Glossary
 
-Terms used across the system. Where a term has both a Thai and English form, both are listed because the UI is bilingual (see [architecture/i18n.md](../architecture/i18n.md)).
+Terms used across the system. The UI ships in **Thai only**; English equivalents are listed here as a translation aid for maintainers reading the docs.
 
 ## Domain terms
 

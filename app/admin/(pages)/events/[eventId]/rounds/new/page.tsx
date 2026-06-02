@@ -2,25 +2,60 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { RoundForm } from "@/components/rounds/round-form";
 import { Button } from "@/components/ui/button";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "สร้างรอบแข่งใหม่ – การแข่งขันเดินทน",
-  description:
-    "ฟอร์มสร้างรอบแข่งใหม่ใน Event การแข่งขันเดินทน สำหรับเพิ่มนักกีฬาและกรรมการ.",
+  description: "ฟอร์มสร้างรอบแข่งใหม่ใน Event การแข่งขันเดินทน",
 };
 
-type NewRoundPageProps = {
-  params: Promise<{
-    eventId: string;
-  }>;
-};
+type Props = { params: Promise<{ eventId: string }> };
 
-export default async function NewRoundPage(props: NewRoundPageProps) {
+/** Format a stored Date to a yyyy-mm-dd calendar day (local wall-clock). */
+function toDateInput(dt: Date) {
+  return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+export default async function NewRoundPage(props: Props) {
   const { eventId } = await props.params;
+
+  const [event, athletes, judges] = await Promise.all([
+    prisma.event.findUnique({
+      where: { id: eventId, deletedAt: null },
+      select: { name: true, lapCount: true, distanceKm: true, date: true },
+    }),
+    prisma.athlete.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.judge.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
+
+  // Pre-fill lapCount and distanceKm from event so admin doesn't retype
+  const roundDefaults = {
+    lapCount: event?.lapCount ?? 1,
+    distanceKm: event?.distanceKm ?? "",
+  };
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-4">
+        <PageBreadcrumb
+          items={[
+            { label: "แดชบอร์ด", href: "/admin" },
+            { label: "Events", href: "/admin/events" },
+            { label: event?.name ?? "Event", href: `/admin/events/${eventId}` },
+            { label: "สร้างรอบใหม่" },
+          ]}
+        />
         <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
@@ -43,9 +78,15 @@ export default async function NewRoundPage(props: NewRoundPageProps) {
           </Link>
         </div>
 
-        <RoundForm mode="create" eventId={eventId} />
+        <RoundForm
+          mode="create"
+          eventId={eventId}
+          athleteOptions={athletes}
+          judgeOptions={judges}
+          eventDate={event ? toDateInput(event.date) : undefined}
+          defaultValues={roundDefaults}
+        />
       </div>
     </main>
   );
 }
-

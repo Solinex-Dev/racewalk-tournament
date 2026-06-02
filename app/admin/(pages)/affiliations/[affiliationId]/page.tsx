@@ -3,77 +3,88 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AffiliationForm } from "@/components/affiliations/affiliation-form";
 import { Button } from "@/components/ui/button";
+import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
+import { prisma } from "@/lib/prisma";
+import { getCountryComboboxOptions } from "@/lib/data/countries";
+import { getProvinceComboboxOptions } from "@/lib/data/provinces";
+import { NoAccess } from "@/components/admin/no-access";
+import { getCurrentAdmin } from "@/lib/authz";
+import { hasPermission } from "@/lib/permissions";
+import { resolveAudit } from "@/lib/audit";
+import { AuditInfo } from "@/components/common/audit-info";
 
 export const metadata: Metadata = {
   title: "แก้ไขสังกัด / สโมสร – การแข่งขันเดินทน",
-  description:
-    "หน้าแก้ไขข้อมูลสังกัด / สโมสร เช่น ชื่อสังกัด ผู้ดูแล วันที่เข้าร่วม และหมายเหตุ สำหรับใช้ร่วมกับข้อมูลนักกีฬา.",
+  description: "หน้าแก้ไขข้อมูลสังกัด / สโมสร",
 };
 
-const MOCK_AFFILIATION_BY_ID = {
-  "aff-001": {
-    name: "ชมรมเดินทนกรุงเทพฯ",
-    head_of_affiliation: "นายสมชาย รักดี",
-    join_at: "2024-01-15",
-    note: "กลุ่มตัวอย่างสำหรับทดสอบระบบ",
-  },
-  "aff-002": {
-    name: "Example Athletic Club",
-    head_of_affiliation: "Jane Manager",
-    join_at: "2024-03-01",
-    note: "",
-  },
-};
+type Props = { params: Promise<{ affiliationId: string }> };
 
-type AffiliationDetailPageProps = {
-  params: Promise<{
-    affiliationId: string;
-  }>;
-};
-
-export default async function AffiliationDetailPage(
-  props: AffiliationDetailPageProps,
-) {
+export default async function AffiliationDetailPage(props: Props) {
   const { affiliationId } = await props.params;
 
-  const affiliation =
-    MOCK_AFFILIATION_BY_ID[
-      affiliationId as keyof typeof MOCK_AFFILIATION_BY_ID
-    ];
+  const [aff, judges] = await Promise.all([
+    prisma.affiliation.findUnique({ where: { id: affiliationId, deletedAt: null } }),
+    prisma.judge.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
+  if (!aff) notFound();
 
-  if (!affiliation) {
-    // TODO: ในภายหลังให้เปลี่ยนมา fetch จากฐานข้อมูลจริง และ handle not found ให้เหมาะสม
-    notFound();
-  }
+  const me = await getCurrentAdmin();
+  if (!hasPermission(me, "affiliations", "view")) return <NoAccess />;
+
+  const countryOptions = getCountryComboboxOptions();
+  const provinceOptions = getProvinceComboboxOptions();
+  const audit = await resolveAudit(aff);
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
       <div className="mx-auto flex max-w-full flex-col gap-4">
+        <PageBreadcrumb
+          items={[
+            { label: "แดชบอร์ด", href: "/admin" },
+            { label: "สังกัด", href: "/admin/affiliations" },
+            { label: aff.name },
+          ]}
+        />
         <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
               แก้ไขสังกัด / สโมสร
             </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              ดูและอัปเดตข้อมูลสังกัด / สโมสรที่เลือก
-            </p>
+            <p className="mt-1 text-sm text-slate-600">ดูและอัปเดตข้อมูลสังกัด / สโมสรที่เลือก</p>
           </div>
 
           <Link href="/admin/affiliations">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg border-slate-200 text-xs"
-            >
+            <Button variant="outline" size="sm" className="rounded-lg border-slate-200 text-xs">
               กลับไปหน้ารายการ
             </Button>
           </Link>
         </div>
 
-        <AffiliationForm mode="edit" defaultValues={affiliation} />
+        <AffiliationForm
+          mode="edit"
+          affiliationId={affiliationId}
+          countryOptions={countryOptions}
+          provinceOptions={provinceOptions}
+          judges={judges}
+          canEdit={hasPermission(me, "affiliations", "edit")}
+          canDelete={hasPermission(me, "affiliations", "delete")}
+          defaultValues={{
+            name: aff.name,
+            country: aff.country,
+            province: aff.province ?? "",
+            headJudgeId: aff.headJudgeId ?? "",
+            joinedAt: aff.joinedAt ? aff.joinedAt.toISOString().slice(0, 10) : "",
+            note: aff.note ?? "",
+          }}
+        />
+
+        <AuditInfo {...audit} />
       </div>
     </main>
   );
 }
-
-

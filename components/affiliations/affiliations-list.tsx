@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ListFiltersPanel } from "@/components/admin/list-filters-panel";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 type Affiliation = {
@@ -94,109 +95,90 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
     setCurrentPage(1);
   };
 
+  const hasActiveFilters =
+    Boolean(searchQuery) ||
+    countryFilter !== "all" ||
+    provinceFilter !== "all";
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setCountryFilter("all");
+    setProvinceFilter("all");
+    setCurrentPage(1);
+  };
+
   return (
     <div className="space-y-4">
-      {/* Search and Filters */}
-      <Card className="rounded-2xl border-slate-200">
-        <CardContent className="p-4">
-          <div className="space-y-3">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                type="text"
-                placeholder="ค้นหาด้วย ชื่อสังกัด, ผู้ดูแล, ประเทศ, จังหวัด, หมายเหตุ..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-9 rounded-xl"
-              />
-            </div>
+      <ListFiltersPanel
+        filteredCount={filteredAffiliations.length}
+        totalCount={affiliations.length}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearFilters}
+      >
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <Input
+            type="text"
+            placeholder="ค้นหาด้วย ชื่อสังกัด, ผู้ดูแล, ประเทศ, จังหวัด, หมายเหตุ..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="h-8 rounded-lg pl-8 text-sm"
+          />
+        </div>
 
-            {/* Filters */}
-            <div className="grid gap-3 sm:grid-cols-2">
-              {/* Country Filter */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">
-                  ประเทศ
-                </label>
-                <Select
-                  value={countryFilter}
-                  onValueChange={(value) =>
-                    handleFilterChange(setCountryFilter, value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="ทั้งหมด" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">ทั้งหมด</SelectItem>
-                    {countries.map((country) => (
-                      <SelectItem key={country} value={country}>
-                        {country}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Province Filter */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">
-                  จังหวัด
-                </label>
-                <Select
-                  value={provinceFilter}
-                  onValueChange={(value) =>
-                    handleFilterChange(setProvinceFilter, value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="ทั้งหมด" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">ทั้งหมด</SelectItem>
-                    {provinces.map((province) => (
-                      <SelectItem key={province} value={province}>
-                        {province}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Results count */}
-            <div className="flex items-center justify-between border-t border-slate-200 pt-3">
-              <p className="text-xs text-slate-600">
-                แสดง {paginatedAffiliations.length} จาก{" "}
-                {filteredAffiliations.length} รายการ
-                {filteredAffiliations.length !== affiliations.length &&
-                  ` (กรองจากทั้งหมด ${affiliations.length} รายการ)`}
-              </p>
-              {(searchQuery ||
-                countryFilter !== "all" ||
-                provinceFilter !== "all") && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setCountryFilter("all");
-                    setProvinceFilter("all");
-                    setCurrentPage(1);
-                  }}
-                  className="h-7 rounded-lg text-xs"
-                >
-                  ล้างตัวกรอง
-                </Button>
-              )}
-            </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-[11px] font-medium text-slate-600">
+              ประเทศ
+            </label>
+            <Select
+              value={countryFilter}
+              onValueChange={(value) =>
+                handleFilterChange(setCountryFilter, value)
+              }
+            >
+              <SelectTrigger className="h-8 rounded-lg text-sm">
+                <SelectValue placeholder="ทั้งหมด" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทั้งหมด</SelectItem>
+                {countries.map((country) => (
+                  <SelectItem key={country} value={country}>
+                    {country}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-medium text-slate-600">
+              จังหวัด
+            </label>
+            <Select
+              value={provinceFilter}
+              onValueChange={(value) =>
+                handleFilterChange(setProvinceFilter, value)
+              }
+            >
+              <SelectTrigger className="h-8 rounded-lg text-sm">
+                <SelectValue placeholder="ทั้งหมด" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทั้งหมด</SelectItem>
+                {provinces.map((province) => (
+                  <SelectItem key={province} value={province}>
+                    {province}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </ListFiltersPanel>
 
       {/* Affiliations Table */}
       <Card className="overflow-hidden rounded-2xl border-slate-200">
@@ -296,10 +278,6 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
             </div>
           )}
 
-          <p className="border-t border-slate-200 px-4 py-3 text-[11px] text-slate-500">
-            * ข้อมูลในตารางนี้เป็นตัวอย่างเบื้องต้น – จะเชื่อมต่อฐานข้อมูล
-            MySQL ผ่าน Prisma ภายหลัง
-          </p>
         </CardContent>
       </Card>
     </div>

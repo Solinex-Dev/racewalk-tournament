@@ -10,6 +10,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
+import { joinAsOfficial } from "@/app/actions/officials";
 
 type JudgeJoinFormProps = {
   eventId: string;
@@ -23,32 +24,23 @@ type JudgeJoinFormProps = {
     | null;
 };
 
-// TODO: ภายหลังดึงจาก API — mock code → role mapping
-const MOCK_CODE_DESTINATIONS: Record<string, string> = {
-  "111111": "/timekeeper/events/{eventId}",
-};
-
-function getDestination(code: string, eventId: string): string {
-  const template = MOCK_CODE_DESTINATIONS[code];
-  if (template) return template.replace("{eventId}", eventId);
-  // default: judge workspace
-  return `/judge/events/${eventId}`;
-}
-
 export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
   const router = useRouter();
   const [code, setCode] = React.useState("");
-  const [submitting, setSubmitting] = React.useState(false);
+  const [isPending, startTransition] = React.useTransition();
+  const [error, setError] = React.useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: ภายหลังเชื่อมต่อ API verify รหัส แล้วดึง role จาก response
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      if (!eventId) return;
-      router.push(getDestination(code, eventId));
-    }, 400);
+    setError(null);
+    startTransition(async () => {
+      const result = await joinAsOfficial(eventId, code);
+      if (result.ok) {
+        router.push(result.redirect);
+      } else {
+        setError(result.error);
+      }
+    });
   };
 
   return (
@@ -68,20 +60,14 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
             {event ? (
               <>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                  Event กำลังดำเนินการอยู่
+                  Event
                 </p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">
-                  {event.name}
-                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-100">{event.name}</p>
                 <p className="text-xs text-slate-300">{event.heat_name}</p>
-                <p className="mt-1 text-[11px] text-emerald-400">
-                  สถานะ: {event.statusLabel}
-                </p>
+                <p className="mt-1 text-[11px] text-emerald-400">สถานะ: {event.statusLabel}</p>
               </>
             ) : (
-              <p className="text-xs text-slate-300">
-                ไม่พบข้อมูล Event จากรหัสที่ระบุใน URL
-              </p>
+              <p className="text-xs text-slate-300">ไม่พบข้อมูล Event จากรหัสที่ระบุใน URL</p>
             )}
           </div>
 
@@ -111,30 +97,30 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
               </div>
 
               <p className="text-center text-[11px] text-slate-400">
-                ใช้รหัสลับ 6 ตัวที่ได้รับจากผู้จัด / Admin ของ Event
-                (ไม่ใช่โค้ด join รวมของ Event)
+                ใช้รหัสลับ 6 ตัวที่ได้รับจาก Admin ของ Event
               </p>
             </div>
 
+            {error && (
+              <p className="rounded-lg bg-red-900/40 px-3 py-2 text-center text-xs text-red-300">
+                {error}
+              </p>
+            )}
+
             <Button
               type="submit"
-              disabled={submitting || code.trim().length !== 6 || !event}
+              disabled={isPending || code.trim().length !== 6 || !event}
               className="w-full rounded-xl bg-slate-100 text-sm font-medium text-slate-900 hover:bg-slate-200 disabled:bg-slate-800 disabled:text-slate-500"
             >
-              {submitting ? "กำลังตรวจสอบรหัส..." : "เข้าร่วม Event ในฐานะกรรมการ"}
+              {isPending ? "กำลังตรวจสอบรหัส..." : "เข้าร่วม Event"}
             </Button>
           </form>
 
           <p className="text-center text-[11px] text-slate-400">
-            ถ้าไม่ทราบรหัส ให้ติดต่อผู้ประสานงานสนามแข่งหรือ Admin ของ Event
-          </p>
-          <p className="text-center text-[11px] text-slate-400">
-            เทสหน้าผู้บันทึกรอบ รหัส 111111
+            ระบบจะตรวจสอบรหัสและพาคุณไปยังหน้าทำงานตามตำแหน่งที่ได้รับมอบหมาย
           </p>
         </CardContent>
       </Card>
     </div>
   );
 }
-
-

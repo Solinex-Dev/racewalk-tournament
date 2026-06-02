@@ -18,148 +18,80 @@ import {
   Medal,
   Settings,
   Building2,
+  History,
+  ShieldAlert,
   LogOut,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
+import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/partials/admin-sidebar/logo";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/partials/admin-sidebar/nav-main";
-import { NotificationsPopover } from "@/components/partials/admin-sidebar/nav-notifications";
+import {
+  canAccessResource,
+  emptyPermissions,
+  hasPermission,
+  RESOURCES,
+  type PermissionMatrix,
+  type Resource,
+} from "@/lib/permissions";
 
-const sampleNotifications = [
-  {
-    id: "1",
-    avatar: "/avatars/01.png",
-    fallback: "OM",
-    text: "ได้รับคำสั่งซื้อใหม่",
-    time: "10 นาทีที่แล้ว",
-  },
-  {
-    id: "2",
-    avatar: "/avatars/02.png",
-    fallback: "JL",
-    text: "อัปเกรดเซิร์ฟเวอร์เสร็จสิ้น",
-    time: "1 ชั่วโมงที่แล้ว",
-  },
-  {
-    id: "3",
-    avatar: "/avatars/03.png",
-    fallback: "HH",
-    text: "มีผู้ใช้ใหม่ลงทะเบียน",
-    time: "2 ชั่วโมงที่แล้ว",
-  },
-];
-
+// Flat nav — each item links straight to its page (no expandable children).
 const dashboardRoutes: Route[] = [
-  {
-    id: "overview",
-    title: "แดชบอร์ด",
-    icon: <Home className="size-4" />,
-    link: "/admin",
-  },
-  {
-    id: "events",
-    title: "กิจกรรม",
-    icon: <CalendarDays className="size-4" />,
-    link: "/admin/events",
-    subs: [
-      {
-        title: "กิจกรรมทั้งหมด",
-        link: "/admin/events",
-        icon: <CalendarDays className="size-4" />,
-      },
-      {
-        title: "กิจกรรมใหม่",
-        link: "/admin/events/new",
-        icon: <CalendarDays className="size-4" />,
-      },
-    ],
-  },
-  {
-    id: "admins",
-    title: "ผู้ดูแล",
-    icon: <UserCog className="size-4" />,
-    link: "/admin/admins",
-    subs: [
-      {
-        title: "ผู้ดูแลทั้งหมด",
-        link: "/admin/admins",
-        icon: <UserCog className="size-4" />,
-      },
-      {
-        title: "ผู้ดูแลใหม่",
-        link: "/admin/admins/new",
-        icon: <UserCog className="size-4" />,
-      },
-    ],
-  },
-  {
-    id: "judges",
-    title: "กรรมการ",
-    icon: <Users className="size-4" />,
-    link: "/admin/judges",
-    subs: [
-      {
-        title: "กรรมการทั้งหมด",
-        link: "/admin/judges",
-        icon: <Users className="size-4" />,
-      },
-      {
-        title: "กรรมการใหม่",
-        link: "/admin/judges/new",
-        icon: <Users className="size-4" />,
-      },
-    ],
-  },
-  {
-    id: "athletes",
-    title: "นักกีฬา",
-    icon: <Medal className="size-4" />,
-    link: "/admin/athletes",
-    subs: [
-      {
-        title: "นักกีฬาทั้งหมด",
-        link: "/admin/athletes",
-        icon: <Medal className="size-4" />,
-      },
-      {
-        title: "นักกีฬาใหม่",
-        link: "/admin/athletes/new",
-        icon: <Medal className="size-4" />,
-      },
-    ],
-  },
-  {
-    id: "affiliations",
-    title: "สังกัด",
-    icon: <Building2 className="size-4" />,
-    link: "/admin/affiliations",
-    subs: [
-      {
-        title: "สังกัดทั้งหมด",
-        link: "/admin/affiliations",
-        icon: <Building2 className="size-4" />,
-      },
-      {
-        title: "สังกัดใหม่",
-        link: "/admin/affiliations/new",
-        icon: <Building2 className="size-4" />,
-      },
-    ],
-  },
-  {
-    id: "settings",
-    title: "การตั้งค่า",
-    icon: <Settings className="size-4" />,
-    link: "/admin/settings",
-  },
+  { id: "overview", title: "แดชบอร์ด", icon: <Home className="size-4" />, link: "/admin" },
+  { id: "events", title: "กิจกรรม", icon: <CalendarDays className="size-4" />, link: "/admin/events" },
+  { id: "admins", title: "ผู้ดูแล", icon: <UserCog className="size-4" />, link: "/admin/admins" },
+  { id: "judges", title: "กรรมการ", icon: <Users className="size-4" />, link: "/admin/judges" },
+  { id: "athletes", title: "นักกีฬา", icon: <Medal className="size-4" />, link: "/admin/athletes" },
+  { id: "affiliations", title: "สังกัด", icon: <Building2 className="size-4" />, link: "/admin/affiliations" },
+  { id: "activity", title: "ประวัติการใช้งาน", icon: <History className="size-4" />, link: "/admin/activity" },
+  { id: "system", title: "System Monitor", icon: <ShieldAlert className="size-4" />, link: "/admin/system" },
+  { id: "settings", title: "การตั้งค่า", icon: <Settings className="size-4" />, link: "/admin/settings" },
 ];
 
-export function DashboardSidebar() {
+const RESOURCE_IDS = new Set<string>(RESOURCES);
+
+export function DashboardSidebar({
+  permissions,
+  isRoot = false,
+  displayName = "ผู้ดูแลระบบ",
+  roleLabel = "ผู้ดูแลระบบ",
+}: {
+  permissions?: PermissionMatrix;
+  isRoot?: boolean;
+  displayName?: string;
+  roleLabel?: string;
+} = {}) {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
-  const router = useRouter();
+  const [isLoggingOut, startLogout] = useTransition();
+
+  // Hide nav sections the admin cannot access.
+  const user = { isRoot, permissions: permissions ?? emptyPermissions() };
+  const routes = dashboardRoutes.filter((r) => {
+    // The system monitor is Root-admin only.
+    if (r.id === "system") return user.isRoot;
+    // The audit log sits under the "admins" permission.
+    if (r.id === "activity") return canAccessResource(user, "admins");
+    if (!RESOURCE_IDS.has(r.id)) return true;
+    // The events section is also visible to Moderator-only and Reports-only admins.
+    if (r.id === "events") {
+      return (
+        canAccessResource(user, "events") ||
+        hasPermission(user, "moderator", "view") ||
+        hasPermission(user, "reports", "view")
+      );
+    }
+    return canAccessResource(user, r.id as Resource);
+  });
+
+  const handleLogout = () => {
+    startLogout(async () => {
+      await fetch("/api/auth/logout", { method: "POST" });
+      await signOut({ callbackUrl: "/admin/login" });
+    });
+  };
 
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -190,38 +122,58 @@ export function DashboardSidebar() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
         >
-          <NotificationsPopover notifications={sampleNotifications} />
           <SidebarTrigger />
         </motion.div>
       </SidebarHeader>
       <SidebarContent className="gap-4 px-2 py-4">
-        <DashboardNavigation routes={dashboardRoutes} />
+        <DashboardNavigation routes={routes} />
       </SidebarContent>
-      <SidebarFooter className="flex flex-col gap-2 px-2 pb-3 pt-0">
-        {/* Current team / user display (no dropdown) */}
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-background px-3 py-2 text-left text-sm">
-          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-slate-100 text-foreground">
-            <Logo className="size-4" />
-          </div>
-          {!isCollapsed && (
-            <div className="flex flex-col">
-              <span className="truncate font-semibold">Mattrawoot Miadmo</span>
-              <span className="truncate text-xs text-muted-foreground">
-                Event Admin
-              </span>
+      <SidebarFooter className="px-2 pb-3 pt-0">
+        {isCollapsed ? (
+          // Collapsed rail: a centered avatar + an icon-only logout button.
+          <div className="flex flex-col items-center gap-2">
+            <div
+              className="flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-background"
+              title={`${displayName} · ${roleLabel}`}
+            >
+              <Logo className="size-4" />
             </div>
-          )}
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-100"
-          onClick={() => router.push("/admin/login")}
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          <span>ออกจากระบบ</span>
-        </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isLoggingOut}
+              onClick={handleLogout}
+              title="ออกจากระบบ"
+              aria-label="ออกจากระบบ"
+              className="size-8 rounded-lg border-slate-300 p-0 text-slate-700 hover:bg-slate-100"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-background px-3 py-2 text-left text-sm">
+              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-foreground">
+                <Logo className="size-4" />
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate font-semibold">{displayName}</span>
+                <span className="truncate text-xs text-muted-foreground">{roleLabel}</span>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isLoggingOut}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-100"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>ออกจากระบบ</span>
+            </Button>
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

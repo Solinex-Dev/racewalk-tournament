@@ -80,8 +80,8 @@ Stick to Tailwind defaults. Avoid arbitrary `p-[7px]` style values unless absolu
 
 Admin listings use a consistent table look (header row, zebra optional, per-row action menu). Replicate the existing pattern from `components/<entity>/<entity>-list.tsx`.
 
-## Bilingual UI
+## Language
 
-Strings will live in `en.json` / `th.json` once i18n is wired up. See [../architecture/i18n.md](../architecture/i18n.md).
+UI is **Thai only**. There is no language toggle and no i18n layer. Write Thai strings directly in components.
 
-For now, copy is inlined; prefer Thai for venue-facing pages, English for admin pages, but consistency takes priority over preference.
+For internal identifiers (route paths, variable names, code comments, log messages), stay in English.

@@ -52,7 +52,6 @@ These are open questions called out across the docs. Each will become an ADR whe
 - **Pending vs. confirmed red card semantics**: does a pending red card count toward DQ before head judge confirms? See [../product/domain-rules.md](../product/domain-rules.md).
 - **Bib uniqueness scope**: per event, per season, or global? See [../architecture/data-model.md](../architecture/data-model.md).
 - **Admin permission model**: RBAC enum vs. flag-based, and exact owner/manager/officer matrix. See [../features/admin-mgmt.md](../features/admin-mgmt.md).
-- **i18n library vs. custom hook**: `next-intl` vs. roll-our-own. See [../architecture/i18n.md](../architecture/i18n.md).
 - **Server actions vs. route handlers for writes**: which pattern dominates the admin CRUD vs. live workspace writes. See [../architecture/state-and-data-flow.md](../architecture/state-and-data-flow.md).
 - **Code storage**: hash secret codes (security) or store plain (admin re-display). See [../features/secret-code-access.md](../features/secret-code-access.md).
 - **Export format(s)**: CSV / XLSX / PDF; which libraries. See [../features/reporting-export.md](../features/reporting-export.md).
