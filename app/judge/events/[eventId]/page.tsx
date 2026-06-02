@@ -82,7 +82,6 @@ export default async function JudgePage(props: Props) {
           id: round.event.id,
           name: round.event.name,
           roundName: round.name,
-          heatName: round.heatName ?? "",
           distanceKm: round.distanceKm ?? "",
           lapCount: round.lapCount ?? 0,
           currentLap: round.currentLap,

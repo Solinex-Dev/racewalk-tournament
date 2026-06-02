@@ -19,6 +19,7 @@ export function JudgeCardMatrix({
   hideYellow = false,
   maxRed: maxRedProp,
   horizontal = false,
+  mobile = false,
 }: {
   yellow: number;
   red: number;
@@ -26,6 +27,7 @@ export function JudgeCardMatrix({
   hideYellow?: boolean;
   maxRed?: number;
   horizontal?: boolean;
+  mobile?: boolean;
 }) {
   const effectiveMaxRed = maxRedProp ?? MAX_RED;
 
@@ -48,17 +50,29 @@ export function JudgeCardMatrix({
 
   const redGridClass =
     horizontal || effectiveMaxRed > 4
-      ? "flex flex-row gap-1 shrink-0"
-      : "grid grid-cols-2 gap-1 shrink-0 w-12";
+      ? `flex flex-row gap-1 shrink-0${mobile ? " flex-wrap" : ""}`
+      : `grid grid-cols-2 gap-1 shrink-0${mobile ? " w-10" : " w-12"}`;
+
+  const rootClass = mobile
+    ? "flex justify-center items-center rounded-full px-1 py-0.5"
+    : "inline-flex items-center gap-2 rounded-full px-1.5 py-1";
+
+  const yellowCardClass = mobile
+    ? "flex h-4 w-4 items-center justify-center rounded-full"
+    : "flex h-5 w-5 items-center justify-center rounded-full";
+
+  const redCardClass = mobile
+    ? "flex h-4 w-3.5 items-center justify-center rounded text-xs text-white font-semibold"
+    : "flex h-6 w-5 items-center justify-center rounded-sm text-[16px] text-white font-semibold";
 
   return (
-    <div className="inline-flex items-center gap-2 rounded-full px-1.5 py-1">
+    <div className={rootClass}>
       {!hideYellow && (
-        <div className="flex flex-col gap-1">
+        <div className={`flex flex-col gap-1${mobile ? " mb-1" : ""}`}>
           {yellowCards.map((isFilled, index) => (
             <span
               key={`yellow-${index}`}
-              className={`flex h-5 w-5 items-center justify-center rounded-full ${
+              className={`${yellowCardClass} ${
                 isFilled ? "bg-amber-400" : "ring-1 ring-amber-100"
               }`}
             />
@@ -70,12 +84,12 @@ export function JudgeCardMatrix({
         {redCards.map((redCard, index) => (
           <span
             key={`red-${index}`}
-            className={`flex h-5 w-5 items-center justify-center rounded-full text-[16px] text-white font-semibold ${
+            className={`${redCardClass} ${
               redCard.isFilled
                 ? redCard.isFromThisJudge
                   ? "bg-red-500 text-slate-900 ring-1 ring-yellow-400"
                   : "bg-red-500 text-slate-900"
-                : "ring-1 ring-red-100"
+                : "ring-1 ring-slate-700"
             }`}
           >
             {redCard.isFilled && redCard.symbol ? redCard.symbol : ""}

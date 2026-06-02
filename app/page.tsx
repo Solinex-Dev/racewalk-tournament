@@ -53,7 +53,6 @@ type EventVM = {
   athleteCount: number;
   round: {
     name: string;
-    heatName: string | null;
     lapCount: number;
     currentLap: number;
     startedAtIso: string | null;
@@ -89,7 +88,6 @@ export default async function Home() {
       round: fr
         ? {
             name: fr.name,
-            heatName: fr.heatName,
             lapCount: fr.lapCount ?? 0,
             currentLap: fr.currentLap,
             startedAtIso: fr.startedAt ? fr.startedAt.toISOString() : null,
@@ -375,7 +373,6 @@ function EventCard({ event }: { event: EventVM }) {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-slate-100">{r.name}</p>
-              {r.heatName && <p className="truncate text-[11px] text-slate-500">{r.heatName}</p>}
             </div>
             {isLive && r.startedAtIso ? (
               <LiveTimer

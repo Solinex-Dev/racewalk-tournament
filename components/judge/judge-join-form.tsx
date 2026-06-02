@@ -18,7 +18,6 @@ type JudgeJoinFormProps = {
     | {
         id: string;
         name: string;
-        heat_name: string;
         statusLabel: string;
       }
     | null;
@@ -63,7 +62,6 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
                   Event
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-100">{event.name}</p>
-                <p className="text-xs text-slate-300">{event.heat_name}</p>
                 <p className="mt-1 text-[11px] text-emerald-400">สถานะ: {event.statusLabel}</p>
               </>
             ) : (

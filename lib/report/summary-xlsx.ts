@@ -165,7 +165,7 @@ export function buildRoundWorksheet(
   infoValue(
     eventStart,
     eventEnd,
-    `${ev.name} — ${round.name}${round.heatName ? ` (${round.heatName})` : ""}  •  ${ROUND_STATUS_TH[round.status]}`,
+    `${ev.name} — ${round.name}  •  ${ROUND_STATUS_TH[round.status]}`,
   );
   infoValue(chiefStart, LAST, round.chiefJudge || "—");
   ws.getRow(3).height = 16;

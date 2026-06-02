@@ -31,7 +31,6 @@ export type RoundInfo = {
   started_at?: string;
   ended_at?: string;
   note?: string;
-  heat_name?: string;
   lapCount?: number;
   currentLap?: number;
 };
@@ -349,7 +348,6 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                       <h2 className="text-lg font-semibold text-slate-900">{displayRound.name}</h2>
                       <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-600">
                         {displayRound.distance_km && <span>ระยะ {displayRound.distance_km} กม.</span>}
-                        {displayRound.heat_name && <span>• {displayRound.heat_name}</span>}
                         {displayRound.lapCount && displayRound.currentLap !== undefined && (
                           <span>
                             • Lap {displayRound.currentLap} / {displayRound.lapCount}
@@ -785,11 +783,6 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                   {displayRound.distance_km && (
                     <span className="rounded-full bg-slate-200 px-2 py-0.5 font-medium text-slate-700">
                       {displayRound.distance_km} กม.
-                    </span>
-                  )}
-                  {displayRound.heat_name && (
-                    <span className="rounded-full bg-slate-200 px-2 py-0.5 font-medium text-slate-700">
-                      {displayRound.heat_name}
                     </span>
                   )}
                   <span

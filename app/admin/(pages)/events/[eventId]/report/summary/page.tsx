@@ -89,7 +89,6 @@ function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
             <td className="k">EVENT / รายการ</td>
             <td colSpan={3}>
               {ev.name} — {round.name}
-              {round.heatName ? ` (${round.heatName})` : ""}
             </td>
             <td className="k">STATUS</td>
             <td>

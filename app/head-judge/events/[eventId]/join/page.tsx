@@ -33,7 +33,6 @@ export default async function HeadJudgeJoinPage(props: Props) {
     ? {
         id: event.id,
         name: event.name,
-        heat_name: event.rounds[0]?.heatName ?? event.rounds[0]?.name ?? "",
         statusLabel: STATUS_LABEL[event.status] ?? event.status,
       }
     : null;

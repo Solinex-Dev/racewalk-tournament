@@ -293,7 +293,6 @@ export default async function ModeratorPage(props: Props) {
         started_at: r.startedAt?.toISOString(),
         ended_at: r.endedAt?.toISOString(),
         note: r.note ?? undefined,
-        heat_name: r.heatName ?? undefined,
         lapCount: r.lapCount ?? undefined,
         currentLap: r.currentLap,
       },

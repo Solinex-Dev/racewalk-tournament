@@ -14,7 +14,7 @@ import { joinAsOfficial } from "@/app/actions/officials";
 
 type Props = {
   eventId: string;
-  event: { id: string; name: string; heat_name: string; statusLabel: string } | null;
+  event: { id: string; name: string; statusLabel: string } | null;
 };
 
 export function EventLoggerJoinForm({ eventId, event }: Props) {
@@ -49,7 +49,6 @@ export function EventLoggerJoinForm({ eventId, event }: Props) {
               <>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Event</p>
                 <p className="mt-1 text-sm font-semibold text-slate-100">{event.name}</p>
-                <p className="text-xs text-slate-300">{event.heat_name}</p>
                 <p className="mt-1 text-[11px] text-emerald-400">สถานะ: {event.statusLabel}</p>
               </>
             ) : (

@@ -114,7 +114,6 @@ export default async function PrintReportPage(props: Props) {
           <div className="mt-2 text-sm text-slate-600">
             สถานะ: {ROUND_STATUS_LABEL[round.status] ?? round.status}
             {round.distanceKm && ` • ระยะ ${round.distanceKm} กม.`}
-            {round.heatName && ` • ${round.heatName}`}
           </div>
           {round.startedAt && (
             <p className="mt-1 text-xs text-slate-600">

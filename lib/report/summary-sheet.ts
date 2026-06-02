@@ -53,7 +53,6 @@ export type AthleteRow = {
 export type RoundSummary = {
   id: string;
   name: string;
-  heatName: string | null;
   status: "SCHEDULED" | "ONGOING" | "FINISHED";
   distanceKm: string | null;
   startTime: string | null; // "HH:MM"
@@ -231,7 +230,6 @@ export async function loadEventSummary(
     return {
       id: r.id,
       name: r.name,
-      heatName: r.heatName,
       status: r.status,
       distanceKm: r.distanceKm,
       // Show the ACTUAL race start (the moderator's editable source of truth);

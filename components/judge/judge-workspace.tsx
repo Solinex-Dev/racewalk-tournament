@@ -22,7 +22,6 @@ export type JudgeEventInfo = {
   id: string;
   name: string;
   roundName: string;
-  heatName: string;
   distanceKm: string;
   lapCount: number;
   currentLap: number;
@@ -95,7 +94,7 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
                 <p className="mt-1 text-sm text-slate-300">
                   กิจกรรม:{" "}
                   <span className="font-semibold text-slate-100">{event.name}</span>{" "}
-                  – {event.heatName || event.roundName}
+                  – {event.roundName}
                 </p>
                 <p className="text-sm text-slate-400">
                   ระยะ {event.distanceKm} กม. • Lap {event.currentLap} / {event.lapCount}
