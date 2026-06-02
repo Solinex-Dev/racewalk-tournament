@@ -146,13 +146,15 @@ export default async function AdminDashboardPage() {
               {ongoingEvents.map((ev) => (
                 <div
                   key={ev.id}
-                  className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"
+                  className="flex h-full flex-col rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"
                 >
-                  <div className="flex flex-col gap-2 text-sm text-slate-900">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold">{ev.name}</p>
+                  <div className="flex flex-1 flex-col gap-2 text-sm text-slate-900">
+                    <div className="flex min-h-14 items-start justify-between gap-2">
+                      <p className="line-clamp-2 font-semibold leading-snug">
+                        {ev.name}
+                      </p>
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium text-white ${STATUS_BADGE_CLASS[ev.status]}`}
+                        className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium text-nowrap text-white ${STATUS_BADGE_CLASS[ev.status]}`}
                       >
                         {STATUS_LABEL[ev.status]}
                       </span>
@@ -161,7 +163,7 @@ export default async function AdminDashboardPage() {
                       วันที่แข่งขัน <span className="font-medium">{ev.date}</span> ที่{" "}
                       <span className="font-medium">{ev.location}</span>
                     </p>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-700">
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-700">
                       <div className="rounded-xl bg-white/60 px-3 py-2">
                         <p className="text-[10px] font-medium uppercase text-slate-500">
                           นักกีฬาในกิจกรรม
@@ -175,7 +177,7 @@ export default async function AdminDashboardPage() {
                         <p className="mt-1 text-sm font-semibold">{ev.judgesCount}</p>
                       </div>
                     </div>
-                    <div className="mt-3 flex gap-2 text-xs">
+                    <div className="mt-auto flex gap-2 pt-3 text-xs">
                       {canModerate && (
                         <Link
                           href={`/admin/events/${ev.id}/moderator`}
