@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { JudgeCardMatrix } from "@/components/judge/card-matrix";
+import { JudgeCardMatrix, type RedCardDetail } from "@/components/judge/card-matrix";
 import { AutoRefresh } from "@/components/common/auto-refresh";
 import { LiveTimer } from "@/components/common/live-timer";
 import { prisma } from "@/lib/prisma";
@@ -111,6 +111,7 @@ export default async function EventLivePage(props: Readonly<Props>) {
     country: string;
     yellowCards: number;
     redCards: number;
+    redCardDetails: RedCardDetail[];
     position: number;
     totalTime: string;
     status: "OK" | "DQ" | "DNF";
@@ -127,12 +128,17 @@ export default async function EventLivePage(props: Readonly<Props>) {
       const yellow = currentRound.cards.filter(
         (c) => c.athleteId === ra.athleteId && c.color === "YELLOW",
       ).length;
-      const red = currentRound.cards.filter(
+      const redCardsForMe = currentRound.cards.filter(
         (c) =>
           c.athleteId === ra.athleteId &&
           c.color === "RED" &&
           c.state === "CONFIRMED",
-      ).length;
+      );
+      const red = redCardsForMe.length;
+      // CardSymbol enum → glyph: BENT_KNEE = ">" (เข่างอ), LIFTED_FOOT = "~" (ยกเท้า)
+      const redCardDetails: RedCardDetail[] = redCardsForMe.map((c) => ({
+        symbol: c.symbol === "BENT_KNEE" ? ">" : "~",
+      }));
       const lapsForMe = currentRound.lapTimes.filter(
         (l) => l.athleteId === ra.athleteId,
       );
@@ -149,6 +155,7 @@ export default async function EventLivePage(props: Readonly<Props>) {
         country: ra.athlete.country,
         yellowCards: yellow,
         redCards: red,
+        redCardDetails,
         position: ra.position ?? 0,
         totalTime: lastTimeMs === undefined ? "-" : formatMs(lastTimeMs),
         status: ra.status,
@@ -392,6 +399,7 @@ export default async function EventLivePage(props: Readonly<Props>) {
                               <JudgeCardMatrix
                                 yellow={athlete.yellowCards}
                                 red={athlete.redCards}
+                                redDetails={athlete.redCardDetails}
                                 hideYellow={true}
                                 maxRed={4}
                                 horizontal={true}
@@ -404,6 +412,7 @@ export default async function EventLivePage(props: Readonly<Props>) {
                               <JudgeCardMatrix
                                 yellow={athlete.yellowCards}
                                 red={athlete.redCards}
+                                redDetails={athlete.redCardDetails}
                                 hideYellow={true}
                                 maxRed={4}
                                 horizontal={true}
