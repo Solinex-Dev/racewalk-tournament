@@ -40,7 +40,7 @@ function thaiDate(d: Date): string {
 }
 
 function safeSheetName(name: string, used: Set<string>): string {
-  const base = name.replace(/[[\]*?/\\:]/g, " ").trim().slice(0, 28) || "Round";
+  const base = name.replaceAll(/[[\]*?/\\:]/g, " ").trim().slice(0, 28) || "Round";
   let candidate = base;
   let i = 2;
   while (used.has(candidate.toLowerCase())) {
@@ -245,7 +245,8 @@ export function buildRoundWorksheet(
     ws.getRow(r).height = 16;
     const isDq = a.status === "DQ";
     const isDnf = a.status === "DNF";
-    const ink = isDq ? COLOR.red : isDnf ? COLOR.amber : COLOR.ink;
+    const nonDqInk = isDnf ? COLOR.amber : COLOR.ink;
+    const ink = isDq ? COLOR.red : nonDqInk;
 
     const cell = (col: number, value: ExcelJS.CellValue, align: "left" | "center" = "center") => {
       const cc = ws.getCell(r, col);
@@ -262,7 +263,7 @@ export function buildRoundWorksheet(
 
     for (let j = 0; j < J; j++) {
       const start = jcol(j);
-      const m = judges[j] ? a.marks[judges[j]!.id] : undefined;
+      const m = judges[j] ? a.marks[judges[j].id] : undefined;
       cell(start, m?.yellowLifted ? "✓" : "");
       cell(start + 1, m?.yellowBent ? "✓" : "");
       const rc = cell(start + 2, "");
@@ -326,7 +327,7 @@ export function buildRoundWorksheet(
     const lift = jd ? round.athletes.filter((a) => a.marks[jd.id]?.yellowLifted).length : 0;
     const bent = jd ? round.athletes.filter((a) => a.marks[jd.id]?.yellowBent).length : 0;
     const rc = jd
-      ? round.athletes.filter((a) => a.marks[jd.id]?.red && a.marks[jd.id]!.red!.state !== "OVERRIDDEN").length
+      ? round.athletes.filter((a) => a.marks[jd.id]?.red && a.marks[jd.id].red!.state !== "OVERRIDDEN").length
       : 0;
     totCell(jcol(j), lift || "");
     totCell(jcol(j) + 1, bent || "");

@@ -22,9 +22,9 @@ type Notification = {
 
 export function NotificationsPopover({
   notifications,
-}: {
+}: Readonly<{
   notifications: Notification[];
-}) {
+}>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 
 type Props = { params: Promise<{ affiliationId: string }> };
 
-export default async function AffiliationDetailPage(props: Props) {
+export default async function AffiliationDetailPage(props: Readonly<Props>) {
   const { affiliationId } = await props.params;
 
   const [aff, judges] = await Promise.all([

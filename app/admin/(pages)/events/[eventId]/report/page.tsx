@@ -31,7 +31,7 @@ const ROUND_STATUS_LABEL: Record<string, string> = {
   FINISHED: "เสร็จสิ้น",
 };
 
-export default async function EventReportPage(props: Props) {
+export default async function EventReportPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
   const me = await getCurrentAdmin();

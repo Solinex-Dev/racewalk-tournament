@@ -286,7 +286,7 @@ export function ModeratorEditDialog({
   onConfirm,
   isPending = false,
   formatMs,
-}: ModeratorEditDialogProps) {
+}: Readonly<ModeratorEditDialogProps>) {
   const [reason, setReason] = React.useState("");
   const [timeInput, setTimeInput] = React.useState("");
   const [symbolValue, setSymbolValue] =

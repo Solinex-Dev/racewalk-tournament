@@ -184,13 +184,13 @@ const OPEN_COUNTRY = ["THA", "THA", "THA", "THA", "THA", "THA", "THA", "VNM", "M
 const OPEN_AFF: (string | null)[] = ["aff-bkk", "aff-army", "aff-ku", "aff-cm", "aff-kk", "aff-hy", null];
 
 function genOpenAthlete(i: number): AthleteSeed {
-  const country = OPEN_COUNTRY[i % OPEN_COUNTRY.length]!;
+  const country = OPEN_COUNTRY[i % OPEN_COUNTRY.length];
   const isThai = country === "THA";
   return {
     id: `ath-open${String(i + 1).padStart(2, "0")}`,
     name: `${OPEN_FIRST[i % OPEN_FIRST.length]} ${OPEN_LAST[Math.floor(i / OPEN_FIRST.length) % OPEN_LAST.length]}`,
     country,
-    province: isThai ? OPEN_PROVINCE[i % OPEN_PROVINCE.length]! : null,
+    province: isThai ? OPEN_PROVINCE[i % OPEN_PROVINCE.length] : null,
     club: null,
     note: null,
     affiliationId: isThai ? OPEN_AFF[i % OPEN_AFF.length] ?? null : null,
@@ -200,7 +200,7 @@ function genOpenAthlete(i: number): AthleteSeed {
 const OPEN_ATHLETES: AthleteSeed[] = Array.from({ length: 53 }, (_, i) => genOpenAthlete(i));
 const MASS_IDS = OPEN_ATHLETES.slice(0, 50).map((a) => a.id);
 const DUEL_IDS = OPEN_ATHLETES.slice(50, 52).map((a) => a.id);
-const SOLO_ID = OPEN_ATHLETES[52]!.id;
+const SOLO_ID = OPEN_ATHLETES[52].id;
 
 // Filler athlete pools — reused across heats so every round has a realistic
 // 18–28-strong field. Distinct surname set from the open pool so names don't
@@ -209,13 +209,13 @@ const FEMALE_FIRST = ["สุภาพร", "กาญจนา", "นภัส�
 const FILL_LAST = ["พลแสน", "ดงทอง", "นาเวศน์", "บุญมาก", "ทองแท้", "แดนไกล", "ภูผา", "สายลม", "คงทน", "รุ่งเรือง", "เกียรติยศ", "ชนะชัย", "เทพนิมิต", "มงคล"];
 
 function genFillerAthlete(prefix: string, i: number, firsts: string[]): AthleteSeed {
-  const country = OPEN_COUNTRY[i % OPEN_COUNTRY.length]!;
+  const country = OPEN_COUNTRY[i % OPEN_COUNTRY.length];
   const isThai = country === "THA";
   return {
     id: `${prefix}${String(i + 1).padStart(2, "0")}`,
     name: `${firsts[i % firsts.length]} ${FILL_LAST[Math.floor(i / firsts.length) % FILL_LAST.length]}`,
     country,
-    province: isThai ? OPEN_PROVINCE[i % OPEN_PROVINCE.length]! : null,
+    province: isThai ? OPEN_PROVINCE[i % OPEN_PROVINCE.length] : null,
     club: null,
     note: null,
     affiliationId: isThai ? OPEN_AFF[i % OPEN_AFF.length] ?? null : null,
@@ -313,7 +313,7 @@ function secretCodeFor(roundId: string, judgeId: string): string {
   let h = 2166136261 >>> 0;
   const s = `${roundId}:${judgeId}`;
   for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
+    h ^= s.codePointAt(i) ?? 0;
     h = Math.imul(h, 16777619) >>> 0;
   }
   let out = "";
@@ -334,7 +334,7 @@ const OPEN_MASS_ZONES = ["jud-01", "jud-02", "jud-03", "jud-04", "jud-08", "jud-
 
 /** Sparse, deterministic cards for a mass-field finisher (never ≥4 reds → no DQ). */
 function genSparseCards(i: number, zones: string[], lapCount: number): CardSpec[] | undefined {
-  const z = (k: number) => zones[k % zones.length]!;
+  const z = (k: number) => zones[k % zones.length];
   const maxLap = Math.max(1, lapCount - 1);
   if (i === 0) return undefined; // clean leader
   if (i % 11 === 0) {
@@ -374,10 +374,10 @@ function genMassScenarios(opts: {
       out.push({
         athleteId: id, bib, outcome: "DQ", laps, paceSec: basePace + 34 + (i % 8),
         cards: [
-          R("K", zones[0]!, laps - 3, "CONFIRMED"),
-          R("F", zones[1]!, laps - 2, "CONFIRMED"),
-          R("K", zones[2]!, laps - 1, "CONFIRMED"),
-          R("F", zones[3]!, laps, "CONFIRMED"),
+          R("K", zones[0], laps - 3, "CONFIRMED"),
+          R("F", zones[1], laps - 2, "CONFIRMED"),
+          R("K", zones[2], laps - 1, "CONFIRMED"),
+          R("F", zones[3], laps, "CONFIRMED"),
         ],
       });
       return;
@@ -401,7 +401,7 @@ function genMassScenarios(opts: {
 /** Cards for a mid-race (ONGOING) filler — incl. the occasional PENDING red. */
 function ongoingFillerCards(i: number, zones: string[], laps: number): CardSpec[] | undefined {
   if (laps < 1) return undefined;
-  const z = (k: number) => zones[k % zones.length]!;
+  const z = (k: number) => zones[k % zones.length];
   const at = (n: number) => Math.max(1, Math.min(laps, n));
   if (i % 9 === 0) return [Y("K", z(0), at(1)), R("F", z(1), at(laps), "PENDING")]; // red awaiting head judge
   if (i % 4 === 0) return [Y("F", z(i), at(laps))];
@@ -433,10 +433,10 @@ function genFillers(opts: {
   const dq = new Set(opts.dqAt ?? []);
   const dnf = new Set(opts.dnfAt ?? []);
   const dqCards = (laps: number): CardSpec[] => [
-    R("K", zones[0]!, Math.max(1, laps - 3), "CONFIRMED"),
-    R("F", zones[1]!, Math.max(1, laps - 2), "CONFIRMED"),
-    R("K", zones[2]!, Math.max(1, laps - 1), "CONFIRMED"),
-    R("F", zones[3]!, laps, "CONFIRMED"),
+    R("K", zones[0], Math.max(1, laps - 3), "CONFIRMED"),
+    R("F", zones[1], Math.max(1, laps - 2), "CONFIRMED"),
+    R("K", zones[2], Math.max(1, laps - 1), "CONFIRMED"),
+    R("F", zones[3], laps, "CONFIRMED"),
   ];
   const out: AthleteScenario[] = [];
   let pos = startPos;
@@ -697,8 +697,8 @@ const ROUNDS: RoundConfig[] = [
     note: "แมตช์ตัวต่อตัว 2 คน (ทดสอบสนามขนาดเล็กสุด)",
     officials: { zones: ["jud-01", "jud-02", "jud-03", "jud-04"], head: "jud-05", logger: "jud-06" },
     scenarios: [
-      { athleteId: DUEL_IDS[0]!, bib: "201", outcome: "FINISH", position: 1, laps: 5, paceSec: 254, cards: [Y("F", "jud-02", 3)] },
-      { athleteId: DUEL_IDS[1]!, bib: "202", outcome: "FINISH", position: 2, laps: 5, paceSec: 259,
+      { athleteId: DUEL_IDS[0], bib: "201", outcome: "FINISH", position: 1, laps: 5, paceSec: 254, cards: [Y("F", "jud-02", 3)] },
+      { athleteId: DUEL_IDS[1], bib: "202", outcome: "FINISH", position: 2, laps: 5, paceSec: 259,
         cards: [Y("K", "jud-01", 2), R("F", "jud-03", 4, "CONFIRMED")] },
     ],
   },
@@ -752,11 +752,13 @@ function buildAll() {
     rc.officials.zones.forEach((jid, i) => {
       officials.push({
         roundId: rc.id, judgeId: jid, position: "JUDGE",
-        secretCode: secretCodeFor(rc.id, jid), zone: `Zone ${String.fromCharCode(65 + i)}`,
+        secretCode: secretCodeFor(rc.id, jid), zone: `Zone ${String.fromCodePoint(65 + i)}`,
       });
     });
-    officials.push({ roundId: rc.id, judgeId: rc.officials.head, position: "HEAD_JUDGE", secretCode: secretCodeFor(rc.id, rc.officials.head), zone: null });
-    officials.push({ roundId: rc.id, judgeId: rc.officials.logger, position: "EVENT_LOGGER", secretCode: secretCodeFor(rc.id, rc.officials.logger), zone: null });
+    officials.push(
+      { roundId: rc.id, judgeId: rc.officials.head, position: "HEAD_JUDGE", secretCode: secretCodeFor(rc.id, rc.officials.head), zone: null },
+      { roundId: rc.id, judgeId: rc.officials.logger, position: "EVENT_LOGGER", secretCode: secretCodeFor(rc.id, rc.officials.logger), zone: null },
+    );
 
     // Round start/end logs (only when the race has actually run)
     if (rc.startedAt) {
@@ -865,7 +867,7 @@ function buildAll() {
             `[seed] ${rc.id}/${sc.athleteId} is DQ but has ${distinctJudges.size} confirmed reds (need 4 distinct judges)`,
           );
         }
-        const fourthAt = confirmedRedDecisions.map((d) => d.at).sort((a, b) => a - b)[3]!;
+        const fourthAt = confirmedRedDecisions.map((d) => d.at).sort((a, b) => a - b)[3];
         logs.push({
           id: `log-${rc.id}-${sc.athleteId}-dq`, roundId: rc.id, timestamp: new Date(fourthAt),
           actorId: rc.officials.head, actorName: headName, actorRole: "HEAD_JUDGE",
@@ -877,11 +879,12 @@ function buildAll() {
       // DNF log
       if (sc.outcome === "DNF" && sc.laps > 0) {
         const atMs = startMs + lapCum[sc.laps] + seconds(20);
+        const dnfReasonSuffix = sc.reason ? ` — ${sc.reason}` : "";
         logs.push({
           id: `log-${rc.id}-${sc.athleteId}-dnf`, roundId: rc.id, timestamp: new Date(atMs),
           actorId: "system", actorName: "Moderator", actorRole: "MODERATOR",
           actionType: "athlete_dnf", targetAthleteId: sc.athleteId, targetBib: sc.bib,
-          details: `ไม่จบการแข่งขัน (DNF, รอบที่ ${sc.laps})${sc.reason ? ` — ${sc.reason}` : ""}`,
+          details: `ไม่จบการแข่งขัน (DNF, รอบที่ ${sc.laps})${dnfReasonSuffix}`,
         });
       }
     }
@@ -1087,7 +1090,8 @@ async function main() {
     if (rc.status === "FINISHED") continue;
     console.log(`  ${rc.id} — ${rc.name} (${rc.status})`);
     for (const ro of GEN.officials.filter((o) => o.roundId === rc.id)) {
-      console.log(`      ${ro.position.padEnd(13)} ${judgeName(ro.judgeId).padEnd(22)} ${ro.secretCode}${ro.zone ? `  ${ro.zone}` : ""}`);
+      const zoneSuffix = ro.zone ? `  ${ro.zone}` : "";
+      console.log(`      ${ro.position.padEnd(13)} ${judgeName(ro.judgeId).padEnd(22)} ${ro.secretCode}${zoneSuffix}`);
     }
   }
 

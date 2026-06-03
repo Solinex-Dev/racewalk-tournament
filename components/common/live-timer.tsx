@@ -19,11 +19,11 @@ export function LiveTimer({
   startedAt,
   endedAt,
   className,
-}: {
+}: Readonly<{
   startedAt: string;
   endedAt: string | null;
   className?: string;
-}) {
+}>) {
   const start = new Date(startedAt).getTime();
   const fixedEnd = endedAt ? new Date(endedAt).getTime() : null;
 

@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
+type EventSyncResult = "ONGOING" | "FINISHED" | null;
+
 /**
  * Keep Event.status in sync with the aggregate state of its rounds:
  *   - any round ONGOING            → Event ONGOING
@@ -9,7 +11,7 @@ import { prisma } from "@/lib/prisma";
  */
 export async function syncEventStatus(
   eventId: string,
-): Promise<"ONGOING" | "FINISHED" | null> {
+): Promise<EventSyncResult> {
   const rounds = await prisma.round.findMany({
     where: { eventId, deletedAt: null },
     select: { status: true },
@@ -19,7 +21,7 @@ export async function syncEventStatus(
   const anyOngoing = rounds.some((r) => r.status === "ONGOING");
   const allFinished = rounds.every((r) => r.status === "FINISHED");
 
-  let next: "ONGOING" | "FINISHED" | null = null;
+  let next: EventSyncResult = null;
   if (anyOngoing) next = "ONGOING";
   else if (allFinished) next = "FINISHED";
 

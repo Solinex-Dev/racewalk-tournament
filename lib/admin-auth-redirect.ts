@@ -9,7 +9,9 @@ export function getSafeAdminRedirect(
     return fallbackPath;
   }
   const trimmed = rawCallback.trim();
-  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
+  // Reject protocol-relative ("//host") and backslash tricks ("/\\host", which
+  // browsers normalize to "//host") — both resolve to an external origin.
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//") || trimmed.includes("\\")) {
     return fallbackPath;
   }
   if (trimmed === adminLoginPath || trimmed.startsWith(`${adminLoginPath}/`)) {

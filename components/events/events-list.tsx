@@ -21,7 +21,6 @@ import {
   MoreHorizontal,
   Pencil,
   FileText,
-  Radio,
   MonitorDot,
 } from "lucide-react";
 import { ListFiltersPanel } from "@/components/admin/list-filters-panel";
@@ -68,10 +67,10 @@ const STATUS_LABEL: Record<AdminEvent["status"], string> = {
 function ActionIconTooltip({
   label,
   children,
-}: {
+}: Readonly<{
   label: string;
   children: ReactNode;
-}) {
+}>) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
@@ -87,7 +86,7 @@ export function EventsList({
   canModerate = false,
   canViewEvents = false,
   canViewReports = false,
-}: EventsListProps) {
+}: Readonly<EventsListProps>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState<string>("all");
@@ -116,8 +115,8 @@ export function EventsList({
   // Extract unique values for filters
   const locations = useMemo(() => {
     const uniqueLocations = Array.from(
-      new Set(events.map((e) => e.location).filter(Boolean) as string[])
-    ).sort();
+      new Set(events.map((e) => e.location).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueLocations;
   }, [events]);
 
@@ -203,7 +202,7 @@ export function EventsList({
 
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-slate-600">
+                    <label htmlFor="events-status-filter" className="text-[11px] font-medium text-slate-600">
                       สถานะ
                     </label>
                     <Select
@@ -212,7 +211,7 @@ export function EventsList({
                         handleFilterChange(setStatusFilter, value)
                       }
                     >
-                      <SelectTrigger className="h-8 rounded-lg text-sm">
+                      <SelectTrigger id="events-status-filter" className="h-8 rounded-lg text-sm">
                         <SelectValue placeholder="ทั้งหมด" />
                       </SelectTrigger>
                       <SelectContent>
@@ -226,7 +225,7 @@ export function EventsList({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-slate-600">
+                    <label htmlFor="events-location-filter" className="text-[11px] font-medium text-slate-600">
                       สถานที่
                     </label>
                     <Select
@@ -235,7 +234,7 @@ export function EventsList({
                         handleFilterChange(setLocationFilter, value)
                       }
                     >
-                      <SelectTrigger className="h-8 rounded-lg text-sm">
+                      <SelectTrigger id="events-location-filter" className="h-8 rounded-lg text-sm">
                         <SelectValue placeholder="ทั้งหมด" />
                       </SelectTrigger>
                       <SelectContent>
@@ -376,7 +375,7 @@ export function EventsList({
                           {event.status === "ongoing" && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-red-700">
                               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-                              LIVE
+                              {"LIVE"}
                             </span>
                           )}
                         </div>

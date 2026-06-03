@@ -84,11 +84,11 @@ function formatMs(ms: number): string {
 }
 
 function parseTimeString(str: string): number | null {
-  const parts = str.trim().split(":").map((p) => Number(p));
+  const parts = str.trim().split(":").map(Number);
   if (parts.some((p) => Number.isNaN(p))) return null;
-  if (parts.length === 1) return parts[0]! * 1000;
-  if (parts.length === 2) return (parts[0]! * 60 + parts[1]!) * 1000;
-  if (parts.length === 3) return (parts[0]! * 3600 + parts[1]! * 60 + parts[2]!) * 1000;
+  if (parts.length === 1) return parts[0] * 1000;
+  if (parts.length === 2) return (parts[0] * 60 + parts[1]) * 1000;
+  if (parts.length === 3) return (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000;
   return null;
 }
 
@@ -130,7 +130,7 @@ function redStateBadge(state: EditCard["state"]): { label: string; cls: string }
   }
 }
 
-export function ModeratorEditView(props: ModeratorEditViewProps) {
+export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
   const [dialogPayload, setDialogPayload] =
@@ -498,7 +498,12 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {props.athletes.map((a) => (
+                    {props.athletes.map((a) => {
+                      const nonDqStatusClass =
+                        a.status === "DNF"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-emerald-100 text-emerald-700";
+                      return (
                       <tr key={a.id} className="hover:bg-slate-50/50">
                         <td className="px-4 py-2 font-mono font-semibold">{a.bib}</td>
                         <td className="px-4 py-2">{a.name}</td>
@@ -507,9 +512,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                             className={`rounded-full px-2 py-0.5 font-medium ${
                               a.status === "DQ"
                                 ? "bg-red-100 text-red-700"
-                                : a.status === "DNF"
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-emerald-100 text-emerald-700"
+                                : nonDqStatusClass
                             }`}
                           >
                             {a.status}
@@ -538,7 +541,8 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -630,6 +634,12 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                                 const st = redStateBadge(c.state);
                                 const isPendingRed =
                                   c.color === "RED" && c.state === "PENDING";
+                                const redBorderClass = isOverriddenRed
+                                  ? "border-slate-200 bg-slate-50/80"
+                                  : "border-red-200 bg-red-50/60";
+                                const redSymbolBgClass = isOverriddenRed
+                                  ? "bg-slate-400"
+                                  : "bg-red-500";
                                 return (
                                   <div
                                     key={c.id}
@@ -637,9 +647,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                                       "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2",
                                       isYellow
                                         ? "border-amber-200 bg-amber-50/60"
-                                        : isOverriddenRed
-                                          ? "border-slate-200 bg-slate-50/80"
-                                          : "border-red-200 bg-red-50/60",
+                                        : redBorderClass,
                                     )}
                                   >
                                     <div className="flex items-center gap-2.5">
@@ -648,9 +656,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                                           "flex h-7 w-7 items-center justify-center rounded-full font-mono text-sm font-bold text-white",
                                           isYellow
                                             ? "bg-amber-400"
-                                            : isOverriddenRed
-                                              ? "bg-slate-400"
-                                              : "bg-red-500",
+                                            : redSymbolBgClass,
                                         )}
                                       >
                                         {SYMBOL_CHAR[c.symbol]}

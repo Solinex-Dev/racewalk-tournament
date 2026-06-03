@@ -35,13 +35,13 @@ export function RoundInfoDialog({
   onOpenChange,
   onConfirm,
   isPending = false,
-}: {
+}: Readonly<{
   roundInfo: EditRoundInfo | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (data: RoundInfoValue) => void;
   isPending?: boolean;
-}) {
+}>) {
   const [name, setName] = React.useState("");
   const [distanceKm, setDistanceKm] = React.useState("");
   const [lapCount, setLapCount] = React.useState("");
@@ -53,7 +53,7 @@ export function RoundInfoDialog({
     if (!open || !roundInfo) return;
     setName(roundInfo.name);
     setDistanceKm(roundInfo.distanceKm);
-    setLapCount(roundInfo.lapCount != null ? String(roundInfo.lapCount) : "");
+    setLapCount(roundInfo.lapCount == null ? "" : String(roundInfo.lapCount));
     setStartedAt(toDatetimeLocal(roundInfo.startedAt));
     setEndedAt(toDatetimeLocal(roundInfo.endedAt));
     setReason("");

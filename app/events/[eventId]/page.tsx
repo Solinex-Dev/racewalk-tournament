@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { JudgeCardMatrix } from "@/components/judge/card-matrix";
+import { JudgeCardMatrix, type RedCardDetail } from "@/components/judge/card-matrix";
 import { AutoRefresh } from "@/components/common/auto-refresh";
 import { LiveTimer } from "@/components/common/live-timer";
-import { LastUpdated } from "@/components/common/last-updated";
 import { prisma } from "@/lib/prisma";
 import { compareAthletesByFinish } from "@/lib/athlete-sort";
 import { lapsCompleted } from "@/lib/lap-progress";
@@ -54,7 +53,7 @@ const ROUND_STATUS_LABEL: Record<string, string> = {
   finished: "เสร็จสิ้น",
 };
 
-export default async function EventLivePage(props: Props) {
+export default async function EventLivePage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
   const event = await prisma.event.findUnique({
@@ -90,8 +89,8 @@ export default async function EventLivePage(props: Props) {
 
   // Pick current round: ONGOING, else last FINISHED, else first SCHEDULED
   const currentRound =
-    event.rounds.find((r) => r.status === "ONGOING") ||
-    [...event.rounds].reverse().find((r) => r.status === "FINISHED") ||
+    event.rounds.find((r) => r.status === "ONGOING") ??
+    [...event.rounds].reverse().find((r) => r.status === "FINISHED") ??
     event.rounds[0];
 
   const eventStatus = event.status.toLowerCase();
@@ -112,6 +111,7 @@ export default async function EventLivePage(props: Props) {
     country: string;
     yellowCards: number;
     redCards: number;
+    redCardDetails: RedCardDetail[];
     position: number;
     totalTime: string;
     status: "OK" | "DQ" | "DNF";
@@ -128,12 +128,17 @@ export default async function EventLivePage(props: Props) {
       const yellow = currentRound.cards.filter(
         (c) => c.athleteId === ra.athleteId && c.color === "YELLOW",
       ).length;
-      const red = currentRound.cards.filter(
+      const redCardsForMe = currentRound.cards.filter(
         (c) =>
           c.athleteId === ra.athleteId &&
           c.color === "RED" &&
           c.state === "CONFIRMED",
-      ).length;
+      );
+      const red = redCardsForMe.length;
+      // CardSymbol enum → glyph: BENT_KNEE = ">" (เข่างอ), LIFTED_FOOT = "~" (ยกเท้า)
+      const redCardDetails: RedCardDetail[] = redCardsForMe.map((c) => ({
+        symbol: c.symbol === "BENT_KNEE" ? ">" : "~",
+      }));
       const lapsForMe = currentRound.lapTimes.filter(
         (l) => l.athleteId === ra.athleteId,
       );
@@ -141,7 +146,7 @@ export default async function EventLivePage(props: Props) {
         (f) => f.athleteId === ra.athleteId,
       );
       const lastTimeMs =
-        finish?.timeMs ?? lapsForMe[lapsForMe.length - 1]?.timeMs;
+        finish?.timeMs ?? lapsForMe.at(-1)?.timeMs;
       return {
         bib: ra.bib,
         athleteId: ra.athleteId,
@@ -150,8 +155,9 @@ export default async function EventLivePage(props: Props) {
         country: ra.athlete.country,
         yellowCards: yellow,
         redCards: red,
+        redCardDetails,
         position: ra.position ?? 0,
-        totalTime: lastTimeMs !== undefined ? formatMs(lastTimeMs) : "-",
+        totalTime: lastTimeMs === undefined ? "-" : formatMs(lastTimeMs),
         status: ra.status,
         currentLap: lapsCompleted(lapsForMe.length, !!finish, lapCount),
         isFinished: !!finish,
@@ -178,8 +184,6 @@ export default async function EventLivePage(props: Props) {
     }
     return null;
   })();
-
-  const renderedAt = new Date().toISOString();
 
   return (
     <main className="h-screen overflow-hidden bg-slate-950 text-slate-100">
@@ -395,6 +399,7 @@ export default async function EventLivePage(props: Props) {
                               <JudgeCardMatrix
                                 yellow={athlete.yellowCards}
                                 red={athlete.redCards}
+                                redDetails={athlete.redCardDetails}
                                 hideYellow={true}
                                 maxRed={4}
                                 horizontal={true}
@@ -407,6 +412,7 @@ export default async function EventLivePage(props: Props) {
                               <JudgeCardMatrix
                                 yellow={athlete.yellowCards}
                                 red={athlete.redCards}
+                                redDetails={athlete.redCardDetails}
                                 hideYellow={true}
                                 maxRed={4}
                                 horizontal={true}

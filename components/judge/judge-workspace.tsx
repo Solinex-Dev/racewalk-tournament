@@ -34,7 +34,7 @@ type JudgeWorkspaceProps = {
   athletes: JudgeAthleteRow[];
 };
 
-export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWorkspaceProps) {
+export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly<JudgeWorkspaceProps>) {
   const router = useRouter();
   const [selectedBib, setSelectedBib] = React.useState<string | null>(null);
   const [isPending, startTransition] = React.useTransition();
@@ -156,6 +156,9 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
                       athletes.map((athlete) => {
                         const isDQ = athlete.status === "DQ";
                         const isSelected = selectedBib === athlete.bib;
+                        const unselectedRowClass = isDQ
+                          ? "bg-slate-800/30 opacity-60 hover:bg-slate-800/50"
+                          : "hover:bg-slate-800/50";
                         return (
                           <tr
                             key={athlete.bib}
@@ -163,9 +166,7 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
                             className={`cursor-pointer transition-colors ${
                               isSelected
                                 ? "bg-slate-700/60 ring-1 ring-inset ring-slate-500"
-                                : isDQ
-                                  ? "bg-slate-800/30 opacity-60 hover:bg-slate-800/50"
-                                  : "hover:bg-slate-800/50"
+                                : unselectedRowClass
                             }`}
                           >
                             <td className={`px-3 py-2 font-mono text-base font-bold ${isDQ ? "text-slate-500" : "text-amber-400"}`}>

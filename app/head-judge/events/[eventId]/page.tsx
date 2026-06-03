@@ -25,11 +25,14 @@ function symbolLabel(s: "LIFTED_FOOT" | "BENT_KNEE") {
   return s === "LIFTED_FOOT" ? "ยกเท้า" : "เข่างอ";
 }
 
-export default async function HeadJudgePage(props: Props) {
+export default async function HeadJudgePage(props: Readonly<Props>) {
   const { eventId } = await props.params;
   const session = await getOfficialSession();
 
-  if (!session || session.eventId !== eventId || session.position !== "HEAD_JUDGE") {
+  if (!session) {
+    redirect(`/head-judge/events/${eventId}/join`);
+  }
+  if (session.eventId !== eventId || session.position !== "HEAD_JUDGE") {
     redirect(`/head-judge/events/${eventId}/join`);
   }
 

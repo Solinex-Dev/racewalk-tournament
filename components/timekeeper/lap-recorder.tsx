@@ -53,7 +53,7 @@ export function LapRecorder({
   athletes,
   raceStartedAt,
   raceEndedAt,
-}: LapRecorderProps) {
+}: Readonly<LapRecorderProps>) {
   const router = useRouter();
   const startMs = raceStartedAt ? new Date(raceStartedAt).getTime() : null;
   const endMs = raceEndedAt ? new Date(raceEndedAt).getTime() : null;
@@ -71,6 +71,11 @@ export function LapRecorder({
 
   const isRunning = !!startMs && !endMs;
   const elapsedMs = startMs ? (endMs ?? now) - startMs : 0;
+
+  const timerIdleColor = endMs ? "text-slate-400" : "text-amber-400";
+  const timerColorClass = isRunning ? "text-emerald-400" : timerIdleColor;
+  const timerIdleLabel = endMs ? "Ended" : "Waiting";
+  const timerStatusLabel = isRunning ? "● Live" : timerIdleLabel;
 
   const handleRecordLap = (athlete: AthleteRecord) => {
     if (!isRunning) {
@@ -130,14 +135,12 @@ export function LapRecorder({
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-2">
               <span
-                className={`font-mono text-2xl font-bold tracking-tight ${
-                  isRunning ? "text-emerald-400" : endMs ? "text-slate-400" : "text-amber-400"
-                }`}
+                className={`font-mono text-2xl font-bold tracking-tight ${timerColorClass}`}
               >
                 {formatMs(elapsedMs)}
               </span>
               <span className="text-[10px] uppercase tracking-wider text-slate-500">
-                {isRunning ? "● Live" : endMs ? "Ended" : "Waiting"}
+                {timerStatusLabel}
               </span>
             </div>
 
@@ -204,6 +207,19 @@ export function LapRecorder({
                     const isFinished = !!a.finishedAt;
                     const canRecord = isRunning && !isDQ && !isFinished;
                     const isActing = actingBib === a.bib && isPending;
+
+                    let statusBadgeClass: string;
+                    if (a.status === "DQ") statusBadgeClass = "bg-red-950 text-red-400 ring-red-800";
+                    else if (a.status === "DNF") statusBadgeClass = "bg-amber-950 text-amber-400 ring-amber-800";
+                    else if (isFinished) statusBadgeClass = "bg-emerald-950 text-emerald-400 ring-emerald-800";
+                    else statusBadgeClass = "bg-slate-800 text-slate-300 ring-slate-700";
+
+                    let recordButtonLabel: string;
+                    if (isActing) recordButtonLabel = "กำลังบันทึก...";
+                    else if (isFinished) recordButtonLabel = "เสร็จสิ้น";
+                    else if (a.currentLap + 1 >= a.lapCount) recordButtonLabel = "เข้าเส้นชัย";
+                    else recordButtonLabel = `Lap ${a.currentLap + 1}`;
+
                     return (
                       <tr
                         key={a.bib}
@@ -223,15 +239,7 @@ export function LapRecorder({
                         </td>
                         <td className="px-3 py-3 text-center">
                           <span
-                            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${
-                              a.status === "DQ"
-                                ? "bg-red-950 text-red-400 ring-red-800"
-                                : a.status === "DNF"
-                                  ? "bg-amber-950 text-amber-400 ring-amber-800"
-                                  : isFinished
-                                    ? "bg-emerald-950 text-emerald-400 ring-emerald-800"
-                                    : "bg-slate-800 text-slate-300 ring-slate-700"
-                            }`}
+                            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${statusBadgeClass}`}
                           >
                             {a.status === "OK" && isFinished ? "เสร็จสิ้น" : a.status}
                           </span>
@@ -247,13 +255,7 @@ export function LapRecorder({
                                 : "bg-emerald-600 text-white hover:bg-emerald-500"
                             }`}
                           >
-                            {isActing
-                              ? "กำลังบันทึก..."
-                              : isFinished
-                                ? "เสร็จสิ้น"
-                                : a.currentLap + 1 >= a.lapCount
-                                  ? "เข้าเส้นชัย"
-                                  : `Lap ${a.currentLap + 1}`}
+                            {recordButtonLabel}
                           </button>
                         </td>
                       </tr>

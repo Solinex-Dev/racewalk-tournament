@@ -16,7 +16,7 @@ const STATUS_LABEL: Record<string, string> = {
   FINISHED: "จบการแข่งขันแล้ว",
 };
 
-export default async function JudgeJoinPage(props: Props) {
+export default async function JudgeJoinPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
   const event = await prisma.event.findUnique({

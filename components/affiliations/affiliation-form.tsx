@@ -63,7 +63,7 @@ export function AffiliationForm({
   canEdit = false,
   canDelete = false,
   defaultValues,
-}: AffiliationFormProps) {
+}: Readonly<AffiliationFormProps>) {
   const router = useRouter();
   const isEdit = mode === "edit";
 
@@ -81,6 +81,7 @@ export function AffiliationForm({
   const isThai = form.country === "TH";
   const judgeOptions: ComboboxOption[] = judgeList.map((j) => ({ value: j.id, label: j.name }));
   const set = (patch: Partial<AffiliationFormValues>) => setForm((p) => ({ ...p, ...patch }));
+  const submitLabel = isEdit ? "บันทึกการแก้ไข" : "เพิ่มสังกัด";
 
   const labelOf = (opts: ComboboxOption[], value: string) => opts.find((o) => o.value === value)?.label ?? value;
   const headName = (id: string) => judgeList.find((j) => j.id === id)?.name ?? "";
@@ -200,22 +201,14 @@ export function AffiliationForm({
         )}
       </CardHeader>
       <CardContent className="py-4">
-        {!editing ? (
-          <dl>
-            <DetailField label="ชื่อสังกัด / สโมสร" value={saved.name} />
-            <DetailField label="ประเทศ" value={labelOf(countryOptions, saved.country)} />
-            <DetailField label="จังหวัด" value={saved.province} />
-            <DetailField label="ผู้ดูแล / หัวหน้าสังกัด" value={headName(saved.headJudgeId)} />
-            <DetailField label="วันที่เข้าร่วม" value={saved.joinedAt} />
-            <DetailField label="หมายเหตุ" value={saved.note} />
-          </dl>
-        ) : (
+        {editing ? (
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-800">
+              <label htmlFor="affiliation-name" className="block text-xs font-medium text-slate-800">
                 ชื่อสังกัด / สโมสร <span className="text-red-500">*</span>
               </label>
               <Input
+                id="affiliation-name"
                 required
                 value={form.name}
                 onChange={(e) => set({ name: e.target.value })}
@@ -227,8 +220,9 @@ export function AffiliationForm({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-800">ประเทศ</label>
+                <label htmlFor="affiliation-country" className="block text-xs font-medium text-slate-800">ประเทศ</label>
                 <Combobox
+                  id="affiliation-country"
                   options={countryOptions}
                   value={form.country}
                   onChange={(v) => set({ country: v, province: v === "TH" ? form.province : "" })}
@@ -240,9 +234,10 @@ export function AffiliationForm({
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-800">จังหวัด</label>
+                <label htmlFor="affiliation-province" className="block text-xs font-medium text-slate-800">จังหวัด</label>
                 {isThai ? (
                   <Combobox
+                    id="affiliation-province"
                     options={provinceOptions}
                     value={form.province}
                     onChange={(v) => set({ province: v })}
@@ -253,14 +248,15 @@ export function AffiliationForm({
                     emptyText="ไม่พบจังหวัด"
                   />
                 ) : (
-                  <Input value="" disabled placeholder="(เฉพาะสังกัดในประเทศไทย)" className="rounded-xl text-sm" />
+                  <Input id="affiliation-province" value="" disabled placeholder="(เฉพาะสังกัดในประเทศไทย)" className="rounded-xl text-sm" />
                 )}
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-800">ผู้ดูแล / หัวหน้าสังกัด (เลือกจากกรรมการ)</label>
+              <label htmlFor="affiliation-head-judge" className="block text-xs font-medium text-slate-800">ผู้ดูแล / หัวหน้าสังกัด (เลือกจากกรรมการ)</label>
               <Combobox
+                id="affiliation-head-judge"
                 options={judgeOptions}
                 value={form.headJudgeId}
                 onChange={(v) => set({ headJudgeId: v })}
@@ -281,8 +277,9 @@ export function AffiliationForm({
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-800">วันที่เข้าร่วม / เริ่มใช้งาน (Joined at)</label>
+              <label htmlFor="affiliation-joined-at" className="block text-xs font-medium text-slate-800">วันที่เข้าร่วม / เริ่มใช้งาน (Joined at)</label>
               <Input
+                id="affiliation-joined-at"
                 type="date"
                 value={form.joinedAt}
                 onChange={(e) => set({ joinedAt: e.target.value })}
@@ -292,8 +289,9 @@ export function AffiliationForm({
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-800">หมายเหตุ (Note)</label>
+              <label htmlFor="affiliation-note" className="block text-xs font-medium text-slate-800">หมายเหตุ (Note)</label>
               <textarea
+                id="affiliation-note"
                 value={form.note}
                 onChange={(e) => set({ note: e.target.value })}
                 placeholder="รายละเอียดเพิ่มเติม เช่น ช่องทางติดต่อ, เงื่อนไขพิเศษ"
@@ -310,10 +308,19 @@ export function AffiliationForm({
                 </Button>
               )}
               <Button type="submit" disabled={isPending} className="rounded-xl px-4 py-2 text-sm font-medium">
-                {isPending ? "กำลังบันทึก..." : isEdit ? "บันทึกการแก้ไข" : "เพิ่มสังกัด"}
+                {isPending ? "กำลังบันทึก..." : submitLabel}
               </Button>
             </div>
           </form>
+        ) : (
+          <dl>
+            <DetailField label="ชื่อสังกัด / สโมสร" value={saved.name} />
+            <DetailField label="ประเทศ" value={labelOf(countryOptions, saved.country)} />
+            <DetailField label="จังหวัด" value={saved.province} />
+            <DetailField label="ผู้ดูแล / หัวหน้าสังกัด" value={headName(saved.headJudgeId)} />
+            <DetailField label="วันที่เข้าร่วม" value={saved.joinedAt} />
+            <DetailField label="หมายเหตุ" value={saved.note} />
+          </dl>
         )}
       </CardContent>
 
@@ -334,8 +341,9 @@ export function AffiliationForm({
               disabled={judgeBusy}
             />
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-800">ประเทศ</label>
+              <label htmlFor="affiliation-judge-country" className="block text-xs font-medium text-slate-800">ประเทศ</label>
               <Combobox
+                id="affiliation-judge-country"
                 options={countryOptions}
                 value={judgeDraft.country}
                 onChange={(v) => setJudgeDraft((p) => ({ ...p, country: v }))}

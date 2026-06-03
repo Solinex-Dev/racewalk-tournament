@@ -17,9 +17,9 @@ export const metadata: Metadata = {
 
 export default async function AdminPagesLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   const me = await getCurrentAdmin();
   const permissions = normalizePermissions(me?.permissions);
   const isRoot = me?.isRoot ?? false;

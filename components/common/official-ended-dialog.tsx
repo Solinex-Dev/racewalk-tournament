@@ -16,11 +16,11 @@ export function OfficialEndedDialog({
   open,
   roundName,
   roleLabel = "เจ้าหน้าที่",
-}: {
+}: Readonly<{
   open: boolean;
   roundName?: string;
   roleLabel?: string;
-}) {
+}>) {
   const [isPending, startTransition] = useTransition();
 
   if (!open) return null;

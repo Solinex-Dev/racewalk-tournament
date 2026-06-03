@@ -120,7 +120,7 @@ type ModeratorViewProps = {
   rounds: RoundData[];
 };
 
-export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
+export function ModeratorView({ eventId, event, rounds }: Readonly<ModeratorViewProps>) {
   const router = useRouter();
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
   const [expandedJudgeIds, setExpandedJudgeIds] = useState<Set<string>>(new Set());
@@ -198,11 +198,18 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
   const currentRound =
     rounds.find((r) => r.info.id === event.currentRoundId) ||
     rounds.find((r) => r.info.status === "ongoing") ||
-    rounds[rounds.length - 1];
+    rounds.at(-1);
 
   const displayRoundId = selectedRoundId || currentRound?.info.id || rounds[0]?.info.id || null;
   const displayData = rounds.find((r) => r.info.id === displayRoundId);
   const displayRound = displayData?.info;
+
+  // Status-chip class for the edit-confirm modal when the round is not "finished"
+  // (rendered only while displayRound is truthy, so the value is unchanged there).
+  const editConfirmOngoingOrScheduledClass =
+    displayRound?.status === "ongoing"
+      ? "bg-emerald-100 text-emerald-700"
+      : "bg-sky-100 text-sky-700";
 
   const roundAthletes = displayData?.athletes ?? [];
   const roundJudges = displayData?.judges ?? [];
@@ -311,16 +318,19 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
               <CardContent className="p-5">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-semibold text-slate-700">เลือกรอบ:</span>
-                  {rounds.map((r) => (
+                  {rounds.map((r) => {
+                    const inactiveRoundClass =
+                      r.info.status === "finished"
+                        ? "bg-slate-100 text-slate-600 ring-slate-200 hover:bg-slate-200"
+                        : "bg-sky-50 text-sky-700 ring-sky-200 hover:bg-sky-100";
+                    return (
                     <button
                       key={r.info.id}
                       onClick={() => setSelectedRoundId(r.info.id)}
                       className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition-colors ${
                         r.info.id === displayRoundId
                           ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                          : r.info.status === "finished"
-                            ? "bg-slate-100 text-slate-600 ring-slate-200 hover:bg-slate-200"
-                            : "bg-sky-50 text-sky-700 ring-sky-200 hover:bg-sky-100"
+                          : inactiveRoundClass
                       }`}
                     >
                       {r.info.name}
@@ -329,7 +339,8 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                         • {roundStatusLabel[r.info.status]}
                       </span>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -465,6 +476,10 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                             const pendingRed = a.cardDetails.filter(
                               (c) => c.color === "RED" && c.state === "PENDING",
                             ).length;
+                            const nonDqAthleteClass =
+                              a.status === "DNF"
+                                ? "bg-slate-100 text-slate-600"
+                                : "bg-emerald-50 text-emerald-700";
                             return (
                               <Fragment key={a.bib}>
                                 <tr
@@ -516,9 +531,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                                       className={`rounded-full px-2 py-0.5 font-medium ${
                                         a.status === "DQ"
                                           ? "bg-red-50 text-red-700"
-                                          : a.status === "DNF"
-                                            ? "bg-slate-100 text-slate-600"
-                                            : "bg-emerald-50 text-emerald-700"
+                                          : nonDqAthleteClass
                                       }`}
                                     >
                                       {a.status ?? "OK"}
@@ -589,15 +602,16 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                               (p) => p.judgeId === judge.id,
                             );
                             const hasPending = judgePending.length > 0;
+                            const judgeRowExpandedClass = isExpanded
+                              ? "bg-slate-50"
+                              : "hover:bg-slate-50/70";
                             return (
                               <Fragment key={judge.id}>
                                 <tr
                                   className={`cursor-pointer transition-colors ${
                                     hasPending
                                       ? "bg-red-50 hover:bg-red-100/70"
-                                      : isExpanded
-                                        ? "bg-slate-50"
-                                        : "hover:bg-slate-50/70"
+                                      : judgeRowExpandedClass
                                   }`}
                                   onClick={() => toggleJudge(judge.id)}
                                 >
@@ -789,9 +803,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                     className={`rounded-full px-2 py-0.5 font-medium ${
                       displayRound.status === "finished"
                         ? "bg-slate-200 text-slate-700"
-                        : displayRound.status === "ongoing"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-sky-100 text-sky-700"
+                        : editConfirmOngoingOrScheduledClass
                     }`}
                   >
                     {roundStatusLabel[displayRound.status]}
@@ -939,7 +951,7 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
   );
 }
 
-function AthleteCardBreakdown({ details }: { details: AthleteCardDetail[] }) {
+function AthleteCardBreakdown({ details }: Readonly<{ details: AthleteCardDetail[] }>) {
   const yellows = details.filter((c) => c.color === "YELLOW");
   const reds = details.filter((c) => c.color === "RED");
 
@@ -999,7 +1011,7 @@ function AthleteCardBreakdown({ details }: { details: AthleteCardDetail[] }) {
           <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-[9px] font-bold">
             {yellows.length}
           </span>
-          ใบเหลืองที่ได้รับ
+          {"ใบเหลืองที่ได้รับ"}
         </h4>
         {yellows.length > 0 ? (
           <div className="space-y-1.5">
@@ -1017,7 +1029,7 @@ function AthleteCardBreakdown({ details }: { details: AthleteCardDetail[] }) {
           <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-100 text-[9px] font-bold">
             {reds.length}
           </span>
-          ใบแดงที่ได้รับ
+          {"ใบแดงที่ได้รับ"}
         </h4>
         {reds.length > 0 ? (
           <div className="space-y-1.5">
@@ -1033,7 +1045,7 @@ function AthleteCardBreakdown({ details }: { details: AthleteCardDetail[] }) {
   );
 }
 
-function ActionBadge({ actionType }: { actionType: ActivityLogItem["actionType"] }) {
+function ActionBadge({ actionType }: Readonly<{ actionType: ActivityLogItem["actionType"] }>) {
   if (!actionType) return null;
   // Known action types — defensive lookup with sensible fallback for unknown values
   // (RoundActivityLog.actionType is a free-form string, so new types may appear)
@@ -1069,14 +1081,14 @@ function ActionBadge({ actionType }: { actionType: ActivityLogItem["actionType"]
   );
 }
 
-function PendingRedCardSection({ cards, eventId: _eventId }: { cards: PendingRedCard[]; eventId: string }) {
+function PendingRedCardSection({ cards, eventId: _eventId }: Readonly<{ cards: PendingRedCard[]; eventId: string }>) {
   return (
     <div className="space-y-2">
       <h4 className="flex items-center gap-2 text-xs font-semibold text-red-700">
         <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
           {cards.length}
         </span>
-        ใบแดงรอยืนยัน
+        {"ใบแดงรอยืนยัน"}
       </h4>
       <div className="space-y-3">
         {cards.map((pending) => (
@@ -1111,11 +1123,11 @@ function CardListSection({
   color,
   title,
   logs,
-}: {
+}: Readonly<{
   color: "amber" | "red";
   title: string;
   logs: ActivityLogItem[];
-}) {
+}>) {
   const cls = color === "amber"
     ? { ring: "border-amber-200", header: "bg-amber-50 text-amber-700", divider: "divide-amber-100", chip: "bg-amber-400" }
     : { ring: "border-red-200", header: "bg-red-50 text-red-700", divider: "divide-red-100", chip: "bg-red-500" };

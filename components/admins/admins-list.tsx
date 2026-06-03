@@ -29,7 +29,7 @@ type AdminsListProps = {
 
 const ITEMS_PER_PAGE = 10;
 
-export function AdminsList({ admins }: AdminsListProps) {
+export function AdminsList({ admins }: Readonly<AdminsListProps>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -38,8 +38,8 @@ export function AdminsList({ admins }: AdminsListProps) {
   // Extract unique values for filters
   const roles = useMemo(() => {
     const uniqueRoles = Array.from(
-      new Set(admins.map((a) => a.role).filter(Boolean) as string[])
-    ).sort();
+      new Set(admins.map((a) => a.role).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueRoles;
   }, [admins]);
 
@@ -114,7 +114,7 @@ export function AdminsList({ admins }: AdminsListProps) {
 
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-slate-600">
+            <label htmlFor="admins-role-filter" className="text-[11px] font-medium text-slate-600">
               สิทธิ์ / บทบาท
             </label>
             <Select
@@ -123,7 +123,7 @@ export function AdminsList({ admins }: AdminsListProps) {
                 handleFilterChange(setRoleFilter, value)
               }
             >
-              <SelectTrigger className="h-8 rounded-lg text-sm">
+              <SelectTrigger id="admins-role-filter" className="h-8 rounded-lg text-sm">
                 <SelectValue placeholder="ทั้งหมด" />
               </SelectTrigger>
               <SelectContent>
@@ -138,7 +138,7 @@ export function AdminsList({ admins }: AdminsListProps) {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-slate-600">
+            <label htmlFor="admins-status-filter" className="text-[11px] font-medium text-slate-600">
               สถานะ
             </label>
             <Select
@@ -147,7 +147,7 @@ export function AdminsList({ admins }: AdminsListProps) {
                 handleFilterChange(setStatusFilter, value)
               }
             >
-              <SelectTrigger className="h-8 rounded-lg text-sm">
+              <SelectTrigger id="admins-status-filter" className="h-8 rounded-lg text-sm">
                 <SelectValue placeholder="ทั้งหมด" />
               </SelectTrigger>
               <SelectContent>

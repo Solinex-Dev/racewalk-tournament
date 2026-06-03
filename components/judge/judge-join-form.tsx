@@ -23,7 +23,7 @@ type JudgeJoinFormProps = {
     | null;
 };
 
-export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
+export function JudgeJoinForm({ eventId, event }: Readonly<JudgeJoinFormProps>) {
   const router = useRouter();
   const [code, setCode] = React.useState("");
   const [isPending, startTransition] = React.useTransition();
@@ -71,12 +71,13 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-slate-200">
+              <label htmlFor="judge-join-code" className="block text-sm font-medium text-slate-200">
                 รหัสกรรมการของกรรมการใน Event นี้
               </label>
 
               <div className="flex justify-center">
                 <InputOTP
+                  id="judge-join-code"
                   maxLength={6}
                   pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
                   value={code}

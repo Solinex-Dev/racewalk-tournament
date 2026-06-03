@@ -79,7 +79,7 @@ export async function changeMyPassword(currentPassword: string, newPassword: str
   if (!pwResult.ok) throw new Error(pwResult.error ?? "รหัสผ่านไม่ถูกต้อง");
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user || !user.password) {
+  if (!user?.password) {
     throw new Error("ไม่พบบัญชีหรือบัญชีนี้ไม่ใช้รหัสผ่าน");
   }
 

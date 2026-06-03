@@ -86,7 +86,7 @@ export async function proxy(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   });
   const role = token?.role as string | undefined;
-  const userId = (token?.id ?? token?.sub) as string | undefined;
+  const userId = token?.id ?? token?.sub;
   const isAdmin = isAdminSession(role, userId);
 
   if (isAuthEntryPath(pathname)) {

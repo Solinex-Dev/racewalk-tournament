@@ -26,7 +26,7 @@ export function ListFiltersPanel({
   hasActiveFilters,
   onClearFilters,
   children,
-}: ListFiltersPanelProps) {
+}: Readonly<ListFiltersPanelProps>) {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   return (

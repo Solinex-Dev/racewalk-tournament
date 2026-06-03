@@ -150,7 +150,7 @@ export default async function Home() {
                 </>
               ) : (
                 <>
-                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-slate-400" />
+                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-slate-400" />{" "}
                   ระบบกระดานคะแนนสด
                 </>
               )}
@@ -270,12 +270,12 @@ function SectionHeading({
   count,
   dotClass,
   pulse = false,
-}: {
+}: Readonly<{
   title: string;
   count: number;
   dotClass: string;
   pulse?: boolean;
-}) {
+}>) {
   return (
     <div className="mb-4 flex items-center gap-2.5">
       <span className="relative flex h-2.5 w-2.5" aria-hidden>
@@ -292,14 +292,14 @@ function SectionHeading({
   );
 }
 
-function StatusBadge({ status }: { status: EventStatus }) {
+function StatusBadge({ status }: Readonly<{ status: EventStatus }>) {
   if (status === "ONGOING") {
     return (
       <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/30">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-        </span>
+        </span>{" "}
         กำลังแข่งขันสด
       </span>
     );
@@ -307,33 +307,27 @@ function StatusBadge({ status }: { status: EventStatus }) {
   if (status === "SCHEDULED") {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-300 ring-1 ring-sky-500/30">
-        <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+        <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />{" "}
         กำลังจะเริ่ม
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300 ring-1 ring-slate-700">
-      <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+      <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />{" "}
       จบการแข่งขันแล้ว
     </span>
   );
 }
 
-function EventCard({ event }: { event: EventVM }) {
+function EventCard({ event }: Readonly<{ event: EventVM }>) {
   const isLive = event.status === "ONGOING";
   const r = event.round;
   const pct =
     r && r.lapCount > 0 ? Math.min(100, Math.round((r.currentLap / r.lapCount) * 100)) : 0;
 
-  const accent = isLive
-    ? {
-        ring: "hover:border-emerald-500/40 hover:shadow-emerald-500/10",
-        glow: "bg-emerald-500/10",
-        cta: "bg-emerald-500 text-slate-950 group-hover:bg-emerald-400",
-        ctaLabel: "ดู Leaderboard",
-      }
-    : event.status === "SCHEDULED"
+  const nonLiveAccent =
+    event.status === "SCHEDULED"
       ? {
           ring: "hover:border-sky-500/40 hover:shadow-sky-500/10",
           glow: "bg-sky-500/10",
@@ -346,6 +340,22 @@ function EventCard({ event }: { event: EventVM }) {
           cta: "bg-slate-200 text-slate-900 group-hover:bg-white",
           ctaLabel: "ดู Leaderboard",
         };
+
+  const accent = isLive
+    ? {
+        ring: "hover:border-emerald-500/40 hover:shadow-emerald-500/10",
+        glow: "bg-emerald-500/10",
+        cta: "bg-emerald-500 text-slate-950 group-hover:bg-emerald-400",
+        ctaLabel: "ดู Leaderboard",
+      }
+    : nonLiveAccent;
+
+  const scheduledIndicator =
+    r && event.status === "SCHEDULED" && r.scheduledLabel ? (
+      <span className="shrink-0 text-[11px] font-medium text-sky-300">
+        เริ่ม {r.scheduledLabel}
+      </span>
+    ) : null;
 
   return (
     <Link
@@ -380,11 +390,9 @@ function EventCard({ event }: { event: EventVM }) {
                 endedAt={r.endedAtIso}
                 className="shrink-0 font-mono text-sm font-semibold text-emerald-400"
               />
-            ) : event.status === "SCHEDULED" && r.scheduledLabel ? (
-              <span className="shrink-0 text-[11px] font-medium text-sky-300">
-                เริ่ม {r.scheduledLabel}
-              </span>
-            ) : null}
+            ) : (
+              scheduledIndicator
+            )}
           </div>
 
           {isLive && r.lapCount > 0 && (

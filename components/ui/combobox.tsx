@@ -56,13 +56,14 @@ export function Combobox({
   creatable,
   onCreateNew,
   createNewLabel,
-}: ComboboxProps) {
+}: Readonly<ComboboxProps>) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
 
   const selected = options.find((o) => o.value === value);
   const hasValue = Boolean(value);
-  const triggerLabel = selected ? selected.label : hasValue ? value : placeholder;
+  const fallbackLabel = hasValue ? value : placeholder;
+  const triggerLabel = selected ? selected.label : fallbackLabel;
 
   const trimmed = query.trim();
   const exactExists = options.some((o) => o.value === trimmed || o.label === trimmed);

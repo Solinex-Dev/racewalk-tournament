@@ -508,13 +508,12 @@ export async function moderatorEditCard(
   if (!card) throw new Error("ไม่พบใบที่ระบุ");
 
   const wasConfirmedRed = card.color === "RED" && card.state === "CONFIRMED";
+  // State to use when the (possibly) changed colour is RED.
+  const redState: "PENDING" | "CONFIRMED" | "OVERRIDDEN" =
+    card.color === "RED" ? (card.state ?? "PENDING") : "PENDING";
   // New state for the (possibly) changed colour.
   const newState: "PENDING" | "CONFIRMED" | "OVERRIDDEN" | null =
-    data.color === "YELLOW"
-      ? null
-      : card.color === "RED"
-        ? (card.state ?? "PENDING")
-        : "PENDING";
+    data.color === "YELLOW" ? null : redState;
 
   await prisma.card.update({
     where: { id: cardId },
