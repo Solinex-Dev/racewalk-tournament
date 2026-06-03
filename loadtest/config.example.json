@@ -1,0 +1,15 @@
+{
+  "baseUrl": "https://staging.example.com",
+  "eventId": "REPLACE_with_event_id",
+  "roundId": "REPLACE_with_ONGOING_round_id",
+  "athletes": [
+    { "athleteId": "REPLACE_athlete_id_1", "bib": "101" },
+    { "athleteId": "REPLACE_athlete_id_2", "bib": "102" },
+    { "athleteId": "REPLACE_athlete_id_3", "bib": "103" }
+  ],
+  "officials": {
+    "judge":       { "officialId": "REPLACE", "judgeId": "REPLACE_real_judge_id", "judgeName": "LoadTest Judge",  "position": "JUDGE",        "zone": null },
+    "headJudge":   { "officialId": "REPLACE", "judgeId": "REPLACE_real_judge_id", "judgeName": "LoadTest Head",   "position": "HEAD_JUDGE",   "zone": null },
+    "eventLogger": { "officialId": "REPLACE", "judgeId": "REPLACE_real_judge_id", "judgeName": "LoadTest Logger", "position": "EVENT_LOGGER", "zone": null }
+  }
+}

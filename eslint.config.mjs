@@ -21,6 +21,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Standalone load-test tooling (k6 / Node scripts with non-resolvable
+    // k6 globals — not part of the app build).
+    "loadtest/**",
   ]),
 ]);
 

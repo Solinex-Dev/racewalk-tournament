@@ -1,0 +1,6 @@
+# Local-only — contain real ids / signed cookies. Never commit.
+config.json
+cookies.json
+# Transient run outputs
+*-results.txt
+*.out
