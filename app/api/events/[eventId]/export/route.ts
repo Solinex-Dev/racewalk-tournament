@@ -19,7 +19,7 @@ function escapeCsv(field: string | number | null | undefined): string {
   if (field === null || field === undefined) return "";
   const s = String(field);
   if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-    return `"${s.replace(/"/g, '""')}"`;
+    return `"${s.replaceAll('"', '""')}"`;
   }
   return s;
 }
@@ -69,22 +69,22 @@ export async function GET(request: Request, ctx: Ctx) {
   const lines: string[] = [];
 
   // Header section
-  lines.push(escapeCsv(`Event,${event.name}`));
-  lines.push(escapeCsv(`Date,${event.date.toISOString().slice(0, 10)}`));
-  lines.push(escapeCsv(`Location,${event.location}`));
-  lines.push(escapeCsv(`Status,${event.status}`));
-  lines.push("");
+  lines.push(
+    escapeCsv(`Event,${event.name}`),
+    escapeCsv(`Date,${event.date.toISOString().slice(0, 10)}`),
+    escapeCsv(`Location,${event.location}`),
+    escapeCsv(`Status,${event.status}`),
+    "",
+  );
 
   for (const round of event.rounds) {
-    lines.push(`Round,${escapeCsv(round.name)}`);
-    lines.push(`Status,${round.status}`);
+    lines.push(`Round,${escapeCsv(round.name)}`, `Status,${round.status}`);
     if (round.distanceKm) lines.push(`Distance (km),${escapeCsv(round.distanceKm)}`);
     if (round.startedAt) lines.push(`Started at,${round.startedAt.toISOString()}`);
     if (round.endedAt) lines.push(`Ended at,${round.endedAt.toISOString()}`);
-    lines.push("");
-
     // Athlete table for this round
     lines.push(
+      "",
       [
         "BIB",
         "Name",
@@ -128,8 +128,7 @@ export async function GET(request: Request, ctx: Ctx) {
           .join(","),
       );
     }
-    lines.push("");
-    lines.push("");
+    lines.push("", "");
   }
 
   const csv = "﻿" + lines.join("\r\n"); // UTF-8 BOM for Excel

@@ -103,7 +103,7 @@ export function DashboardSidebar({
             : "flex-row items-center justify-between"
         )}
       >
-        <a href="#" className="flex items-center gap-2">
+        <a href="/admin" className="flex items-center gap-2">
           <Logo className="h-8 w-8" />
           {!isCollapsed && (
             <span className="font-semibold text-black dark:text-white">

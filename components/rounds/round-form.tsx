@@ -81,9 +81,13 @@ function countChipCls(over: boolean): string {
 }
 
 function generateSecretCode() {
+  // Cryptographically-secure RNG (Web Crypto, available in browsers and Node 18+).
+  // 256 is a multiple of SECRET_CHARS.length (32) → uniform, no modulo bias.
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
   let code = "";
   for (let i = 0; i < 6; i++) {
-    code += SECRET_CHARS[Math.floor(Math.random() * SECRET_CHARS.length)] ?? "X";
+    code += SECRET_CHARS[bytes[i] % SECRET_CHARS.length] ?? "X";
   }
   return code;
 }
@@ -102,7 +106,7 @@ export function RoundForm({
   judgeOptions,
   eventDate,
   defaultValues,
-}: RoundFormProps) {
+}: Readonly<RoundFormProps>) {
   const router = useRouter();
   const [form, setForm] = React.useState<RoundFormValues>({
     ...EMPTY,
@@ -130,9 +134,10 @@ export function RoundForm({
   } | null>(null);
 
   const isEdit = mode === "edit";
+  const submitLabel = isEdit ? "บันทึกการเปลี่ยนแปลง" : "สร้างรอบแข่งใหม่";
 
   const resetSecretOfficial =
-    resetSecretIndex !== null ? form.officials[resetSecretIndex] : null;
+    resetSecretIndex === null ? null : form.officials[resetSecretIndex];
   const resetSecretJudgeName = resetSecretOfficial
     ? judgeOptions.find((j) => j.id === resetSecretOfficial.judgeId)?.name ??
       resetSecretOfficial.judgeId
@@ -143,7 +148,7 @@ export function RoundForm({
     try {
       await navigator.clipboard.writeText(code);
       setCopiedSecretIndex(index);
-      window.setTimeout(
+      globalThis.setTimeout(
         () => setCopiedSecretIndex((cur) => (cur === index ? null : cur)),
         2000,
       );
@@ -231,8 +236,10 @@ export function RoundForm({
     return { keys, labels };
   }, [form.officials]);
 
-  const maxForPosition = (pos: OfficialEntry["position"]) =>
-    pos === "JUDGE" ? MAX_JUDGES : pos === "HEAD_JUDGE" ? MAX_HEAD_JUDGE : MAX_EVENT_LOGGER;
+  const maxForPosition = (pos: OfficialEntry["position"]) => {
+    const maxNonJudge = pos === "HEAD_JUDGE" ? MAX_HEAD_JUDGE : MAX_EVENT_LOGGER;
+    return pos === "JUDGE" ? MAX_JUDGES : maxNonJudge;
+  };
 
   const handlePositionChange = (index: number, position: OfficialEntry["position"]) => {
     const max = maxForPosition(position);
@@ -447,8 +454,9 @@ export function RoundForm({
           {/* Basic info */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-800">ชื่อรอบแข่ง</label>
+              <label htmlFor="round-name" className="text-sm font-medium text-slate-800">ชื่อรอบแข่ง</label>
               <Input
+                id="round-name"
                 required
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
@@ -457,10 +465,11 @@ export function RoundForm({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-800">
+              <label htmlFor="round-scheduled-time" className="text-sm font-medium text-slate-800">
                 วันและเวลาเริ่มแข่ง
               </label>
               <Input
+                id="round-scheduled-time"
                 type="datetime-local"
                 min={eventDate ? `${eventDate}T00:00` : undefined}
                 value={form.scheduledTime}
@@ -474,10 +483,11 @@ export function RoundForm({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-800">
+              <label htmlFor="round-expected-end-time" className="text-sm font-medium text-slate-800">
                 วันและเวลาสิ้นสุด (โดยประมาณ)
               </label>
               <Input
+                id="round-expected-end-time"
                 type="datetime-local"
                 min={form.scheduledTime || (eventDate ? `${eventDate}T00:00` : undefined)}
                 value={form.expectedEndTime}
@@ -489,10 +499,11 @@ export function RoundForm({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-800">
+              <label htmlFor="round-distance" className="text-sm font-medium text-slate-800">
                 ระยะทาง (กม.)
               </label>
               <Input
+                id="round-distance"
                 type="number"
                 min={0}
                 step="0.1"
@@ -503,10 +514,11 @@ export function RoundForm({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-800">
+              <label htmlFor="round-lap-count" className="text-sm font-medium text-slate-800">
                 จำนวนรอบสนาม (Laps) <span className="text-red-500">*</span>
               </label>
               <Input
+                id="round-lap-count"
                 type="number"
                 min={1}
                 step="1"
@@ -523,8 +535,9 @@ export function RoundForm({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-800">สถานะรอบแข่ง</label>
+              <label htmlFor="round-status" className="text-sm font-medium text-slate-800">สถานะรอบแข่ง</label>
               <select
+                id="round-status"
                 className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5"
                 value={form.status}
                 onChange={(e) =>
@@ -548,8 +561,9 @@ export function RoundForm({
             </div>
 
             <div className="space-y-1.5 md:col-span-2">
-              <label className="text-sm font-medium text-slate-800">หมายเหตุ</label>
+              <label htmlFor="round-note" className="text-sm font-medium text-slate-800">หมายเหตุ</label>
               <textarea
+                id="round-note"
                 value={form.note}
                 onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
                 placeholder="เช่น รอ Admin กดเริ่มจับเวลา, หมายเหตุสำหรับผู้ดูแลรอบ"
@@ -862,11 +876,7 @@ export function RoundForm({
               disabled={isPending}
               className="rounded-xl px-4 py-2 text-sm font-medium"
             >
-              {isPending
-                ? "กำลังบันทึก..."
-                : isEdit
-                ? "บันทึกการเปลี่ยนแปลง"
-                : "สร้างรอบแข่งใหม่"}
+              {isPending ? "กำลังบันทึก..." : submitLabel}
             </Button>
           </div>
         </form>

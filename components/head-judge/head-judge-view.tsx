@@ -63,7 +63,7 @@ export function HeadJudgeView({
   pendingCards,
   athletes,
   logs,
-}: HeadJudgeViewProps) {
+}: Readonly<HeadJudgeViewProps>) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
   const [actingId, setActingId] = React.useState<string | null>(null);

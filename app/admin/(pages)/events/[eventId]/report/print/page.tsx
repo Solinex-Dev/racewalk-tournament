@@ -38,7 +38,7 @@ const ROUND_STATUS_LABEL: Record<string, string> = {
   FINISHED: "เสร็จสิ้น",
 };
 
-export default async function PrintReportPage(props: Props) {
+export default async function PrintReportPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
   const me = await getCurrentAdmin();
@@ -148,7 +148,8 @@ export default async function PrintReportPage(props: Props) {
                     (c) => c.athleteId === ra.athleteId && c.color === "RED" && c.state === "CONFIRMED",
                   ).length;
                   const finish = round.finishTimes.find((f) => f.athleteId === ra.athleteId);
-                  const rowClass = ra.status === "DQ" ? "dq" : ra.status === "DNF" ? "dnf" : "";
+                  const nonDqRowClass = ra.status === "DNF" ? "dnf" : "";
+                  const rowClass = ra.status === "DQ" ? "dq" : nonDqRowClass;
                   return (
                     <tr key={ra.id} className={rowClass}>
                       <td>{ra.position ?? "—"}</td>

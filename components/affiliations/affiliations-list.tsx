@@ -31,7 +31,7 @@ type AffiliationsListProps = {
 
 const ITEMS_PER_PAGE = 10;
 
-export function AffiliationsList({ affiliations }: AffiliationsListProps) {
+export function AffiliationsList({ affiliations }: Readonly<AffiliationsListProps>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
@@ -41,14 +41,14 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
   const countries = useMemo(() => {
     const uniqueCountries = Array.from(
       new Set(affiliations.map((a) => a.country).filter(Boolean) as string[])
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueCountries;
   }, [affiliations]);
 
   const provinces = useMemo(() => {
     const uniqueProvinces = Array.from(
       new Set(affiliations.map((a) => a.province).filter(Boolean) as string[])
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueProvinces;
   }, [affiliations]);
 
@@ -131,7 +131,7 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
 
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-slate-600">
+            <label htmlFor="affiliations-country-filter" className="text-[11px] font-medium text-slate-600">
               ประเทศ
             </label>
             <Select
@@ -140,7 +140,7 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
                 handleFilterChange(setCountryFilter, value)
               }
             >
-              <SelectTrigger className="h-8 rounded-lg text-sm">
+              <SelectTrigger id="affiliations-country-filter" className="h-8 rounded-lg text-sm">
                 <SelectValue placeholder="ทั้งหมด" />
               </SelectTrigger>
               <SelectContent>
@@ -155,7 +155,7 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-slate-600">
+            <label htmlFor="affiliations-province-filter" className="text-[11px] font-medium text-slate-600">
               จังหวัด
             </label>
             <Select
@@ -164,7 +164,7 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
                 handleFilterChange(setProvinceFilter, value)
               }
             >
-              <SelectTrigger className="h-8 rounded-lg text-sm">
+              <SelectTrigger id="affiliations-province-filter" className="h-8 rounded-lg text-sm">
                 <SelectValue placeholder="ทั้งหมด" />
               </SelectTrigger>
               <SelectContent>

@@ -25,7 +25,7 @@ function toDateInput(dt: Date) {
     .slice(0, 10);
 }
 
-export default async function RoundDetailPage(props: Props) {
+export default async function RoundDetailPage(props: Readonly<Props>) {
   const { eventId, roundId } = await props.params;
 
   const [round, athletes, judges] = await Promise.all([

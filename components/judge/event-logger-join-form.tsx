@@ -17,7 +17,7 @@ type Props = {
   event: { id: string; name: string; statusLabel: string } | null;
 };
 
-export function EventLoggerJoinForm({ eventId, event }: Props) {
+export function EventLoggerJoinForm({ eventId, event }: Readonly<Props>) {
   const router = useRouter();
   const [code, setCode] = React.useState("");
   const [isPending, startTransition] = React.useTransition();
@@ -57,11 +57,12 @@ export function EventLoggerJoinForm({ eventId, event }: Props) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <label className="block text-sm font-medium text-slate-200">
+            <label htmlFor="event-logger-join-code" className="block text-sm font-medium text-slate-200">
               รหัสกรรมการของคนเก็บ Lap Time
             </label>
             <div className="flex justify-center">
               <InputOTP
+                id="event-logger-join-code"
                 maxLength={6}
                 pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
                 value={code}

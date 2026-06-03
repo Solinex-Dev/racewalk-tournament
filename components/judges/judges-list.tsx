@@ -34,7 +34,7 @@ type JudgesListProps = {
 
 const ITEMS_PER_PAGE = 10;
 
-export function JudgesList({ judges }: JudgesListProps) {
+export function JudgesList({ judges }: Readonly<JudgesListProps>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
@@ -46,21 +46,21 @@ export function JudgesList({ judges }: JudgesListProps) {
   const countries = useMemo(() => {
     const uniqueCountries = Array.from(
       new Set(judges.map((j) => j.country).filter(Boolean) as string[])
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueCountries;
   }, [judges]);
 
   const provinces = useMemo(() => {
     const uniqueProvinces = Array.from(
       new Set(judges.map((j) => j.province).filter(Boolean) as string[])
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueProvinces;
   }, [judges]);
 
   const organizations = useMemo(() => {
     const uniqueOrganizations = Array.from(
-      new Set(judges.map((j) => j.organization).filter(Boolean) as string[])
-    ).sort();
+      new Set(judges.map((j) => j.organization).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueOrganizations;
   }, [judges]);
 
@@ -169,7 +169,7 @@ export function JudgesList({ judges }: JudgesListProps) {
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="judges-country-filter" className="text-[11px] font-medium text-slate-600">
                   ประเทศ
                 </label>
                 <Select
@@ -178,7 +178,7 @@ export function JudgesList({ judges }: JudgesListProps) {
                     handleFilterChange(setCountryFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="judges-country-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -193,7 +193,7 @@ export function JudgesList({ judges }: JudgesListProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="judges-province-filter" className="text-[11px] font-medium text-slate-600">
                   จังหวัด
                 </label>
                 <Select
@@ -202,7 +202,7 @@ export function JudgesList({ judges }: JudgesListProps) {
                     handleFilterChange(setProvinceFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="judges-province-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -217,7 +217,7 @@ export function JudgesList({ judges }: JudgesListProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="judges-organization-filter" className="text-[11px] font-medium text-slate-600">
                   องค์กร / สังกัด
                 </label>
                 <Select
@@ -226,7 +226,7 @@ export function JudgesList({ judges }: JudgesListProps) {
                     handleFilterChange(setOrganizationFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="judges-organization-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -241,7 +241,7 @@ export function JudgesList({ judges }: JudgesListProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="judges-status-filter" className="text-[11px] font-medium text-slate-600">
                   สถานะ
                 </label>
                 <Select
@@ -250,7 +250,7 @@ export function JudgesList({ judges }: JudgesListProps) {
                     handleFilterChange(setStatusFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="judges-status-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>

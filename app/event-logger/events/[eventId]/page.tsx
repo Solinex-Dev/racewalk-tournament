@@ -20,11 +20,14 @@ function formatMs(ms: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export default async function EventLoggerPage(props: Props) {
+export default async function EventLoggerPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
   const session = await getOfficialSession();
 
-  if (!session || session.eventId !== eventId || session.position !== "EVENT_LOGGER") {
+  if (!session) {
+    redirect(`/event-logger/events/${eventId}/join`);
+  }
+  if (session.eventId !== eventId || session.position !== "EVENT_LOGGER") {
     redirect(`/event-logger/events/${eventId}/join`);
   }
 
@@ -48,8 +51,9 @@ export default async function EventLoggerPage(props: Props) {
 
   const athletes: AthleteRecord[] = round.roundAthletes.map((ra) => {
     const myLaps = round.lapTimes.filter((l) => l.athleteId === ra.athleteId);
-    const lastLap = myLaps[myLaps.length - 1];
+    const lastLap = myLaps.at(-1);
     const finish = round.finishTimes.find((f) => f.athleteId === ra.athleteId);
+    const lastLapAtFallback = lastLap ? formatMs(lastLap.timeMs) : null;
     return {
       bib: ra.bib,
       athleteId: ra.athleteId,
@@ -57,7 +61,7 @@ export default async function EventLoggerPage(props: Props) {
       currentLap: lapsCompleted(myLaps.length, !!finish, lapCount),
       lapCount,
       // The finish IS the final crossing — show it as the most recent time when present.
-      lastLapAt: finish ? formatMs(finish.timeMs) : lastLap ? formatMs(lastLap.timeMs) : null,
+      lastLapAt: finish ? formatMs(finish.timeMs) : lastLapAtFallback,
       status: ra.status,
       finishedAt: finish ? formatMs(finish.timeMs) : null,
     };

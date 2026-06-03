@@ -12,11 +12,14 @@ export const metadata: Metadata = {
 
 type Props = { params: Promise<{ eventId: string }> };
 
-export default async function JudgePage(props: Props) {
+export default async function JudgePage(props: Readonly<Props>) {
   const { eventId } = await props.params;
   const session = await getOfficialSession();
 
-  if (!session || session.eventId !== eventId) {
+  if (!session) {
+    redirect(`/judge/events/${eventId}/join`);
+  }
+  if (session.eventId !== eventId) {
     redirect(`/judge/events/${eventId}/join`);
   }
   if (session.position !== "JUDGE" && session.position !== "HEAD_JUDGE") {
@@ -55,6 +58,8 @@ export default async function JudgePage(props: Props) {
     const totalRed = round.cards.filter(
       (c) => c.athleteId === ra.athleteId && c.color === "RED" && c.state === "CONFIRMED",
     ).length;
+    const myRedSymbolChar = myRed?.symbol === "BENT_KNEE" ? ">" : "~";
+    const myRedSymbol = myRed ? myRedSymbolChar : null;
     return {
       bib: ra.bib,
       athleteId: ra.athleteId,
@@ -62,7 +67,7 @@ export default async function JudgePage(props: Props) {
       status: ra.status,
       myYellowKnee,
       myYellowFoot,
-      myRedSymbol: myRed ? (myRed.symbol === "BENT_KNEE" ? ">" : "~") : null,
+      myRedSymbol,
       totalRed,
     };
   });

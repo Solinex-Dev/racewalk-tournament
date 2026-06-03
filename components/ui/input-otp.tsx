@@ -10,7 +10,7 @@ type InputOTPProps = React.ComponentPropsWithoutRef<typeof OTPInput> & {
 };
 
 const InputOTP = React.forwardRef<
-  React.ElementRef<typeof OTPInput>,
+  React.ComponentRef<typeof OTPInput>,
   InputOTPProps
 >(({ className, containerClassName, ...props }, ref) => (
   <OTPInput
@@ -32,7 +32,7 @@ const InputOTP = React.forwardRef<
 InputOTP.displayName = "InputOTP";
 
 const InputOTPGroup = React.forwardRef<
-  React.ElementRef<"div">,
+  React.ComponentRef<"div">,
   React.ComponentPropsWithoutRef<"div">
 >(({ className, ...props }, ref) => (
   <div
@@ -44,14 +44,13 @@ const InputOTPGroup = React.forwardRef<
 InputOTPGroup.displayName = "InputOTPGroup";
 
 const InputOTPSeparator = React.forwardRef<
-  React.ElementRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
+  React.ComponentRef<"hr">,
+  React.ComponentPropsWithoutRef<"hr">
 >(({ className, ...props }, ref) => (
-  <div
+  <hr
     ref={ref}
-    role="separator"
     aria-hidden="true"
-    className={cn("mx-1 h-px w-4 bg-slate-700/60", className)}
+    className={cn("mx-1 h-px w-4 border-0 bg-slate-700/60", className)}
     {...props}
   />
 ));
@@ -62,7 +61,7 @@ type InputOTPSlotProps = React.ComponentPropsWithoutRef<"div"> & {
 };
 
 const InputOTPSlot = React.forwardRef<
-  React.ElementRef<"div">,
+  React.ComponentRef<"div">,
   InputOTPSlotProps
 >(({ index, className, ...props }, ref) => {
   const inputOTPContext = React.useContext(OTPInputContext);

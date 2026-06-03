@@ -41,9 +41,10 @@ const STATUS_LABEL: Record<EventFormValues["status"], string> = {
   FINISHED: "เสร็จสิ้น – แข่งขันเสร็จแล้ว",
 };
 
-export function EventForm({ mode, eventId, canEdit = false, defaultValues }: EventFormProps) {
+export function EventForm({ mode, eventId, canEdit = false, defaultValues }: Readonly<EventFormProps>) {
   const router = useRouter();
   const isEdit = mode === "edit";
+  const submitLabel = isEdit ? "บันทึกการเปลี่ยนแปลง" : "สร้าง Event ใหม่";
 
   const [saved, setSaved] = React.useState<EventFormValues>({ ...EMPTY, ...defaultValues });
   const [form, setForm] = React.useState<EventFormValues>(saved);
@@ -85,7 +86,113 @@ export function EventForm({ mode, eventId, canEdit = false, defaultValues }: Eve
   return (
     <Card className="rounded-2xl border-slate-200">
       <CardContent className="p-6">
-        {!editing ? (
+        {editing ? (
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="event-name" className="text-sm font-medium text-slate-800">ชื่อ Event</label>
+                <Input
+                  id="event-name"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="เช่น Racewalk Championship 2025"
+                />
+                <p className="text-[11px] text-slate-500">
+                  ชื่อเต็มของการแข่งขันที่จะใช้แสดงทั้งฝั่ง Admin และ Public
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="event-date" className="text-sm font-medium text-slate-800">วันที่จัดการแข่งขัน</label>
+                <Input
+                  id="event-date"
+                  type="date"
+                  required
+                  value={form.date}
+                  onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="event-location" className="text-sm font-medium text-slate-800">สถานที่จัดการแข่งขัน</label>
+                <Input
+                  id="event-location"
+                  value={form.location}
+                  onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
+                  placeholder="เช่น สนามกีฬาแห่งชาติ"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="event-distance" className="text-sm font-medium text-slate-800">ระยะทางรวม (กิโลเมตร)</label>
+                <Input
+                  id="event-distance"
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={form.distanceKm}
+                  onChange={(e) => setForm((p) => ({ ...p, distanceKm: e.target.value }))}
+                  placeholder="เช่น 10, 20, 50"
+                />
+                <p className="text-[11px] text-slate-500">ระยะทางทั้งหมดของการแข่งขัน (รวมทุกรอบสนาม)</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="event-lap-count" className="text-sm font-medium text-slate-800">
+                  จำนวนรอบสนาม (Lap count) <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="event-lap-count"
+                  type="number"
+                  min={1}
+                  step="1"
+                  required
+                  value={form.lapCount}
+                  onChange={(e) => setForm((p) => ({ ...p, lapCount: Math.max(1, Number(e.target.value) || 1) }))}
+                  placeholder="เช่น 10, 20, 50"
+                />
+                <p className="text-[11px] text-slate-500">
+                  จำนวนรอบที่นักกีฬาต้องเดินครบเพื่อจบการแข่งขัน — กำหนดตามขนาดสนามจริง
+                  {form.distanceKm && form.lapCount > 0 && (
+                    <span className="mt-0.5 block text-emerald-600">
+                      ระยะต่อรอบประมาณ {(Number(form.distanceKm) / form.lapCount).toFixed(2)} กม./รอบ
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 md:max-w-md">
+              <label htmlFor="event-status" className="text-sm font-medium text-slate-800">สถานะ Event</label>
+              <select
+                id="event-status"
+                className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5"
+                value={form.status}
+                onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as EventFormValues["status"] }))}
+              >
+                <option value="DRAFT">ร่าง – ยังไม่เผยแพร่</option>
+                <option value="SCHEDULED">กำหนดการ – ตั้งวันไว้แล้ว</option>
+                <option value="ONGOING">กำลังดำเนินการ – กำลังแข่งขัน</option>
+                <option value="FINISHED">เสร็จสิ้น – แข่งขันเสร็จแล้ว</option>
+              </select>
+              <p className="text-[11px] text-slate-500">ใช้กำหนด state หลักของ Event เพื่อแสดงผลและคุม flow อื่น ๆ</p>
+            </div>
+
+            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              {isEdit && (
+                <Button type="button" variant="outline" disabled={isPending} onClick={cancelEdit} className="rounded-xl px-4 py-2 text-sm">
+                  ยกเลิก
+                </Button>
+              )}
+              <Button type="submit" disabled={isPending} className="rounded-xl px-4 py-2 text-sm font-medium">
+                {isPending ? "กำลังบันทึก..." : submitLabel}
+              </Button>
+            </div>
+          </form>
+        ) : (
           <div className="space-y-3">
             {isEdit && canEdit && (
               <div className="flex justify-end">
@@ -109,106 +216,6 @@ export function EventForm({ mode, eventId, canEdit = false, defaultValues }: Eve
               <DetailField label="สถานะ" value={STATUS_LABEL[saved.status]} />
             </dl>
           </div>
-        ) : (
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-800">ชื่อ Event</label>
-                <Input
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                  placeholder="เช่น Racewalk Championship 2025"
-                />
-                <p className="text-[11px] text-slate-500">
-                  ชื่อเต็มของการแข่งขันที่จะใช้แสดงทั้งฝั่ง Admin และ Public
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-800">วันที่จัดการแข่งขัน</label>
-                <Input
-                  type="date"
-                  required
-                  value={form.date}
-                  onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-800">สถานที่จัดการแข่งขัน</label>
-                <Input
-                  value={form.location}
-                  onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
-                  placeholder="เช่น สนามกีฬาแห่งชาติ"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-800">ระยะทางรวม (กิโลเมตร)</label>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.1"
-                  value={form.distanceKm}
-                  onChange={(e) => setForm((p) => ({ ...p, distanceKm: e.target.value }))}
-                  placeholder="เช่น 10, 20, 50"
-                />
-                <p className="text-[11px] text-slate-500">ระยะทางทั้งหมดของการแข่งขัน (รวมทุกรอบสนาม)</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-800">
-                  จำนวนรอบสนาม (Lap count) <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  type="number"
-                  min={1}
-                  step="1"
-                  required
-                  value={form.lapCount}
-                  onChange={(e) => setForm((p) => ({ ...p, lapCount: Math.max(1, Number(e.target.value) || 1) }))}
-                  placeholder="เช่น 10, 20, 50"
-                />
-                <p className="text-[11px] text-slate-500">
-                  จำนวนรอบที่นักกีฬาต้องเดินครบเพื่อจบการแข่งขัน — กำหนดตามขนาดสนามจริง
-                  {form.distanceKm && form.lapCount > 0 && (
-                    <span className="mt-0.5 block text-emerald-600">
-                      ระยะต่อรอบประมาณ {(Number(form.distanceKm) / form.lapCount).toFixed(2)} กม./รอบ
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-1.5 md:max-w-md">
-              <label className="text-sm font-medium text-slate-800">สถานะ Event</label>
-              <select
-                className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5"
-                value={form.status}
-                onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as EventFormValues["status"] }))}
-              >
-                <option value="DRAFT">ร่าง – ยังไม่เผยแพร่</option>
-                <option value="SCHEDULED">กำหนดการ – ตั้งวันไว้แล้ว</option>
-                <option value="ONGOING">กำลังดำเนินการ – กำลังแข่งขัน</option>
-                <option value="FINISHED">เสร็จสิ้น – แข่งขันเสร็จแล้ว</option>
-              </select>
-              <p className="text-[11px] text-slate-500">ใช้กำหนด state หลักของ Event เพื่อแสดงผลและคุม flow อื่น ๆ</p>
-            </div>
-
-            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              {isEdit && (
-                <Button type="button" variant="outline" disabled={isPending} onClick={cancelEdit} className="rounded-xl px-4 py-2 text-sm">
-                  ยกเลิก
-                </Button>
-              )}
-              <Button type="submit" disabled={isPending} className="rounded-xl px-4 py-2 text-sm font-medium">
-                {isPending ? "กำลังบันทึก..." : isEdit ? "บันทึกการเปลี่ยนแปลง" : "สร้าง Event ใหม่"}
-              </Button>
-            </div>
-          </form>
         )}
       </CardContent>
     </Card>

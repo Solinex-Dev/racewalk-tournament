@@ -36,7 +36,7 @@ function fmt(dt: Date): string {
   });
 }
 
-export default async function ActivityLogPage(props: Props) {
+export default async function ActivityLogPage(props: Readonly<Props>) {
   const me = await getCurrentAdmin();
   if (!hasPermission(me, "admins", "view")) return <NoAccess />;
 

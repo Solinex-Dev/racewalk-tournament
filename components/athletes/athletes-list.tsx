@@ -33,7 +33,7 @@ type AthletesListProps = {
 
 const ITEMS_PER_PAGE = 10;
 
-export function AthletesList({ athletes }: AthletesListProps) {
+export function AthletesList({ athletes }: Readonly<AthletesListProps>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
@@ -44,29 +44,29 @@ export function AthletesList({ athletes }: AthletesListProps) {
   // Extract unique values for filters
   const countries = useMemo(() => {
     const uniqueCountries = Array.from(
-      new Set(athletes.map((a) => a.country).filter(Boolean) as string[])
-    ).sort();
+      new Set(athletes.map((a) => a.country).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueCountries;
   }, [athletes]);
 
   const provinces = useMemo(() => {
     const uniqueProvinces = Array.from(
-      new Set(athletes.map((a) => a.province).filter(Boolean) as string[])
-    ).sort();
+      new Set(athletes.map((a) => a.province).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueProvinces;
   }, [athletes]);
 
   const affiliations = useMemo(() => {
     const uniqueAffiliations = Array.from(
-      new Set(athletes.map((a) => a.affiliation).filter(Boolean) as string[])
-    ).sort();
+      new Set(athletes.map((a) => a.affiliation).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueAffiliations;
   }, [athletes]);
 
   const clubs = useMemo(() => {
     const uniqueClubs = Array.from(
       new Set(athletes.map((a) => a.club).filter(Boolean) as string[])
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueClubs;
   }, [athletes]);
 
@@ -173,7 +173,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="athletes-country-filter" className="text-[11px] font-medium text-slate-600">
                   ประเทศ
                 </label>
                 <Select
@@ -182,7 +182,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     handleFilterChange(setCountryFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="athletes-country-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -197,7 +197,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="athletes-province-filter" className="text-[11px] font-medium text-slate-600">
                   จังหวัด
                 </label>
                 <Select
@@ -206,7 +206,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     handleFilterChange(setProvinceFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="athletes-province-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -221,7 +221,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="athletes-affiliation-filter" className="text-[11px] font-medium text-slate-600">
                   สังกัด
                 </label>
                 <Select
@@ -230,7 +230,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     handleFilterChange(setAffiliationFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="athletes-affiliation-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -245,7 +245,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="athletes-club-filter" className="text-[11px] font-medium text-slate-600">
                   สโมสร
                 </label>
                 <Select
@@ -254,7 +254,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     handleFilterChange(setClubFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="athletes-club-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>

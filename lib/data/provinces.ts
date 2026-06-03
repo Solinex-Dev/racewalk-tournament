@@ -35,6 +35,6 @@ export function getProvinceComboboxOptions(): { value: string; label: string; ke
 /** Whether a string is a canonical Thai province name. */
 export function isValidProvince(name: string | null | undefined): boolean {
   if (!name) return false;
-  if (!cachedNames) cachedNames = new Set(getAllProvinces().map((p) => p.name_th));
+  cachedNames ??= new Set(getAllProvinces().map((p) => p.name_th));
   return cachedNames.has(name);
 }

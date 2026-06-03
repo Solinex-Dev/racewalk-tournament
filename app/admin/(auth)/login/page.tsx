@@ -19,7 +19,7 @@ type LoginPageProps = {
   searchParams: Promise<{ callbackUrl?: string }>;
 };
 
-export default async function Login({ searchParams }: LoginPageProps) {
+export default async function Login({ searchParams }: Readonly<LoginPageProps>) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as { role?: string } | undefined)?.role;
   if (isAdminSession(role, session?.user?.id)) {

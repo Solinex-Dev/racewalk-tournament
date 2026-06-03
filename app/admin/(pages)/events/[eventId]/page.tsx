@@ -23,7 +23,7 @@ function toDateInput(dt: Date) {
   return dt.toISOString().slice(0, 10);
 }
 
-export default async function EventDetailPage(props: Props) {
+export default async function EventDetailPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
   const event = await prisma.event.findUnique({

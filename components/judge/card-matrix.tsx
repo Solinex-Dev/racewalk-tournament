@@ -20,7 +20,7 @@ export function JudgeCardMatrix({
   maxRed: maxRedProp,
   horizontal = false,
   mobile = false,
-}: {
+}: Readonly<{
   yellow: number;
   red: number;
   redDetails?: RedCardDetail[];
@@ -28,7 +28,7 @@ export function JudgeCardMatrix({
   maxRed?: number;
   horizontal?: boolean;
   mobile?: boolean;
-}) {
+}>) {
   const effectiveMaxRed = maxRedProp ?? MAX_RED;
 
   const safeYellow = Math.min(yellow, MAX_YELLOW);
@@ -48,10 +48,12 @@ export function JudgeCardMatrix({
     });
   }
 
+  const redFlexSuffix = mobile ? " flex-wrap" : "";
+  const redGridSuffix = mobile ? " w-10" : " w-12";
   const redGridClass =
     horizontal || effectiveMaxRed > 4
-      ? `flex flex-row gap-1 shrink-0${mobile ? " flex-wrap" : ""}`
-      : `grid grid-cols-2 gap-1 shrink-0${mobile ? " w-10" : " w-12"}`;
+      ? `flex flex-row gap-1 shrink-0${redFlexSuffix}`
+      : `grid grid-cols-2 gap-1 shrink-0${redGridSuffix}`;
 
   const rootClass = mobile
     ? "flex justify-center items-center rounded-full px-1 py-0.5"
@@ -81,20 +83,21 @@ export function JudgeCardMatrix({
       )}
 
       <div className={redGridClass}>
-        {redCards.map((redCard, index) => (
-          <span
-            key={`red-${index}`}
-            className={`${redCardClass} ${
-              redCard.isFilled
-                ? redCard.isFromThisJudge
-                  ? "bg-red-500 text-slate-900 ring-1 ring-yellow-400"
-                  : "bg-red-500 text-slate-900"
-                : "ring-1 ring-slate-700"
-            }`}
-          >
-            {redCard.isFilled && redCard.symbol ? redCard.symbol : ""}
-          </span>
-        ))}
+        {redCards.map((redCard, index) => {
+          const filledClass = redCard.isFromThisJudge
+            ? "bg-red-500 text-slate-900 ring-1 ring-yellow-400"
+            : "bg-red-500 text-slate-900";
+          return (
+            <span
+              key={`red-${index}`}
+              className={`${redCardClass} ${
+                redCard.isFilled ? filledClass : "ring-1 ring-slate-700"
+              }`}
+            >
+              {redCard.isFilled && redCard.symbol ? redCard.symbol : ""}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

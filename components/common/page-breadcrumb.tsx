@@ -11,10 +11,10 @@ export type Crumb = { label: string; href?: string };
 export function PageBreadcrumb({
   items,
   className,
-}: {
+}: Readonly<{
   items: Crumb[];
   className?: string;
-}) {
+}>) {
   return (
     <nav aria-label="breadcrumb" className={cn("min-w-0", className)}>
       <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-slate-500">

@@ -28,18 +28,21 @@ function toDatetimeLocal(iso: string): string {
 }
 
 function Toggle({
+  id,
   active,
   disabled,
   onClick,
   children,
-}: {
+}: Readonly<{
+  id?: string;
   active: boolean;
   disabled?: boolean;
   onClick: () => void;
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <button
+      id={id}
       type="button"
       disabled={disabled}
       onClick={onClick}
@@ -62,14 +65,14 @@ export function CardEditDialog({
   onOpenChange,
   onConfirm,
   isPending = false,
-}: {
+}: Readonly<{
   card: EditCard | null;
   judges: EditJudge[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (data: CardEditValue) => void;
   isPending?: boolean;
-}) {
+}>) {
   const [judgeId, setJudgeId] = React.useState("");
   const [color, setColor] = React.useState<"YELLOW" | "RED">("YELLOW");
   const [symbol, setSymbol] = React.useState<"LIFTED_FOOT" | "BENT_KNEE">("LIFTED_FOOT");
@@ -96,7 +99,7 @@ export function CardEditDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = reason.trim();
-    const ms = issuedAt ? new Date(issuedAt).getTime() : NaN;
+    const ms = issuedAt ? new Date(issuedAt).getTime() : Number.NaN;
     if (!trimmed || !judgeId || Number.isNaN(ms)) return;
     onConfirm({ judgeId, color, symbol, issuedAtMs: ms, reason: trimmed });
   };
@@ -116,8 +119,9 @@ export function CardEditDialog({
 
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-900">กรรมการผู้ออกใบ</label>
+              <label htmlFor="card-edit-judge" className="text-sm font-medium text-slate-900">กรรมการผู้ออกใบ</label>
               <select
+                id="card-edit-judge"
                 value={judgeId}
                 onChange={(e) => setJudgeId(e.target.value)}
                 disabled={isPending}
@@ -133,9 +137,9 @@ export function CardEditDialog({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-900">ประเภทใบ</label>
+              <label htmlFor="card-edit-color" className="text-sm font-medium text-slate-900">ประเภทใบ</label>
               <div className="flex gap-2">
-                <Toggle active={color === "YELLOW"} disabled={isPending} onClick={() => setColor("YELLOW")}>
+                <Toggle id="card-edit-color" active={color === "YELLOW"} disabled={isPending} onClick={() => setColor("YELLOW")}>
                   <span className="inline-block h-3 w-2.5 rounded-sm bg-amber-400" /> ใบเหลือง
                 </Toggle>
                 <Toggle active={color === "RED"} disabled={isPending} onClick={() => setColor("RED")}>
@@ -150,9 +154,9 @@ export function CardEditDialog({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-900">สัญลักษณ์ความผิด</label>
+              <label htmlFor="card-edit-symbol" className="text-sm font-medium text-slate-900">สัญลักษณ์ความผิด</label>
               <div className="flex gap-2">
-                <Toggle active={symbol === "LIFTED_FOOT"} disabled={isPending} onClick={() => setSymbol("LIFTED_FOOT")}>
+                <Toggle id="card-edit-symbol" active={symbol === "LIFTED_FOOT"} disabled={isPending} onClick={() => setSymbol("LIFTED_FOOT")}>
                   <span className="font-mono text-base">~</span> ยกเท้า
                 </Toggle>
                 <Toggle active={symbol === "BENT_KNEE"} disabled={isPending} onClick={() => setSymbol("BENT_KNEE")}>

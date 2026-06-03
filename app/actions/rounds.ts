@@ -28,7 +28,7 @@ export type RoundActionData = {
 
 function normalizeNote(note?: string): string | null {
   const trimmed = note?.trim();
-  return trimmed ? trimmed : null;
+  return trimmed || null;
 }
 
 /** Per-round official caps — 8 judges + 1 head judge + 1 event logger = 10 max. */

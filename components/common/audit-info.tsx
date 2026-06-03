@@ -13,7 +13,7 @@ function fmt(dt: Date | null): string {
 }
 
 /** Read-only "created by / last edited by" footer for a detail page. */
-export function AuditInfo({ createdByName, createdAt, updatedByName, updatedAt }: AuditMeta) {
+export function AuditInfo({ createdByName, createdAt, updatedByName, updatedAt }: Readonly<AuditMeta>) {
   return (
     <div className="flex flex-wrap gap-x-6 gap-y-1.5 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-xs text-slate-600">
       <span className="inline-flex items-center gap-1.5">

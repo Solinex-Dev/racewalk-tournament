@@ -74,7 +74,7 @@ function actionLabel(actionType: string): string {
   return ACTION_LABEL[actionType] ?? actionType;
 }
 
-export default async function ModeratorPage(props: Props) {
+export default async function ModeratorPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
   const me = await getCurrentAdmin();

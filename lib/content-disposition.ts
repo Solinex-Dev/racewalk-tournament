@@ -9,7 +9,7 @@
  *   - `filename="<ascii fallback>"` for legacy clients (non-ASCII → "_")
  *   - `filename*=UTF-8''<percent-encoded>` for modern browsers (shows the real name)
  */
-const UNSAFE = new Set('<>:"/\\|?*'.split("")); // filesystem/quote-unsafe (keeps - and space)
+const UNSAFE = new Set(String.raw`<>:"/\|?*`.split("")); // filesystem/quote-unsafe (keeps - and space)
 
 export function attachmentContentDisposition(rawFilename: string): string {
   let nice = "";

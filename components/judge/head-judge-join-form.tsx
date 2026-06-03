@@ -17,7 +17,7 @@ type Props = {
   event: { id: string; name: string; statusLabel: string } | null;
 };
 
-export function HeadJudgeJoinForm({ eventId, event }: Props) {
+export function HeadJudgeJoinForm({ eventId, event }: Readonly<Props>) {
   const router = useRouter();
   const [code, setCode] = React.useState("");
   const [isPending, startTransition] = React.useTransition();
@@ -59,11 +59,12 @@ export function HeadJudgeJoinForm({ eventId, event }: Props) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <label className="block text-sm font-medium text-slate-200">
+            <label htmlFor="head-judge-join-code" className="block text-sm font-medium text-slate-200">
               รหัสกรรมการของหัวหน้ากรรมการ
             </label>
             <div className="flex justify-center">
               <InputOTP
+                id="head-judge-join-code"
                 maxLength={6}
                 pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
                 value={code}

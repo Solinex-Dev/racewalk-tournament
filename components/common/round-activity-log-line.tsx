@@ -17,14 +17,12 @@ export function RoundActivityLogLine({
   log,
   actorName,
   theme = "dark",
-}: RoundActivityLogLineProps) {
+}: Readonly<RoundActivityLogLineProps>) {
   const formatted = formatRoundActivityLog(log);
   const actorClass =
     theme === "dark" ? "text-slate-100" : "text-slate-900";
-  const roleClass =
-    theme === "dark" ? "text-slate-500" : "text-slate-500";
-  const detailClass =
-    theme === "dark" ? "text-slate-500" : "text-slate-500";
+  const roleClass = "text-slate-500";
+  const detailClass = "text-slate-500";
 
   return (
     <div className="min-w-0 flex-1 space-y-1">

@@ -59,7 +59,7 @@ const ACTOR_ROLE_LABEL: Record<string, string> = {
   ADMIN: "ผู้ดูแลระบบ",
 };
 
-export default async function ModeratorEditPage(props: Props) {
+export default async function ModeratorEditPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
   const search = await props.searchParams;
 

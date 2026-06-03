@@ -59,7 +59,7 @@ function fmt(dt: Date): string {
 const inputCls =
   "h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5";
 
-export default async function SystemMonitorPage(props: Props) {
+export default async function SystemMonitorPage(props: Readonly<Props>) {
   const me = await getCurrentAdmin();
   if (!me?.isRoot) return <NoAccess />;
 
@@ -129,8 +129,9 @@ export default async function SystemMonitorPage(props: Props) {
           <CardContent className="p-4">
             <form method="get" className="flex flex-wrap items-end gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-600">ค้นหา (หน้า / action)</label>
+                <label htmlFor="system-filter-q" className="text-xs font-medium text-slate-600">ค้นหา (หน้า / action)</label>
                 <input
+                  id="system-filter-q"
                   name="q"
                   defaultValue={q}
                   placeholder="เช่น /admin/events, ATHLETE"
@@ -138,8 +139,8 @@ export default async function SystemMonitorPage(props: Props) {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-600">ประเภท</label>
-                <select name="op" defaultValue={op} className={inputCls}>
+                <label htmlFor="system-filter-op" className="text-xs font-medium text-slate-600">ประเภท</label>
+                <select id="system-filter-op" name="op" defaultValue={op} className={inputCls}>
                   <option value="">ทั้งหมด</option>
                   {OPERATIONS.map((o) => (
                     <option key={o} value={o}>
@@ -149,8 +150,8 @@ export default async function SystemMonitorPage(props: Props) {
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-600">ผู้ใช้</label>
-                <select name="user" defaultValue={userId} className={`${inputCls} max-w-52`}>
+                <label htmlFor="system-filter-user" className="text-xs font-medium text-slate-600">ผู้ใช้</label>
+                <select id="system-filter-user" name="user" defaultValue={userId} className={`${inputCls} max-w-52`}>
                   <option value="">ทุกคน</option>
                   {admins.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -160,8 +161,8 @@ export default async function SystemMonitorPage(props: Props) {
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-600">ช่วงเวลา</label>
-                <select name="days" defaultValue={days} className={inputCls}>
+                <label htmlFor="system-filter-days" className="text-xs font-medium text-slate-600">ช่วงเวลา</label>
+                <select id="system-filter-days" name="days" defaultValue={days} className={inputCls}>
                   <option value="1">24 ชม. ล่าสุด</option>
                   <option value="7">7 วันล่าสุด</option>
                   <option value="30">30 วันล่าสุด</option>

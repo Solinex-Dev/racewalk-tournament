@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { JudgeCardMatrix } from "@/components/judge/card-matrix";
 import { AutoRefresh } from "@/components/common/auto-refresh";
 import { LiveTimer } from "@/components/common/live-timer";
-import { LastUpdated } from "@/components/common/last-updated";
 import { prisma } from "@/lib/prisma";
 import { compareAthletesByFinish } from "@/lib/athlete-sort";
 import { lapsCompleted } from "@/lib/lap-progress";
@@ -54,7 +53,7 @@ const ROUND_STATUS_LABEL: Record<string, string> = {
   finished: "เสร็จสิ้น",
 };
 
-export default async function EventLivePage(props: Props) {
+export default async function EventLivePage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
   const event = await prisma.event.findUnique({
@@ -90,8 +89,8 @@ export default async function EventLivePage(props: Props) {
 
   // Pick current round: ONGOING, else last FINISHED, else first SCHEDULED
   const currentRound =
-    event.rounds.find((r) => r.status === "ONGOING") ||
-    [...event.rounds].reverse().find((r) => r.status === "FINISHED") ||
+    event.rounds.find((r) => r.status === "ONGOING") ??
+    [...event.rounds].reverse().find((r) => r.status === "FINISHED") ??
     event.rounds[0];
 
   const eventStatus = event.status.toLowerCase();
@@ -141,7 +140,7 @@ export default async function EventLivePage(props: Props) {
         (f) => f.athleteId === ra.athleteId,
       );
       const lastTimeMs =
-        finish?.timeMs ?? lapsForMe[lapsForMe.length - 1]?.timeMs;
+        finish?.timeMs ?? lapsForMe.at(-1)?.timeMs;
       return {
         bib: ra.bib,
         athleteId: ra.athleteId,
@@ -151,7 +150,7 @@ export default async function EventLivePage(props: Props) {
         yellowCards: yellow,
         redCards: red,
         position: ra.position ?? 0,
-        totalTime: lastTimeMs !== undefined ? formatMs(lastTimeMs) : "-",
+        totalTime: lastTimeMs === undefined ? "-" : formatMs(lastTimeMs),
         status: ra.status,
         currentLap: lapsCompleted(lapsForMe.length, !!finish, lapCount),
         isFinished: !!finish,
@@ -178,8 +177,6 @@ export default async function EventLivePage(props: Props) {
     }
     return null;
   })();
-
-  const renderedAt = new Date().toISOString();
 
   return (
     <main className="h-screen overflow-hidden bg-slate-950 text-slate-100">

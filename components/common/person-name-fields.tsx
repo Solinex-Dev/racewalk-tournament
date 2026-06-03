@@ -20,19 +20,20 @@ export function PersonNameFields({
   onChange,
   disabled,
   firstNameRequired = true,
-}: {
+}: Readonly<{
   prefix: string;
   firstName: string;
   lastName: string;
   onChange: (patch: PersonNamePatch) => void;
   disabled?: boolean;
   firstNameRequired?: boolean;
-}) {
+}>) {
   return (
     <div className="grid gap-4 sm:grid-cols-[9rem_1fr_1fr]">
       <div className="space-y-1.5">
-        <label className="block text-xs font-medium text-slate-800">คำนำหน้า</label>
+        <label htmlFor="person-prefix" className="block text-xs font-medium text-slate-800">คำนำหน้า</label>
         <Combobox
+          id="person-prefix"
           options={PREFIX_COMBO}
           value={prefix}
           onChange={(v) => onChange({ prefix: v })}
@@ -58,8 +59,9 @@ export function PersonNameFields({
         />
       </div>
       <div className="space-y-1.5">
-        <label className="block text-xs font-medium text-slate-800">นามสกุล</label>
+        <label htmlFor="person-last-name" className="block text-xs font-medium text-slate-800">นามสกุล</label>
         <Input
+          id="person-last-name"
           value={lastName}
           onChange={(e) => onChange({ lastName: e.target.value })}
           placeholder="เช่น ใจดี"

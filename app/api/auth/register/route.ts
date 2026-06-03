@@ -24,10 +24,8 @@ import {
 import { createActivityLog, ActivityLogAction } from "@/lib/activity-log";
 import { resolveUserStatus, finalizeDeletion } from "@/lib/user-status";
 
-type SessionWithRole = { user: { id?: string; role?: string } };
-
 export async function POST(request: Request) {
-  const session = (await getServerSession(authOptions)) as SessionWithRole | null;
+  const session = await getServerSession(authOptions);
   if (!session?.user?.id || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

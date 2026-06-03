@@ -33,7 +33,7 @@ const STATUS_COLOR: Record<Round["status"], string> = {
   finished: "bg-slate-200 text-slate-600",
 };
 
-export function RoundsList({ eventId, rounds }: RoundsListProps) {
+export function RoundsList({ eventId, rounds }: Readonly<RoundsListProps>) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
