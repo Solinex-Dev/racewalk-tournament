@@ -77,7 +77,16 @@ export function LapRecorder({
   const timerIdleLabel = endMs ? "Ended" : "Waiting";
   const timerStatusLabel = isRunning ? "● Live" : timerIdleLabel;
 
+  // Keep the acting row disabled for the WHOLE transition — including the
+  // router.refresh() round-trip — so its button can't re-enable with a stale lap
+  // number and double-fire. Other athletes stay independently tappable for fast
+  // multi-athlete logging. (The server actions are also idempotent as a backstop.)
+  React.useEffect(() => {
+    if (!isPending) setActingBib(null);
+  }, [isPending]);
+
   const handleRecordLap = (athlete: AthleteRecord) => {
+    if (isPending && actingBib === athlete.bib) return;
     if (!isRunning) {
       toast.error("รอ Admin เริ่มจับเวลาก่อน");
       return;
@@ -92,19 +101,25 @@ export function LapRecorder({
       try {
         if (nextLap >= athlete.lapCount) {
           const res = await recordFinishTime(athlete.athleteId, captureMs);
-          toast.success(`บันทึกเข้าเส้นชัย BIB ${athlete.bib} — ${formatMs(captureMs)}`);
-          if (res?.roundEnded) {
-            toast.success("นักกีฬาเข้าเส้นชัยครบทุกคน — จบการแข่งขันอัตโนมัติ");
+          if (res?.alreadyFinished) {
+            toast.info(`BIB ${athlete.bib} เข้าเส้นชัยอยู่แล้ว`);
+          } else {
+            toast.success(`บันทึกเข้าเส้นชัย BIB ${athlete.bib} — ${formatMs(captureMs)}`);
+            if (res?.roundEnded) {
+              toast.success("นักกีฬาเข้าเส้นชัยครบทุกคน — จบการแข่งขันอัตโนมัติ");
+            }
           }
         } else {
-          await recordLapTime(athlete.athleteId, nextLap, captureMs);
-          toast.success(`บันทึก Lap ${nextLap} ของ BIB ${athlete.bib}`);
+          const res = await recordLapTime(athlete.athleteId, nextLap, captureMs);
+          if (res?.duplicate) {
+            toast.info(`Lap ${nextLap} ของ BIB ${athlete.bib} บันทึกอยู่แล้ว`);
+          } else {
+            toast.success(`บันทึก Lap ${nextLap} ของ BIB ${athlete.bib}`);
+          }
         }
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-      } finally {
-        setActingBib(null);
       }
     });
   };

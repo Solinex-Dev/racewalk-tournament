@@ -187,7 +187,7 @@ export default async function EventLivePage(props: Readonly<Props>) {
 
   return (
     <main className="h-screen overflow-hidden bg-slate-950 text-slate-100">
-      <AutoRefresh intervalMs={5000} />
+      <AutoRefresh intervalMs={500} />
       <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col gap-1 px-4 py-6 lg:py-10">
         <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div className="w-full">

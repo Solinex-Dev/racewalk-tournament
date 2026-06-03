@@ -68,32 +68,38 @@ export function HeadJudgeView({
   const [isPending, startTransition] = React.useTransition();
   const [actingId, setActingId] = React.useState<string | null>(null);
 
+  // Keep the acting card's buttons disabled for the whole transition (including
+  // the router.refresh round-trip) so a fast double-click can't fire a second
+  // confirm/reject on a card that's already been decided. The server actions are
+  // also idempotent (atomic PENDING→… transition) as a backstop.
+  React.useEffect(() => {
+    if (!isPending) setActingId(null);
+  }, [isPending]);
+
   const handleConfirm = (cardId: string) => {
+    if (isPending && actingId === cardId) return;
     setActingId(cardId);
     startTransition(async () => {
       try {
-        await confirmRedCard(cardId);
-        toast.success("ยืนยันใบแดงแล้ว");
+        const res = await confirmRedCard(cardId);
+        toast.success(res?.alreadyDecided ? "ใบแดงนี้ถูกตัดสินไปแล้ว" : "ยืนยันใบแดงแล้ว");
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-      } finally {
-        setActingId(null);
       }
     });
   };
 
   const handleReject = (cardId: string) => {
+    if (isPending && actingId === cardId) return;
     setActingId(cardId);
     startTransition(async () => {
       try {
-        await rejectRedCard(cardId);
-        toast.success("ยกเลิกใบแดงแล้ว");
+        const res = await rejectRedCard(cardId);
+        toast.success(res?.alreadyDecided ? "ใบแดงนี้ถูกตัดสินไปแล้ว" : "ยกเลิกใบแดงแล้ว");
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-      } finally {
-        setActingId(null);
       }
     });
   };

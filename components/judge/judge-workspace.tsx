@@ -12,6 +12,7 @@ export type JudgeAthleteRow = {
   athleteId: string;
   name: string;
   status: "OK" | "DQ" | "DNF";
+  isFinished: boolean;
   myYellowKnee: boolean;
   myYellowFoot: boolean;
   myRedSymbol: "~" | ">" | null;
@@ -77,6 +78,9 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
   };
 
   const isDQSelected = selectedAthlete?.status === "DQ";
+  const isFinishedSelected = !!selectedAthlete?.isFinished;
+  // Cards can't be issued to an athlete who is DQ'd or has crossed the line.
+  const isLockedSelected = isDQSelected || isFinishedSelected;
   const hasGivenSelected = !!selectedAthlete?.myRedSymbol;
 
   return (
@@ -155,10 +159,16 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
                     ) : (
                       athletes.map((athlete) => {
                         const isDQ = athlete.status === "DQ";
+                        const isFinished = athlete.isFinished;
                         const isSelected = selectedBib === athlete.bib;
-                        const unselectedRowClass = isDQ
-                          ? "bg-slate-800/30 opacity-60 hover:bg-slate-800/50"
-                          : "hover:bg-slate-800/50";
+                        let unselectedRowClass: string;
+                        if (isDQ) {
+                          unselectedRowClass = "bg-slate-800/30 opacity-60 hover:bg-slate-800/50";
+                        } else if (isFinished) {
+                          unselectedRowClass = "bg-slate-800/20 opacity-70 hover:bg-slate-800/40";
+                        } else {
+                          unselectedRowClass = "hover:bg-slate-800/50";
+                        }
                         return (
                           <tr
                             key={athlete.bib}
@@ -177,10 +187,12 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
                                 className={`inline-flex rounded-full px-2.5 py-0.5 text-sm font-medium ring-1 ${
                                   isDQ
                                     ? "bg-red-950 text-red-400 ring-red-800"
-                                    : "bg-emerald-950 text-emerald-400 ring-emerald-800"
+                                    : isFinished
+                                      ? "bg-sky-950 text-sky-300 ring-sky-800"
+                                      : "bg-emerald-950 text-emerald-400 ring-emerald-800"
                                 }`}
                               >
-                                {athlete.status}
+                                {isFinished && !isDQ ? "เข้าเส้นชัย" : athlete.status}
                               </span>
                             </td>
                             <td className="px-3 py-2">
@@ -241,10 +253,12 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
                   className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${
                     isDQSelected
                       ? "bg-red-950 text-red-400 ring-red-800"
-                      : "bg-emerald-950 text-emerald-400 ring-emerald-800"
+                      : isFinishedSelected
+                        ? "bg-sky-950 text-sky-300 ring-sky-800"
+                        : "bg-emerald-950 text-emerald-400 ring-emerald-800"
                   }`}
                 >
-                  {selectedAthlete.status}
+                  {isFinishedSelected && !isDQSelected ? "เข้าเส้นชัย" : selectedAthlete.status}
                 </span>
                 {selectedAthlete.name && (
                   <span className="text-sm text-slate-400">{selectedAthlete.name}</span>
@@ -259,16 +273,24 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
               </button>
             </div>
 
+            {isLockedSelected && (
+              <div className="mb-3 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-1.5 text-center text-xs font-medium text-slate-300">
+                {isDQSelected
+                  ? "นักกีฬาถูกตัดสิทธิ์ (DQ) — ออกใบไม่ได้"
+                  : "นักกีฬาเข้าเส้นชัยแล้ว — ออกใบไม่ได้"}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <div className="flex flex-1 flex-col gap-1.5">
                 <span className="text-center text-base font-medium text-amber-400/70">ใบเหลือง</span>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    disabled={isPending || isDQSelected || selectedAthlete.myYellowKnee}
+                    disabled={isPending || isLockedSelected || selectedAthlete.myYellowKnee}
                     onClick={() => handleYellow(selectedAthlete.athleteId, "BENT_KNEE")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                      isPending || isDQSelected || selectedAthlete.myYellowKnee
+                      isPending || isLockedSelected || selectedAthlete.myYellowKnee
                         ? "cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600"
                         : "border-amber-700 bg-amber-950 text-amber-400 active:bg-amber-800"
                     }`}
@@ -278,10 +300,10 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
                   </button>
                   <button
                     type="button"
-                    disabled={isPending || isDQSelected || selectedAthlete.myYellowFoot}
+                    disabled={isPending || isLockedSelected || selectedAthlete.myYellowFoot}
                     onClick={() => handleYellow(selectedAthlete.athleteId, "LIFTED_FOOT")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                      isPending || isDQSelected || selectedAthlete.myYellowFoot
+                      isPending || isLockedSelected || selectedAthlete.myYellowFoot
                         ? "cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600"
                         : "border-amber-700 bg-amber-950 text-amber-400 active:bg-amber-800"
                     }`}
@@ -299,10 +321,10 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    disabled={isPending || isDQSelected || hasGivenSelected}
+                    disabled={isPending || isLockedSelected || hasGivenSelected}
                     onClick={() => handleRed(selectedAthlete.athleteId, "BENT_KNEE")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                      isPending || isDQSelected || hasGivenSelected
+                      isPending || isLockedSelected || hasGivenSelected
                         ? "cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600"
                         : "border-red-700 bg-red-950 text-red-400 active:bg-red-800"
                     }`}
@@ -312,10 +334,10 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
                   </button>
                   <button
                     type="button"
-                    disabled={isPending || isDQSelected || hasGivenSelected}
+                    disabled={isPending || isLockedSelected || hasGivenSelected}
                     onClick={() => handleRed(selectedAthlete.athleteId, "LIFTED_FOOT")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                      isPending || isDQSelected || hasGivenSelected
+                      isPending || isLockedSelected || hasGivenSelected
                         ? "cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600"
                         : "border-red-700 bg-red-950 text-red-400 active:bg-red-800"
                     }`}

@@ -69,7 +69,7 @@ export default async function EventLoggerPage(props: Readonly<Props>) {
 
   return (
     <>
-      <AutoRefresh intervalMs={2000} />
+      <AutoRefresh intervalMs={500} />
       <OfficialEndedDialog
         open={round.status === "FINISHED"}
         roundName={round.name}

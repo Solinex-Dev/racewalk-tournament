@@ -39,6 +39,10 @@ export default async function JudgePage(props: Readonly<Props>) {
       cards: {
         where: { deletedAt: null },
       },
+      finishTimes: {
+        where: { deletedAt: null },
+        select: { athleteId: true },
+      },
     },
   });
 
@@ -47,6 +51,7 @@ export default async function JudgePage(props: Readonly<Props>) {
   }
 
   const myJudgeId = session.judgeId;
+  const finishedAthleteIds = new Set(round.finishTimes.map((f) => f.athleteId));
 
   const rows: JudgeAthleteRow[] = round.roundAthletes.map((ra) => {
     const myCards = round.cards.filter(
@@ -65,6 +70,7 @@ export default async function JudgePage(props: Readonly<Props>) {
       athleteId: ra.athleteId,
       name: ra.athlete.name,
       status: ra.status,
+      isFinished: finishedAthleteIds.has(ra.athleteId),
       myYellowKnee,
       myYellowFoot,
       myRedSymbol,
@@ -74,7 +80,7 @@ export default async function JudgePage(props: Readonly<Props>) {
 
   return (
     <>
-      <AutoRefresh intervalMs={2000} />
+      <AutoRefresh intervalMs={500} />
       <OfficialEndedDialog
         open={round.status === "FINISHED"}
         roundName={round.name}

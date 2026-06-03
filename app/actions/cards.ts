@@ -15,6 +15,20 @@ const RED_CARDS_TO_DQ = 4;
 export type CardSymbol = "LIFTED_FOOT" | "BENT_KNEE";
 
 /**
+ * Once an athlete has crossed the finish line they are out of judging range —
+ * no further yellow/red cards may be issued. The judge UI hides the controls,
+ * but this is the server-side enforcement (defense in depth).
+ */
+async function assertAthleteNotFinished(roundId: string, athleteId: string) {
+  const finished = await prisma.finishTime.findUnique({
+    where: { roundId_athleteId: { roundId, athleteId } },
+  });
+  if (finished) {
+    throw new Error("นักกีฬาเข้าเส้นชัยแล้ว — ออกใบไม่ได้");
+  }
+}
+
+/**
  * Issue a YELLOW card (note). Max 1 per symbol per judge per athlete per round.
  * Yellow cards are immediate (no head-judge confirmation).
  */
@@ -28,6 +42,7 @@ export async function issueYellowCard(athleteId: string, symbol: CardSymbol) {
   });
   if (!ra) throw new Error("นักกีฬาไม่อยู่ในรอบนี้");
   assertAthleteActive(ra);
+  await assertAthleteNotFinished(session.roundId, athleteId);
 
   const existingSameSymbol = await prisma.card.count({
     where: {
@@ -84,6 +99,7 @@ export async function issueRedCard(athleteId: string, symbol: CardSymbol) {
   });
   if (!ra) throw new Error("นักกีฬาไม่อยู่ในรอบนี้");
   assertAthleteActive(ra);
+  await assertAthleteNotFinished(session.roundId, athleteId);
 
   const existing = await prisma.card.count({
     where: {
@@ -132,7 +148,9 @@ export async function issueRedCard(athleteId: string, symbol: CardSymbol) {
  * Head Judge confirms a pending red card. Sets state=CONFIRMED.
  * If athlete now has >=4 confirmed red cards, mark them DQ.
  */
-export async function confirmRedCard(cardId: string) {
+export async function confirmRedCard(
+  cardId: string,
+): Promise<{ ok: true; alreadyDecided?: boolean }> {
   const session = await requireOfficialSession(["HEAD_JUDGE"]);
   const round = await loadOfficialRound(session.roundId);
   assertRoundOpenForReview(round);
@@ -143,18 +161,23 @@ export async function confirmRedCard(cardId: string) {
   });
   if (!card) throw new Error("ไม่พบใบแดงที่ระบุ");
   if (card.roundId !== session.roundId) throw new Error("ใบแดงไม่อยู่ในรอบของคุณ");
-  if (card.color !== "RED" || card.state !== "PENDING") {
-    throw new Error("ใบนี้ไม่อยู่ในสถานะรอยืนยัน");
-  }
+  if (card.color !== "RED") throw new Error("ใบนี้ไม่ใช่ใบแดง");
 
-  await prisma.card.update({
-    where: { id: cardId },
+  // Atomic PENDING → CONFIRMED. Only the call that actually flips the state
+  // proceeds; a racing double-click updates 0 rows and returns a benign no-op,
+  // so the DQ check and activity logs run exactly once (no thrown error, no
+  // duplicate DQ). This is what made fast double-taps crash before.
+  const transition = await prisma.card.updateMany({
+    where: { id: cardId, state: "PENDING", deletedAt: null },
     data: {
       state: "CONFIRMED",
       decidedBy: session.judgeId,
       decidedAt: new Date(),
     },
   });
+  if (transition.count === 0) {
+    return { ok: true, alreadyDecided: true };
+  }
 
   const confirmedRedCount = await prisma.card.count({
     where: {
@@ -203,7 +226,9 @@ export async function confirmRedCard(cardId: string) {
 /**
  * Head Judge overrides (rejects) a pending red card. Sets state=OVERRIDDEN.
  */
-export async function rejectRedCard(cardId: string) {
+export async function rejectRedCard(
+  cardId: string,
+): Promise<{ ok: true; alreadyDecided?: boolean }> {
   const session = await requireOfficialSession(["HEAD_JUDGE"]);
   const round = await loadOfficialRound(session.roundId);
   assertRoundOpenForReview(round);
@@ -214,18 +239,20 @@ export async function rejectRedCard(cardId: string) {
   });
   if (!card) throw new Error("ไม่พบใบแดงที่ระบุ");
   if (card.roundId !== session.roundId) throw new Error("ใบแดงไม่อยู่ในรอบของคุณ");
-  if (card.color !== "RED" || card.state !== "PENDING") {
-    throw new Error("ใบนี้ไม่อยู่ในสถานะรอยืนยัน");
-  }
+  if (card.color !== "RED") throw new Error("ใบนี้ไม่ใช่ใบแดง");
 
-  await prisma.card.update({
-    where: { id: cardId },
+  // Atomic PENDING → OVERRIDDEN (see confirmRedCard for the rationale).
+  const transition = await prisma.card.updateMany({
+    where: { id: cardId, state: "PENDING", deletedAt: null },
     data: {
       state: "OVERRIDDEN",
       decidedBy: session.judgeId,
       decidedAt: new Date(),
     },
   });
+  if (transition.count === 0) {
+    return { ok: true, alreadyDecided: true };
+  }
 
   await prisma.roundActivityLog.create({
     data: {
