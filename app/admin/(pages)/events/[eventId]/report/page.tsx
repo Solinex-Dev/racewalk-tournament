@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Download, Printer } from "lucide-react";
+import { ArrowLeft, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
@@ -78,7 +78,7 @@ export default async function EventReportPage(props: Readonly<Props>) {
 
           <Link href={`/admin/events/${eventId}`}>
             <Button variant="outline" size="sm" className="rounded-lg border-slate-200 text-xs">
-              กลับไปหน้า Event
+              <ArrowLeft className="h-4 w-4" /> กลับไปหน้า Event
             </Button>
           </Link>
         </div>

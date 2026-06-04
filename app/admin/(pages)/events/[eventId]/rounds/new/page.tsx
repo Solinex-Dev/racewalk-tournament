@@ -5,6 +5,7 @@ import { RoundForm } from "@/components/rounds/round-form";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "สร้างรอบแข่งใหม่ – การแข่งขันเดินทน",
@@ -80,7 +81,7 @@ export default async function NewRoundPage(props: Readonly<Props>) {
               size="sm"
               className="rounded-lg border-slate-200 text-xs"
             >
-              กลับไปหน้า Event
+              <ArrowLeft className="h-4 w-4" /> กลับไปหน้า Event
             </Button>
           </Link>
         </div>
