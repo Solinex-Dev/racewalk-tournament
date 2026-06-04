@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { SessionProvider } from "@/components/providers/session-provider";
 
@@ -32,6 +33,7 @@ export default function RootLayout({
       >
         <SessionProvider>{children}</SessionProvider>
         <Toaster position="top-right" richColors closeButton />
+        <Analytics />
       </body>
     </html>
   );
