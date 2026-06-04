@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { compareAthletesByFinish } from "@/lib/athlete-sort";
 import { PrintButton } from "@/components/report/print-button";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
@@ -64,6 +65,41 @@ export default async function PrintReportPage(props: Readonly<Props>) {
   });
 
   if (!event) notFound();
+
+  // Per-round standings: sort with the shared finish comparator and assign a
+  // DQ-aware rank (the same logic as the public leaderboard). A finisher who was
+  // later DQ'd drops out of the ranked group, so everyone below moves up — the
+  // stored `position` is raw finish order and isn't DQ-adjusted, so we compute it.
+  const rankedByRound = new Map(
+    event.rounds.map((round) => {
+      const rows = round.roundAthletes.map((ra) => {
+        const finish = round.finishTimes.find((f) => f.athleteId === ra.athleteId);
+        return {
+          ra,
+          yellow: round.cards.filter(
+            (c) => c.athleteId === ra.athleteId && c.color === "YELLOW",
+          ).length,
+          confirmedRed: round.cards.filter(
+            (c) => c.athleteId === ra.athleteId && c.color === "RED" && c.state === "CONFIRMED",
+          ).length,
+          finishMs: finish?.timeMs ?? null,
+          isFinished: !!finish,
+        };
+      });
+      rows.sort((a, b) =>
+        compareAthletesByFinish(
+          { status: a.ra.status, position: a.ra.position ?? null, isFinished: a.isFinished, currentLap: 0, bib: a.ra.bib },
+          { status: b.ra.status, position: b.ra.position ?? null, isFinished: b.isFinished, currentLap: 0, bib: b.ra.bib },
+        ),
+      );
+      let rank = 0;
+      const ranked = rows.map((r) => ({
+        ...r,
+        rank: r.ra.status === "OK" && r.isFinished ? (rank += 1) : null,
+      }));
+      return [round.id, ranked] as const;
+    }),
+  );
 
   return (
     <main className="print-page mx-auto max-w-full overflow-x-auto bg-white p-6 text-slate-900">
@@ -140,27 +176,20 @@ export default async function PrintReportPage(props: Readonly<Props>) {
                 </tr>
               </thead>
               <tbody>
-                {round.roundAthletes.map((ra) => {
-                  const yellow = round.cards.filter(
-                    (c) => c.athleteId === ra.athleteId && c.color === "YELLOW",
-                  ).length;
-                  const confirmedRed = round.cards.filter(
-                    (c) => c.athleteId === ra.athleteId && c.color === "RED" && c.state === "CONFIRMED",
-                  ).length;
-                  const finish = round.finishTimes.find((f) => f.athleteId === ra.athleteId);
-                  const nonDqRowClass = ra.status === "DNF" ? "dnf" : "";
-                  const rowClass = ra.status === "DQ" ? "dq" : nonDqRowClass;
+                {(rankedByRound.get(round.id) ?? []).map((r) => {
+                  const nonDqRowClass = r.ra.status === "DNF" ? "dnf" : "";
+                  const rowClass = r.ra.status === "DQ" ? "dq" : nonDqRowClass;
                   return (
-                    <tr key={ra.id} className={rowClass}>
-                      <td>{ra.position ?? "—"}</td>
-                      <td className="font-mono">{ra.bib}</td>
-                      <td>{ra.athlete.name}</td>
-                      <td>{ra.athlete.country}</td>
-                      <td>{ra.athlete.affiliation?.name ?? "—"}</td>
-                      <td className="text-center">{yellow}</td>
-                      <td className="text-center">{confirmedRed}</td>
-                      <td className="font-mono">{formatMs(finish?.timeMs)}</td>
-                      <td>{ra.status}</td>
+                    <tr key={r.ra.id} className={rowClass}>
+                      <td>{r.rank ?? "—"}</td>
+                      <td className="font-mono">{r.ra.bib}</td>
+                      <td>{r.ra.athlete.name}</td>
+                      <td>{r.ra.athlete.country}</td>
+                      <td>{r.ra.athlete.affiliation?.name ?? "—"}</td>
+                      <td className="text-center">{r.yellow}</td>
+                      <td className="text-center">{r.confirmedRed}</td>
+                      <td className="font-mono">{formatMs(r.finishMs)}</td>
+                      <td>{r.ra.status}</td>
                     </tr>
                   );
                 })}

@@ -140,6 +140,7 @@ export default async function EventLivePage(props: Readonly<Props>) {
     redCards: number;
     redCardDetails: RedCardDetail[];
     position: number;
+    rank: number | null;
     totalTime: string;
     status: "OK" | "DQ" | "DNF";
     currentLap: number;
@@ -184,6 +185,7 @@ export default async function EventLivePage(props: Readonly<Props>) {
         redCards: red,
         redCardDetails,
         position: ra.position ?? 0,
+        rank: null,
         totalTime: lastTimeMs === undefined ? "-" : formatMs(lastTimeMs),
         status: ra.status,
         currentLap: lapsCompleted(lapsForMe.length, !!finish, lapCount),
@@ -193,6 +195,15 @@ export default async function EventLivePage(props: Readonly<Props>) {
 
     // Finish order — shared with the moderator views (see lib/athlete-sort).
     athletes.sort(compareAthletesByFinish);
+
+    // Live final ranking: number the in-standing (OK) athletes who have crossed
+    // the line, in finish order. A finisher who is later DQ'd sorts out of this
+    // group, so everyone below moves up automatically — DQ-aware, computed from
+    // the sorted order, no stored position rewrite needed.
+    let rankCounter = 0;
+    for (const a of athletes) {
+      a.rank = a.status === "OK" && a.isFinished ? ++rankCounter : null;
+    }
   }
 
   const remainingOnField = athletes.filter(
@@ -335,7 +346,7 @@ export default async function EventLivePage(props: Readonly<Props>) {
               <table className="min-w-full border-collapse text-sm">
                 <thead className="sticky top-0 border-b border-slate-800 bg-slate-900/95 text-[14px] font-medium uppercase text-slate-400 backdrop-blur">
                   <tr>
-                    {/* <th className="px-5 py-4 text-center text-sm">อันดับ</th> */}
+                    <th className="px-5 py-4 text-center text-sm">อันดับ</th>
                     <th className="px-5 py-4 text-center text-sm">รอบ</th>
                     <th className="px-5 py-4 text-center text-sm">BIB</th>
                     <th className="px-5 py-4 text-center text-sm">นักกีฬา</th>
@@ -364,11 +375,11 @@ export default async function EventLivePage(props: Readonly<Props>) {
                       const isFinished =
                         athlete.isFinished && athlete.status === "OK";
                       const medalCls =
-                        athlete.position === 1
+                        athlete.rank === 1
                           ? "bg-amber-400/20 text-amber-300 ring-amber-500/40"
-                          : athlete.position === 2
+                          : athlete.rank === 2
                             ? "bg-slate-300/20 text-slate-200 ring-slate-400/40"
-                            : athlete.position === 3
+                            : athlete.rank === 3
                               ? "bg-orange-700/30 text-orange-300 ring-orange-600/40"
                               : "bg-slate-700/40 text-slate-200 ring-slate-600/40";
                       return (
@@ -382,18 +393,18 @@ export default async function EventLivePage(props: Readonly<Props>) {
                                 : "hover:bg-slate-800/50"
                           }`}
                         >
-                          {/* <td className="px-5 py-4 text-center">
-                            {isFinished ? (
+                          <td className="px-5 py-4 text-center">
+                            {athlete.rank !== null ? (
                               <span
                                 className={`inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full px-2 text-sm font-bold ring-1 ${medalCls}`}
-                                title="อันดับเข้าเส้นชัย (ล็อกแล้ว)"
+                                title="อันดับ (คำนวณสด ปรับตามผู้ถูกตัดสิทธิ์แล้ว)"
                               >
-                                {athlete.position}
+                                {athlete.rank}
                               </span>
                             ) : (
                               <span className="text-slate-600">—</span>
                             )}
-                          </td> */}
+                          </td>
                           <td className="px-5 py-4 text-center">
                             <span
                               className={`font-mono text-sm font-semibold ${isDQ ? "text-slate-500" : "text-slate-100"}`}

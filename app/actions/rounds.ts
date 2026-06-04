@@ -91,8 +91,11 @@ export async function createRound(eventId: string, data: RoundActionData) {
   assertOfficialLimits(data.officials);
   if (data.status !== "SCHEDULED") assertStartableOfficials(data.officials);
 
-  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { date: true } });
+  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { date: true, status: true } });
   if (!event) throw new Error("ไม่พบกิจกรรม");
+  if (event.status === "FINISHED") {
+    throw new Error("กิจกรรมนี้จบการแข่งขันแล้ว — ไม่สามารถสร้างรอบใหม่ได้");
+  }
 
   const scheduledTime = data.scheduledTime ? new Date(data.scheduledTime) : null;
   const expectedEndTime = data.expectedEndTime ? new Date(data.expectedEndTime) : null;

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { confirmRedCard, rejectRedCard } from "@/app/actions/cards";
 import { logoutOfficial } from "@/app/actions/officials";
 import { RoundActivityLogLine } from "@/components/common/round-activity-log-line";
+import { RaceStatusBanner, racePhaseFromStatus } from "@/components/common/race-status-banner";
 
 export type PendingCard = {
   id: string;
@@ -50,6 +51,7 @@ type HeadJudgeViewProps = {
   judgeName: string;
   eventName: string;
   roundName: string;
+  roundStatus: string;
   pendingCards: PendingCard[];
   athletes: AthleteRow[];
   logs: LogItem[];
@@ -60,6 +62,7 @@ export function HeadJudgeView({
   judgeName,
   eventName,
   roundName,
+  roundStatus,
   pendingCards,
   athletes,
   logs,
@@ -143,6 +146,8 @@ export function HeadJudgeView({
             </button>
           </div>
         </header>
+
+        <RaceStatusBanner phase={racePhaseFromStatus(roundStatus)} action="ยืนยันใบ" />
 
         {/* Pending red cards */}
         <Card className="rounded-2xl border-red-900/50 bg-slate-900">

@@ -136,6 +136,7 @@ export default async function HeadJudgePage(props: Readonly<Props>) {
         judgeName={session.judgeName}
         eventName={round.event.name}
         roundName={round.name}
+        roundStatus={round.status}
         pendingCards={pendingCards}
         athletes={athletes}
         logs={logs}

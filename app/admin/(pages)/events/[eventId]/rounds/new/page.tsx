@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { RoundForm } from "@/components/rounds/round-form";
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
@@ -25,7 +26,7 @@ export default async function NewRoundPage(props: Readonly<Props>) {
   const [event, athletes, judges] = await Promise.all([
     prisma.event.findUnique({
       where: { id: eventId, deletedAt: null },
-      select: { name: true, lapCount: true, distanceKm: true, date: true },
+      select: { name: true, lapCount: true, distanceKm: true, date: true, status: true },
     }),
     prisma.athlete.findMany({
       where: { deletedAt: null },
@@ -38,6 +39,12 @@ export default async function NewRoundPage(props: Readonly<Props>) {
       select: { id: true, name: true },
     }),
   ]);
+
+  // A finished event accepts no new rounds — backstop for direct navigation
+  // (the "create round" buttons are already hidden on the event page).
+  if (event?.status === "FINISHED") {
+    redirect(`/admin/events/${eventId}`);
+  }
 
   // Pre-fill lapCount and distanceKm from event so admin doesn't retype
   const roundDefaults = {

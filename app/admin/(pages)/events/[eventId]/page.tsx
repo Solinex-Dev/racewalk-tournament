@@ -117,7 +117,11 @@ export default async function EventDetailPage(props: Readonly<Props>) {
           </div>
         </div>
 
-        <RoundsList eventId={eventId} rounds={rounds} />
+        <RoundsList
+          eventId={eventId}
+          rounds={rounds}
+          eventFinished={event.status === "FINISHED"}
+        />
       </div>
     </main>
   );

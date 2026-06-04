@@ -9,6 +9,7 @@ import {
   loadOfficialRound,
 } from "@/lib/official-round-guards";
 import { revalidateRaceDayViews } from "@/lib/revalidate-race-day";
+import { finalizeRoundEnd, racersStillOnField } from "@/lib/round-lifecycle";
 
 const RED_CARDS_TO_DQ = 4;
 
@@ -218,6 +219,20 @@ export async function confirmRedCard(
       details: `ยืนยันใบแดงให้ ${card.athlete.name}`,
     },
   });
+
+  // A DQ can remove the last athlete still on the field. If no one is left racing
+  // (everyone has finished or been DQ'd), end the round automatically — same
+  // outcome as the last finisher crossing the line.
+  if (
+    confirmedRedCount >= RED_CARDS_TO_DQ &&
+    (await racersStillOnField(card.roundId)) === 0
+  ) {
+    await finalizeRoundEnd(
+      card.roundId,
+      { id: "system", name: "ระบบ (อัตโนมัติ)", role: "MODERATOR" },
+      "จบการแข่งขันอัตโนมัติ — ไม่มีนักกีฬาเหลือในสนาม",
+    );
+  }
 
   revalidateRaceDayViews(session.eventId);
   return { ok: true };

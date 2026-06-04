@@ -17,6 +17,8 @@ export type Round = {
 type RoundsListProps = {
   eventId: string;
   rounds: Round[];
+  /** When the parent event is FINISHED, creating more rounds is disallowed. */
+  eventFinished?: boolean;
 };
 
 const STATUS_LABEL: Record<Round["status"], string> = {
@@ -33,7 +35,7 @@ const STATUS_COLOR: Record<Round["status"], string> = {
   finished: "bg-slate-200 text-slate-600",
 };
 
-export function RoundsList({ eventId, rounds }: Readonly<RoundsListProps>) {
+export function RoundsList({ eventId, rounds, eventFinished = false }: Readonly<RoundsListProps>) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -43,12 +45,18 @@ export function RoundsList({ eventId, rounds }: Readonly<RoundsListProps>) {
             จัดการรอบแข่งในกิจกรรมนี้ แต่ละรอบสามารถมีนักกีฬาและกรรมการของตัวเอง
           </p>
         </div>
-        <Link href={`/admin/events/${eventId}/rounds/new`}>
-          <Button className="rounded-xl px-4 py-2 text-sm font-medium">
-            <Plus className="mr-2 h-4 w-4" />
-            สร้างรอบแข่งใหม่
-          </Button>
-        </Link>
+        {eventFinished ? (
+          <span className="text-xs font-medium text-slate-500">
+            กิจกรรมจบการแข่งขันแล้ว — เพิ่มรอบไม่ได้
+          </span>
+        ) : (
+          <Link href={`/admin/events/${eventId}/rounds/new`}>
+            <Button className="rounded-xl px-4 py-2 text-sm font-medium">
+              <Plus className="mr-2 h-4 w-4" />
+              สร้างรอบแข่งใหม่
+            </Button>
+          </Link>
+        )}
       </div>
 
       {rounds.length === 0 ? (
@@ -63,12 +71,14 @@ export function RoundsList({ eventId, rounds }: Readonly<RoundsListProps>) {
             <p className="mb-4 text-xs text-slate-600">
               สร้างรอบแข่งใหม่เพื่อเพิ่มนักกีฬาและกรรมการ
             </p>
-            <Link href={`/admin/events/${eventId}/rounds/new`}>
-              <Button className="rounded-lg px-4 py-2 text-sm">
-                <Plus className="mr-2 h-4 w-4" />
-                สร้างรอบแข่งแรก
-              </Button>
-            </Link>
+            {!eventFinished && (
+              <Link href={`/admin/events/${eventId}/rounds/new`}>
+                <Button className="rounded-lg px-4 py-2 text-sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  สร้างรอบแข่งแรก
+                </Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
       ) : (

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { recordLapTime, recordFinishTime } from "@/app/actions/timing";
 import { logoutOfficial } from "@/app/actions/officials";
+import { RaceStatusBanner } from "@/components/common/race-status-banner";
 
 export type AthleteRecord = {
   bib: string;
@@ -179,16 +180,10 @@ export function LapRecorder({
           </div>
         </header>
 
-        {!isRunning && !endMs && (
-          <div className="rounded-lg border border-amber-800 bg-amber-900/20 px-4 py-2 text-sm text-amber-200">
-            ⏳ รอ Admin เริ่มจับเวลาในหน้า Moderator — เมื่อเริ่มแล้วเวลาด้านบนจะเริ่มเดิน
-          </div>
-        )}
-        {endMs && (
-          <div className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-300">
-            ✅ การแข่งขันจบลงแล้ว ไม่สามารถบันทึก Lap เพิ่มได้
-          </div>
-        )}
+        <RaceStatusBanner
+          phase={endMs ? "ended" : isRunning ? "live" : "not-started"}
+          action="บันทึก Lap"
+        />
 
         <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
           <div className="border-b border-slate-800 bg-slate-900/50 px-4 py-3">

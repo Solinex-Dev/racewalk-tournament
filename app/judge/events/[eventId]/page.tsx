@@ -89,6 +89,7 @@ export default async function JudgePage(props: Readonly<Props>) {
       <JudgeWorkspace
         eventId={eventId}
         judgeName={session.judgeName}
+        roundStatus={round.status}
         event={{
           id: round.event.id,
           name: round.event.name,

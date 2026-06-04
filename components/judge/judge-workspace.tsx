@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { issueYellowCard, issueRedCard, type CardSymbol } from "@/app/actions/cards";
 import { logoutOfficial } from "@/app/actions/officials";
+import { RaceStatusBanner, racePhaseFromStatus } from "@/components/common/race-status-banner";
 
 export type JudgeAthleteRow = {
   bib: string;
@@ -32,10 +33,11 @@ type JudgeWorkspaceProps = {
   eventId: string;
   event: JudgeEventInfo | null;
   judgeName: string;
+  roundStatus: string;
   athletes: JudgeAthleteRow[];
 };
 
-export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly<JudgeWorkspaceProps>) {
+export function JudgeWorkspace({ eventId, event, judgeName, roundStatus, athletes }: Readonly<JudgeWorkspaceProps>) {
   const router = useRouter();
   const [selectedBib, setSelectedBib] = React.useState<string | null>(null);
   const [isPending, startTransition] = React.useTransition();
@@ -82,6 +84,10 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
   // Cards can't be issued to an athlete who is DQ'd or has crossed the line.
   const isLockedSelected = isDQSelected || isFinishedSelected;
   const hasGivenSelected = !!selectedAthlete?.myRedSymbol;
+  // Cards may only be issued while the round is actually in progress — before the
+  // moderator starts the race (or after it ends) the controls are locked so a
+  // judge can't trigger a server-side "round not started" error.
+  const isRoundLive = roundStatus === "ONGOING";
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -129,6 +135,8 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
             </button>
           </div>
         </header>
+
+        <RaceStatusBanner phase={racePhaseFromStatus(roundStatus)} action="ออกใบ" />
 
         <section className="grid gap-4 lg:grid-cols-[2fr,1.1fr] overflow-hidden">
           <div className="space-y-4 w-full overflow-hidden">
@@ -273,11 +281,15 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
               </button>
             </div>
 
-            {isLockedSelected && (
+            {(isLockedSelected || !isRoundLive) && (
               <div className="mb-3 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-1.5 text-center text-xs font-medium text-slate-300">
-                {isDQSelected
-                  ? "นักกีฬาถูกตัดสิทธิ์ (DQ) — ออกใบไม่ได้"
-                  : "นักกีฬาเข้าเส้นชัยแล้ว — ออกใบไม่ได้"}
+                {!isRoundLive
+                  ? roundStatus === "FINISHED"
+                    ? "การแข่งขันจบแล้ว — ออกใบไม่ได้"
+                    : "ยังไม่เริ่มการแข่งขัน — ออกใบไม่ได้"
+                  : isDQSelected
+                    ? "นักกีฬาถูกตัดสิทธิ์ (DQ) — ออกใบไม่ได้"
+                    : "นักกีฬาเข้าเส้นชัยแล้ว — ออกใบไม่ได้"}
               </div>
             )}
 
@@ -287,10 +299,10 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    disabled={isPending || isLockedSelected || selectedAthlete.myYellowKnee}
+                    disabled={isPending || !isRoundLive || isLockedSelected || selectedAthlete.myYellowKnee}
                     onClick={() => handleYellow(selectedAthlete.athleteId, "BENT_KNEE")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                      isPending || isLockedSelected || selectedAthlete.myYellowKnee
+                      isPending || !isRoundLive || isLockedSelected || selectedAthlete.myYellowKnee
                         ? "cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600"
                         : "border-amber-700 bg-amber-950 text-amber-400 active:bg-amber-800"
                     }`}
@@ -300,10 +312,10 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
                   </button>
                   <button
                     type="button"
-                    disabled={isPending || isLockedSelected || selectedAthlete.myYellowFoot}
+                    disabled={isPending || !isRoundLive || isLockedSelected || selectedAthlete.myYellowFoot}
                     onClick={() => handleYellow(selectedAthlete.athleteId, "LIFTED_FOOT")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                      isPending || isLockedSelected || selectedAthlete.myYellowFoot
+                      isPending || !isRoundLive || isLockedSelected || selectedAthlete.myYellowFoot
                         ? "cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600"
                         : "border-amber-700 bg-amber-950 text-amber-400 active:bg-amber-800"
                     }`}
@@ -321,10 +333,10 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    disabled={isPending || isLockedSelected || hasGivenSelected}
+                    disabled={isPending || !isRoundLive || isLockedSelected || hasGivenSelected}
                     onClick={() => handleRed(selectedAthlete.athleteId, "BENT_KNEE")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                      isPending || isLockedSelected || hasGivenSelected
+                      isPending || !isRoundLive || isLockedSelected || hasGivenSelected
                         ? "cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600"
                         : "border-red-700 bg-red-950 text-red-400 active:bg-red-800"
                     }`}
@@ -334,10 +346,10 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: Readonly
                   </button>
                   <button
                     type="button"
-                    disabled={isPending || isLockedSelected || hasGivenSelected}
+                    disabled={isPending || !isRoundLive || isLockedSelected || hasGivenSelected}
                     onClick={() => handleRed(selectedAthlete.athleteId, "LIFTED_FOOT")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                      isPending || isLockedSelected || hasGivenSelected
+                      isPending || !isRoundLive || isLockedSelected || hasGivenSelected
                         ? "cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600"
                         : "border-red-700 bg-red-950 text-red-400 active:bg-red-800"
                     }`}
