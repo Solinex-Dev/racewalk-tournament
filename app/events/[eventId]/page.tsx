@@ -91,20 +91,35 @@ function queryLeaderboard(eventId: string) {
 // officials. The board is at most ~TTL stale; the officials' own pages are never
 // cached (they stay realtime). Promise-keyed so concurrent polls dedupe onto one
 // in-flight query; the entry is evicted on error so failures aren't cached.
-const LEADERBOARD_TTL_MS = 2000;
+// While a round is ONGOING, cache for a full 2s to absorb the spectator crowd.
+// Before that (waiting for the start), use a short TTL so the moment the
+// moderator presses start — and the elapsed timer — appears promptly; pre-race
+// traffic is light so the shorter TTL costs little.
+const LEADERBOARD_TTL_LIVE_MS = 2000;
+const LEADERBOARD_TTL_IDLE_MS = 500;
 type LeaderboardData = Awaited<ReturnType<typeof queryLeaderboard>>;
-const leaderboardCache = new Map<string, { at: number; promise: Promise<LeaderboardData> }>();
+type LeaderboardEntry = { at: number; ttl: number; promise: Promise<LeaderboardData> };
+const leaderboardCache = new Map<string, LeaderboardEntry>();
 
 function getLeaderboard(eventId: string): Promise<LeaderboardData> {
   const now = Date.now();
   const hit = leaderboardCache.get(eventId);
-  if (hit && now - hit.at < LEADERBOARD_TTL_MS) return hit.promise;
-  const promise = queryLeaderboard(eventId).catch((err: unknown) => {
-    leaderboardCache.delete(eventId);
-    throw err;
-  });
-  leaderboardCache.set(eventId, { at: now, promise });
-  return promise;
+  if (hit && now - hit.at < hit.ttl) return hit.promise;
+  // promise is assigned on the next line; the placeholder keeps the type honest.
+  const entry: LeaderboardEntry = { at: now, ttl: LEADERBOARD_TTL_IDLE_MS, promise: undefined as never };
+  entry.promise = queryLeaderboard(eventId)
+    .then((event) => {
+      entry.ttl = event?.rounds.some((r) => r.status === "ONGOING")
+        ? LEADERBOARD_TTL_LIVE_MS
+        : LEADERBOARD_TTL_IDLE_MS;
+      return event;
+    })
+    .catch((err: unknown) => {
+      leaderboardCache.delete(eventId);
+      throw err;
+    });
+  leaderboardCache.set(eventId, entry);
+  return entry.promise;
 }
 
 export default async function EventLivePage(props: Readonly<Props>) {
