@@ -1,107 +1,119 @@
 # Load Test Report — Racewalk Tournament (staging)
 
 **Date:** 2026-06-04
-**Target:** `https://racewalk-tournament.vercel.app` (Vercel serverless + staging DB)
-**Deployed commit:** `7b6a13d` on `develop`
+**Target:** `https://racewalk-tournament.vercel.app` (Vercel serverless + self-hosted MySQL/MariaDB staging DB)
 **Event under test:** `evt-live` — round `rnd-live-final`, **24 athletes** (ONGOING)
-**Driver:** pure-Node concurrent driver (`loadtest/run-read.mjs`, `loadtest/run-write.mjs`). Docker/k6 were unavailable on the runner, so a Node driver was used; it models the app's real behaviour — each virtual user polls every **500 ms** (the current `AutoRefresh` interval) via an `RSC` GET, exactly like a browser tab.
+**Deployed commits:** cache `842b1e5`, full-panel prep `76d56cf`, pool/poll fix `c45b6f9` (all on `develop`)
+**Driver:** pure-Node concurrent drivers in `loadtest/` (Docker/k6 unavailable on the runner). Each virtual user polls every 500 ms via an `RSC` GET, exactly like a browser tab.
 
 ---
 
-## TL;DR
+## Bottom line
 
-- The public leaderboard is **healthy up to ~25 concurrent viewers** (p95 ≈ 390 ms) and **collapses by 50** (p95 ≈ 8 s, then 10–21 s at 100–150).
-- Root cause is **proven, not inferred**: under load the database connection pool is exhausted and requests fail with
-  `pool timeout: failed to retrieve a connection from pool after 10000ms (… limit=10)`.
-- **Critical race-day risk:** at 50 concurrent spectators, official **writes failed 98/101** (lap recording / card confirm). i.e. *with a real crowd watching the live board, judges/loggers can't record the race.*
-- The **500 ms polling** added recently multiplies this: 25 viewers already ≈ the server's throughput ceiling (~50 req/s). At the old 5 s interval the same ceiling was ~250 viewers.
-- **Biggest single fix:** cache the public leaderboard (1–2 s) so spectator count is decoupled from DB load. Pair with a serverless connection pooler.
-
-The target of **50–100 concurrent users is NOT met today**; with the leaderboard cached it is comfortably reachable.
-
----
-
-## Read load — public leaderboard polling (500 ms)
-
-Constant concurrency for 30 s per level, `GET /events/evt-live` with `RSC: 1`.
-
-| Concurrent viewers | Throughput (req/s) | p50 | p95 | p99 | max | HTTP errors |
-|--------------------:|-------------------:|----:|----:|----:|----:|:-----------:|
-| **25** | **47.7** | 243 ms | **389 ms** | 1.0 s | 2.0 s | 0 |
-| 50 | 13.6 | 1.9 s | **8.2 s** | 8.6 s | 8.8 s | 0 |
-| 100 | 10.8 | 10.1 s | 20.1 s | 21.4 s | 21.4 s | 0 |
-| 150 | 14.1 | 10.1 s | 10.5 s | 10.5 s | 10.9 s | 0 |
-
-Note the **inversion**: doubling load from 25→50 *halves* throughput (47.7→13.6 req/s) and inflates p95 ~21×. That is congestion collapse — requests queue behind a saturated resource rather than being served. No HTTP 5xx during reads (they wait, they don't error), so users experience **slowness, not failure** — until it reaches the connection-pool timeout (below).
-
-## Mixed load — spectators reading **+** officials writing
-
-Spectators poll the board; an event-logger posts laps at 4/s and a judge posts cards at 0.5/s, through the gated `/api/loadtest` endpoint (which calls the **real** `recordLapTime` / `issueYellowCard` server actions, auth enforced via a server-minted official cookie).
-
-| Spectators | Reads ok | Read p50 / p95 | Writes ok | Writes failed | Write p50 / p95 | Dominant write error |
-|-----------:|:--------:|:--------------:|:---------:|:-------------:|:---------------:|:---------------------|
-| **25** | 1474 / 1474 | 244 ms / **397 ms** | **121** | **0** | 785 ms / 1.06 s | — |
-| **50** | 154 / 154 | 10.1 s / **21.3 s** | **3** | **98** | 15.4 s / 20.3 s | `pool timeout … limit=10` |
-
-At 25 spectators the system is fine and officials write reliably (~1 s). At 50 spectators the **same writes fail 97% of the time** with:
-
-```
-pool timeout: failed to retrieve a connection from pool after 10000ms
-    (pool connections: active=0 idle=0 limit=10)
-```
+- **The 10-official panel (8 judges + head judge + event logger) works reliably in real use** — as long as concurrent **spectators stay ≲ 50–80**. At 50 spectators + the full panel, official writes succeed **0 failures** and every read is < 0.5 s p95.
+- The officials only get starved when a **large public crowd (~100+ concurrent)** shares the same database — and that is the *spectators* exhausting DB connections, not the officials' own load.
+- **Two fixes are deployed**, both app-side (no DB-config change, which the host doesn't allow):
+  1. Cache the public leaderboard query (2 s) — spectators stop hammering the DB.
+  2. Cap the DB pool per serverless instance (`connectionLimit=3`) + slow official polling to 1.5 s.
+- For events expecting **100+ concurrent viewers**, add a managed connection pooler (**Prisma Accelerate**) — it caps *total* DB connections and needs no DB-config change.
 
 ---
 
 ## Root cause
 
-The leaderboard page (`app/events/[eventId]/page.tsx`) is `export const dynamic = "force-dynamic"` + `revalidate = 0`, so **every poll runs the full nested Prisma query** (`event → rounds → roundAthletes → athlete/affiliation, cards, lapTimes, finishTimes`) with **no caching**.
+The app is Vercel **serverless**: each concurrent request can spin up a function instance, and **each instance keeps its own DB connection pool**. The self-hosted MySQL/MariaDB has a fixed `max_connections` the host won't let us raise. Under load, `instances × pool-size` blows past that ceiling and queries fail with:
 
-On Vercel each concurrent request can spin up a serverless function instance, and each instance's Prisma/MariaDB pool is capped at **10 connections**. Under concurrency the pool (and/or the DB's `max_connections`) is exhausted; further queries wait up to Prisma's 10 s `pool_timeout` and then throw. Reads just queue (slow); writes, arriving into the same exhausted pool, **fail outright**.
+```
+pool timeout: failed to retrieve a connection from pool after 10000ms
+    (pool connections: active=0 idle=0 limit=…)
+```
 
-The recent **500 ms** polling interval is a force-multiplier: every viewer now generates ~2 req/s instead of ~0.2 req/s at the old 5 s, so the DB ceiling is hit at ~10× fewer viewers.
+`active=0 idle=0` = the pool can't open *any* connection because the DB is already at its connection ceiling (held by other instances). Two things drove the connection demand:
+
+1. **The public leaderboard** was `force-dynamic` + uncached → every spectator poll (500 ms) ran the heavy nested query and held a connection.
+2. **The officials' own workspace pages** poll uncached at 500 ms → 10 officials = ~20 heavy queries/s holding connections (this was the surprise — the panel itself is a major load source).
 
 ---
 
-## Recommendations (highest impact first)
+## The journey (what each fix did)
 
-1. **Cache the public leaderboard.** This is the single biggest win and directly removes the race-day risk.
-   - Replace `revalidate = 0` with a short window (e.g. `export const revalidate = 1` or `2`), or wrap the query in `unstable_cache`/React `cache` with a 1–2 s TTL, optionally tag-invalidated on writes.
-   - Effect: N spectators share ~1 query/s instead of N×2 queries/s. The board can then serve thousands of viewers, and the connection pool stays free for officials. A 1–2 s staleness on a scoreboard is unnoticeable.
-   - Keep the **officials' workspaces uncached** (they need realtime and are few users).
+### Stage 1 — Baseline (before any fix)
+Public board, read-only, stepped concurrency (30 s/level):
 
-2. **Use a serverless-safe DB pooler.** `limit=10` per instance × many instances overruns the DB. Don't just raise the per-instance limit (that makes DB exhaustion worse). Put a pooler in front: PlanetScale's pooled connection, **Prisma Accelerate**, or a MySQL proxy (RDS Proxy / ProxySQL). Caps *total* DB connections regardless of function fan-out.
+| Viewers | req/s | p50 | p95 | p99 |
+|--------:|------:|----:|----:|----:|
+| 25 | 47.7 | 243 ms | 389 ms | 1.0 s |
+| 50 | 13.6 | 1.9 s | **8.2 s** | 8.6 s |
+| 100 | 10.8 | 10.1 s | 20.1 s | 21.4 s |
+| 150 | 14.1 | 10.1 s | 10.5 s | 10.5 s |
 
-3. **Decouple the public polling rate from the DB.** Keep officials at 500 ms (few users, need realtime); for the **public** board either rely on the cache from (1) (so 500 ms is cheap) or raise its interval to 2–3 s. 500 ms *uncached* is the worst combination and is what we have now.
+Collapses between 25→50 viewers. Mixed read+write (spectators + a writer): at **50 spectators, official writes failed 98/101**.
 
-4. **Lighten the leaderboard query.** Select only required fields and consider a denormalised/precomputed standings snapshot updated on writes, instead of re-aggregating cards/laps/finishes on every request.
+### Stage 2 — Cache the public leaderboard (`842b1e5`)
+A 2 s in-memory promise-cache on the leaderboard query. Read-only, after:
 
-5. **Protect the write path.** Recommendations (1)+(2) already fix it by freeing connections. Until then, a real race with a crowd on the live board will see lap recording fail — treat (1) as a launch blocker for large events.
+| Viewers | p50 | p95 | req/s |
+|--------:|----:|----:|------:|
+| 50 | 94 ms | **408 ms** | 93.3 |
+| 100 | 90 ms | 9.4 s ⚠️ | 70.9 |
+| 150 | 89 ms | 9.1 s ⚠️ | 104 |
 
-### Capacity, today vs. after fix
+Median dropped to ~90 ms (spectator reads now mostly skip the DB). Spectators ≤ 50 are solid; the 100+ tail remained because cache-miss reads + the officials still need DB connections.
 
-| | Concurrent public viewers before degradation |
+### Stage 3 — Realistic race-day test (full panel) — *before* the pool fix
+Spectators (cached board) **+ 8 judges + head + logger**, each polling their own **uncached** workspace at 500 ms + writing:
+
+| Spectators | Spectator read p95 | Official read p95 | Official writes |
+|-----------:|-------------------:|------------------:|:----------------|
+| 50 | 10,070 ms | 10,108 ms | **2 ok / 18 fail** ❌ |
+| 100 | — | — | prep query itself timed out |
+
+This exposed that the **officials' own 500 ms uncached polling** (10 people) was a primary connection consumer — it dragged everything down, including the cached spectator tail.
+
+### Stage 4 — Cap per-instance pool + slow official polling (`c45b6f9`) — *fix A*
+`connectionLimit=3` (env `DB_CONNECTION_LIMIT`) in `lib/prisma.ts` + officials' `AutoRefresh` 500 ms → 1500 ms. Same race-day test, after:
+
+| Spectators | Spectator read p95 | Official read p95 | Official writes |
+|-----------:|-------------------:|------------------:|:----------------|
+| **50** | 376 ms ✅ | 434 ms ✅ | **28 ok / 0 fail** ✅ |
+| 100 | 354 ms ✅ | 386 ms ✅ | 2 ok / 16 fail ❌ (`limit=3` timeout) |
+
+**At 50 spectators the full official panel works perfectly** (0 write failures, all reads < 0.5 s). At 100 spectators reads still hold, but writes fail again — Vercel spins up more instances as spectators grow, so `instances × 3` re-crosses the DB ceiling. A *per-instance* cap can't fix that at the high end; only a pooler that caps *total* connections can.
+
+---
+
+## What's deployed (all app-side, no DB-config change)
+
+- `app/events/[eventId]/page.tsx` — 2 s cache on the public leaderboard query (officials' pages are intentionally **not** cached → realtime).
+- `lib/prisma.ts` — `connectionLimit` per instance, default 3, tunable via `DB_CONNECTION_LIMIT`.
+- `app/{judge,head-judge,event-logger}/events/[eventId]/page.tsx` — official poll interval 1.5 s (public board stays 500 ms; it's cached so it's cheap).
+
+## Capacity verdict
+
+| Scenario | Verdict |
 |---|---|
-| **Today** (500 ms, uncached) | ~25–30 |
-| Old interval (5 s, uncached) | ~250 |
-| **With a 1–2 s leaderboard cache** | thousands (DB load ≈ constant, independent of viewers) |
+| 10 officials, few/no spectators | ✅ Easily (light load) |
+| 10 officials + up to ~50 concurrent spectators | ✅ Solid — 0 write failures |
+| 10 officials + ~100+ concurrent spectators | ⚠️ Officials' writes get starved by the crowd |
 
----
+## If you need 100+ concurrent viewers — Prisma Accelerate
+
+Since the DB host's `max_connections` can't be changed, the fix must live **outside the DB**. **Prisma Accelerate** is a managed pooler that sits between Vercel and your DB: it keeps a small fixed pool to the database while accepting unlimited connections from serverless, and adds query caching. Change the connection to a `prisma://` URL + add `@prisma/extension-accelerate` — no DB-config change, no self-hosted proxy box. (Self-hosted ProxySQL is an alternative but needs an always-on box.)
+
+## Cleanup / follow-ups
+
+- **Turn off `LOADTEST_ENABLED` on Vercel** — the `/api/loadtest` endpoint is inert without it; while on it mints official cookies to anyone who calls it.
+- **Reseed the staging DB** — the write tests inserted junk laps (`lapNumber` 200000+), bumped `rnd-live-final.currentLap`, and added cards. Run `npm run db:seed:reset`.
+- Optionally remove `app/api/loadtest/` if you don't want the test endpoint in the repo.
 
 ## How to re-run
 
 ```bash
-# Reads only (no deploy / auth needed):
+# Public board only (no auth/endpoint needed):
 BASE_URL=https://racewalk-tournament.vercel.app EVENT_ID=evt-live \
   LEVELS=25,50,100,150 DUR=30 node loadtest/run-read.mjs
 
-# Mixed read+write (needs LOADTEST_ENABLED=1 on the server; cookies+ids are
-# fetched from the gated GET prep handler automatically):
+# Full race-day panel (needs LOADTEST_ENABLED=1 on the server):
 BASE_URL=https://racewalk-tournament.vercel.app EVENT_ID=evt-live \
-  SPECTATORS=50 LAP_RPS=4 CARD_RPS=0.5 DUR=30 node loadtest/run-write.mjs
+  SPECTATORS=50 JUDGES=8 DUR=40 node loadtest/run-raceday.mjs
 ```
-
-## Cleanup / follow-ups
-
-- **Disable the test endpoint:** unset `LOADTEST_ENABLED` on Vercel (it reverts to 404). Optionally remove `app/api/loadtest/` and revert commit `7b6a13d` if you don't want the endpoint in the repo at all.
-- **Reseed the staging DB:** the write tests inserted junk laps (`lapNumber` 100000+), pushed `rnd-live-final.currentLap` to a large value, and added yellow cards to `evt-live`. Run your staging reseed (`npm run db:seed:reset`) to restore clean demo data.
-- These results are for the staging DB tier; production capacity depends on its DB plan, but the architecture (uncached force-dynamic board) behaves the same — apply recommendation (1) regardless.
