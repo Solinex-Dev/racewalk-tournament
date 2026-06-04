@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { startRound, endRound } from "@/app/actions/round-timing";
 import { SectionToc, type TocItem } from "@/components/common/section-toc";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
-import { Play, Goal } from "lucide-react";
+import { Play, Goal, CheckCircle2, CalendarClock } from "lucide-react";
 
 const MAIN_TOC: TocItem[] = [
   { id: "m-control", label: "ควบคุมการแข่งขัน" },
@@ -195,12 +195,12 @@ export function ModeratorView({ eventId, event, rounds }: Readonly<ModeratorView
     finished: "เสร็จสิ้น",
   };
 
+  // Default round on entry: the first round that's LIVE; otherwise the very
+  // first round (previously this fell back to the last round).
   const currentRound =
-    rounds.find((r) => r.info.id === event.currentRoundId) ||
-    rounds.find((r) => r.info.status === "ongoing") ||
-    rounds.at(-1);
+    rounds.find((r) => r.info.status === "ongoing") ?? rounds[0];
 
-  const displayRoundId = selectedRoundId || currentRound?.info.id || rounds[0]?.info.id || null;
+  const displayRoundId = selectedRoundId || currentRound?.info.id || null;
   const displayData = rounds.find((r) => r.info.id === displayRoundId);
   const displayRound = displayData?.info;
 
@@ -284,11 +284,11 @@ export function ModeratorView({ eventId, event, rounds }: Readonly<ModeratorView
                 <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
                   Event Activity Log
                 </h1>
-                <span
+                {/* <span
                   className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusClassName[event.status]}`}
                 >
                   ● {statusLabel[event.status]}
-                </span>
+                </span> */}
               </div>
               <p className="mt-0.5 text-sm text-slate-600">
                 ดู Log โดยละเอียดของการแข่งขัน:{" "}
@@ -315,30 +315,60 @@ export function ModeratorView({ eventId, event, rounds }: Readonly<ModeratorView
 
           {rounds.length > 0 && (
             <Card className="rounded-2xl border-slate-200">
-              <CardContent className="p-5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-700">เลือกรอบ:</span>
+              <CardContent className="p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  เลือกรอบการแข่งขัน
+                </p>
+                <div className="flex flex-wrap gap-3">
                   {rounds.map((r) => {
-                    const inactiveRoundClass =
-                      r.info.status === "finished"
-                        ? "bg-slate-100 text-slate-600 ring-slate-200 hover:bg-slate-200"
-                        : "bg-sky-50 text-sky-700 ring-sky-200 hover:bg-sky-100";
+                    const status = r.info.status;
+                    const isActive = r.info.id === displayRoundId;
+                    const activeRing =
+                      status === "ongoing"
+                        ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200"
+                        : status === "finished"
+                          ? "border-slate-400 bg-slate-100 ring-2 ring-slate-200"
+                          : "border-sky-500 bg-sky-50 ring-2 ring-sky-200";
                     return (
-                    <button
-                      key={r.info.id}
-                      onClick={() => setSelectedRoundId(r.info.id)}
-                      className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition-colors ${
-                        r.info.id === displayRoundId
-                          ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                          : inactiveRoundClass
-                      }`}
-                    >
-                      {r.info.name}
-                      {r.info.distance_km && ` (${r.info.distance_km} กม.)`}
-                      <span className="ml-1.5 text-[10px]">
-                        • {roundStatusLabel[r.info.status]}
-                      </span>
-                    </button>
+                      <button
+                        key={r.info.id}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => setSelectedRoundId(r.info.id)}
+                        className={`flex min-w-[210px] flex-col gap-2 rounded-xl border px-4 py-3 text-left transition ${
+                          isActive
+                            ? activeRing
+                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        {status === "ongoing" ? (
+                          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700">
+                            <span className="relative flex h-2 w-2">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                            </span>
+                            LIVE
+                          </span>
+                        ) : status === "finished" ? (
+                          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-600">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            เสร็จสิ้น
+                          </span>
+                        ) : (
+                          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-700">
+                            <CalendarClock className="h-3.5 w-3.5" />
+                            กำหนดการ
+                          </span>
+                        )}
+                        <span className="text-sm font-semibold text-slate-900">{r.info.name}</span>
+                        <span className="text-xs text-slate-500">
+                          {r.info.distance_km && `${r.info.distance_km} กม.`}
+                          {status === "ongoing" &&
+                            r.info.lapCount &&
+                            r.info.currentLap !== undefined &&
+                            ` • Lap ${r.info.currentLap}/${r.info.lapCount}`}
+                        </span>
+                      </button>
                     );
                   })}
                 </div>
