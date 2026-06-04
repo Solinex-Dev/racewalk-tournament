@@ -53,10 +53,9 @@ const ROUND_STATUS_LABEL: Record<string, string> = {
   finished: "เสร็จสิ้น",
 };
 
-export default async function EventLivePage(props: Readonly<Props>) {
-  const { eventId } = await props.params;
-
-  const event = await prisma.event.findUnique({
+// The heavy nested query behind the public board.
+function queryLeaderboard(eventId: string) {
+  return prisma.event.findUnique({
     where: { id: eventId, deletedAt: null },
     include: {
       rounds: {
@@ -75,15 +74,43 @@ export default async function EventLivePage(props: Readonly<Props>) {
               OR: [{ color: "YELLOW" }, { color: "RED", state: "CONFIRMED" }],
             },
           },
-          lapTimes: {
-            where: { deletedAt: null },
-            orderBy: { lapNumber: "asc" },
-          },
+          lapTimes: { where: { deletedAt: null }, orderBy: { lapNumber: "asc" } },
           finishTimes: { where: { deletedAt: null } },
         },
       },
     },
   });
+}
+
+// Short-lived in-memory cache for the public leaderboard. The board polls every
+// 500ms; without this, each poll re-runs the query above and — under crowd load —
+// exhausts the DB connection pool, starving the officials' lap/card writes (load
+// test: 98/101 writes failed at 50 concurrent viewers). Caching the result for a
+// couple of seconds decouples viewer count from DB load: within the TTL every
+// viewer on a server instance shares ONE query, leaving the pool free for
+// officials. The board is at most ~TTL stale; the officials' own pages are never
+// cached (they stay realtime). Promise-keyed so concurrent polls dedupe onto one
+// in-flight query; the entry is evicted on error so failures aren't cached.
+const LEADERBOARD_TTL_MS = 2000;
+type LeaderboardData = Awaited<ReturnType<typeof queryLeaderboard>>;
+const leaderboardCache = new Map<string, { at: number; promise: Promise<LeaderboardData> }>();
+
+function getLeaderboard(eventId: string): Promise<LeaderboardData> {
+  const now = Date.now();
+  const hit = leaderboardCache.get(eventId);
+  if (hit && now - hit.at < LEADERBOARD_TTL_MS) return hit.promise;
+  const promise = queryLeaderboard(eventId).catch((err: unknown) => {
+    leaderboardCache.delete(eventId);
+    throw err;
+  });
+  leaderboardCache.set(eventId, { at: now, promise });
+  return promise;
+}
+
+export default async function EventLivePage(props: Readonly<Props>) {
+  const { eventId } = await props.params;
+
+  const event = await getLeaderboard(eventId);
 
   if (!event) notFound();
 
