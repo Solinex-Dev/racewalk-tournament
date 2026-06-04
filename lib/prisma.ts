@@ -28,7 +28,13 @@ function createPrismaClient(): PrismaClient {
     throw new Error("DATABASE_URL is not set");
   }
   const config = parseDatabaseUrl(url);
-  const adapter = new PrismaMariaDb(config);
+  // Cap connections PER serverless instance. On Vercel each instance keeps its
+  // own pool, so the mariadb default (10) × fan-out blows past the DB's
+  // max_connections under load (load test: `pool timeout … active=0 idle=0
+  // limit=10`). Keep this low for serverless; raise the DB's max_connections to
+  // give headroom. Tune without a code change via DB_CONNECTION_LIMIT.
+  const connectionLimit = Number(process.env.DB_CONNECTION_LIMIT) || 3;
+  const adapter = new PrismaMariaDb({ ...config, connectionLimit });
   return new PrismaClient({ adapter });
 }
 
