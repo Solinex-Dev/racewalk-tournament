@@ -921,6 +921,7 @@ async function reset() {
   await prisma.card.deleteMany({});
   await prisma.roundOfficial.deleteMany({});
   await prisma.roundAthlete.deleteMany({});
+  await prisma.eventAthlete.deleteMany({});
   await prisma.round.deleteMany({});
   await prisma.event.deleteMany({});
   await prisma.athlete.deleteMany({});
