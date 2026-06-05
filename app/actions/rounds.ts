@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
 import { requirePermission } from "@/lib/authz";
@@ -155,8 +156,15 @@ export async function createRound(eventId: string, data: RoundActionData) {
     officials: data.officials.length,
   });
 
+  // Use redirect() instead of return + router.push so that Next.js sends a
+  // redirect response directly. Calling revalidatePath() before redirect() is
+  // intentional — it marks the event page cache as stale so the next visit
+  // picks up fresh data. With redirect(), Next.js uses createRedirectRenderResult
+  // which skips re-rendering the current route server-side, avoiding the
+  // "An error occurred in the Server Components render" error that surfaced
+  // when generateFlight tried to re-render /rounds/new after the mutation.
   revalidatePath(`/admin/events/${eventId}`);
-  return { ok: true };
+  redirect(`/admin/events/${eventId}`);
 }
 
 export async function updateRound(
@@ -250,5 +258,5 @@ export async function updateRound(
     status: data.status,
   });
   revalidatePath(`/admin/events/${eventId}`);
-  return { ok: true };
+  redirect(`/admin/events/${eventId}`);
 }

@@ -361,9 +361,18 @@ export function RoundForm({
         } else {
           await createRound(eventId, form);
         }
+        // redirect() inside the Server Action handles navigation to the event page.
+        // router.push here is a safety-net in case the redirect response is not
+        // handled (e.g. an unexpected code path that returns without redirecting).
         router.push(`/admin/events/${eventId}`);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+        // Filter out Next.js redirect "errors" — they are not real errors; they
+        // indicate successful navigation handled by the framework. Swallowing them
+        // here prevents setError from showing a spurious error banner when the
+        // Server Action calls redirect() on success.
+        const msg = err instanceof Error ? err.message : "";
+        if (msg === "NEXT_REDIRECT" || msg.startsWith("NEXT_REDIRECT")) return;
+        setError(msg || "เกิดข้อผิดพลาด");
       }
     });
   };
