@@ -359,7 +359,7 @@ export default async function EventLivePage(props: Readonly<Props>) {
             </div> */}
 
             <div className="min-h-0 flex-1 overflow-auto">
-              <LeaderboardRows athletes={athletes} lapCount={lapCount} />
+              <LeaderboardRows athletes={athletes} lapCount={lapCount} showRank={isCurrentRoundFinished} />
             </div>
           </div>
 

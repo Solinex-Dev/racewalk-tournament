@@ -20,8 +20,10 @@ export type LeaderboardAthlete = {
 // Shared grid so the header and every row line their columns up. Mobile shows
 // 4 columns; the red-card + status columns appear from md up (their cells are
 // `hidden md:*`, so they drop out of the 4-col mobile grid cleanly).
-const COLS =
+const COLS_WITH_RANK =
   "grid items-center gap-3 px-5 grid-cols-[2.75rem_3.5rem_3rem_1fr] md:grid-cols-[4rem_5rem_4rem_1fr_auto_7rem]";
+const COLS_NO_RANK =
+  "grid items-center gap-3 px-5 grid-cols-[3.5rem_3rem_1fr] md:grid-cols-[5rem_4rem_1fr_auto_7rem]";
 
 function medalClass(rank: number): string {
   if (rank === 1) return "bg-amber-400/20 text-amber-300 ring-amber-500/40";
@@ -40,8 +42,10 @@ function statusBadge(status: LeaderboardAthlete["status"], isFinished: boolean) 
 export function LeaderboardRows({
   athletes,
   lapCount,
-}: Readonly<{ athletes: LeaderboardAthlete[]; lapCount: number }>) {
+  showRank = false,
+}: Readonly<{ athletes: LeaderboardAthlete[]; lapCount: number; showRank?: boolean }>) {
   const reduced = useReducedMotion();
+  const COLS = showRank ? COLS_WITH_RANK : COLS_NO_RANK;
 
   if (athletes.length === 0) {
     return (
@@ -56,10 +60,10 @@ export function LeaderboardRows({
       <div
         className={`${COLS} sticky top-0 z-10 border-b border-slate-800 bg-slate-900/95 py-4 text-[14px] font-medium uppercase text-slate-400 backdrop-blur`}
       >
-        <div className="text-center">อันดับ</div>
+        {showRank && <div className="text-center">อันดับ</div>}
         <div className="text-center">รอบ</div>
         <div className="text-center">BIB</div>
-        <div className="text-center">นักกีฬา</div>
+        <div>นักกีฬา</div>
         <div className="hidden text-center md:block">ใบแดง</div>
         <div className="hidden text-center md:block">สถานะ</div>
       </div>
@@ -83,18 +87,20 @@ export function LeaderboardRows({
               }
               className={`${COLS} border-b border-slate-800 py-4 ${rowBg}`}
             >
-              <div className="flex justify-center">
-                {a.rank !== null ? (
-                  <span
-                    className={`inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full px-2 text-sm font-bold ring-1 ${medalClass(a.rank)}`}
-                    title="อันดับ (คำนวณสด ปรับตามผู้ถูกตัดสิทธิ์แล้ว)"
-                  >
-                    {a.rank}
-                  </span>
-                ) : (
-                  <span className="text-slate-600">—</span>
-                )}
-              </div>
+              {showRank && (
+                <div className="flex justify-center">
+                  {a.rank !== null ? (
+                    <span
+                      className={`inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full px-2 text-sm font-bold ring-1 ${medalClass(a.rank)}`}
+                      title="อันดับ (คำนวณสด ปรับตามผู้ถูกตัดสิทธิ์แล้ว)"
+                    >
+                      {a.rank}
+                    </span>
+                  ) : (
+                    <span className="text-slate-600">—</span>
+                  )}
+                </div>
+              )}
 
               <div className="text-center">
                 <span
