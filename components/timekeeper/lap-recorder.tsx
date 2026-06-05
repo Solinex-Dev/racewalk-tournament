@@ -43,6 +43,12 @@ function formatMs(ms: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+// After a tap, lock that athlete's button for this long to prevent rapid re-taps.
+const COOLDOWN_MS = 10_000;
+// Cooldown ring geometry (SVG viewBox 0 0 36 36, r = 15.5).
+const RING_R = 15.5;
+const RING_C = 2 * Math.PI * RING_R;
+
 export function LapRecorder({
   eventId,
   judgeName,
@@ -62,6 +68,8 @@ export function LapRecorder({
 
   const [now, setNow] = React.useState(() => Date.now());
   const [actingId, setActingId] = React.useState<string | null>(null);
+  // athleteId → timestamp (ms) when its 10s cooldown ends.
+  const [cooldowns, setCooldowns] = React.useState<Record<string, number>>({});
   const [isPending, startTransition] = React.useTransition();
 
   // Tick every 250ms while race is live
@@ -91,6 +99,7 @@ export function LapRecorder({
   // in toasts so the message matches what the official sees on screen.
   const handleRecordLap = (athlete: AthleteRecord, seq: number) => {
     if (isPending && actingId === athlete.athleteId) return;
+    if ((cooldowns[athlete.athleteId] ?? 0) > Date.now()) return; // still cooling down
     if (!isRunning) {
       toast.error("รอ Admin เริ่มจับเวลาก่อน");
       return;
@@ -98,6 +107,8 @@ export function LapRecorder({
     if (athlete.status !== "OK" || athlete.finishedAt) return;
 
     setActingId(athlete.athleteId);
+    // Start the 10s cooldown immediately for instant feedback; cleared on error.
+    setCooldowns((c) => ({ ...c, [athlete.athleteId]: Date.now() + COOLDOWN_MS }));
     const nextLap = athlete.currentLap + 1;
     const captureMs = elapsedMs;
 
@@ -123,6 +134,12 @@ export function LapRecorder({
         }
         router.refresh();
       } catch (err) {
+        // Failed — release the cooldown so the official can retry immediately.
+        setCooldowns((c) => {
+          const next = { ...c };
+          delete next[athlete.athleteId];
+          return next;
+        });
         toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
       }
     });
@@ -190,7 +207,7 @@ export function LapRecorder({
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-sm sm:p-4">
           <p className="mb-3 px-1 text-sm font-bold uppercase tracking-wide text-slate-400">
-            นักกีฬา ({athletes.length} คน) — แตะปุ่มเพื่อบันทึก Lap
+            นักกีฬา ({athletes.length} คน)
           </p>
 
           {athletes.length === 0 ? (
@@ -203,43 +220,61 @@ export function LapRecorder({
                 const isDNF = a.status === "DNF";
                 const isOut = isDQ || isDNF;
                 const isFinished = !!a.finishedAt;
-                const canRecord = isRunning && !isOut && !isFinished;
                 const isActing = actingId === a.athleteId && isPending;
-                const willFinish = a.currentLap + 1 >= a.lapCount;
+                const cooldownLeftMs = Math.max(0, (cooldowns[a.athleteId] ?? 0) - now);
+                const onCooldown = cooldownLeftMs > 0 && !isOut && !isFinished;
+                const canTap = isRunning && !isOut && !isFinished && !isActing && !onCooldown;
 
+                // Status is conveyed by colour alone (no text labels): red = DQ,
+                // amber = DNF, emerald = finished, slate = tappable, dim = locked.
                 let stateClass: string;
                 if (isDQ) stateClass = "border-red-800 bg-red-950/60 text-red-400";
                 else if (isDNF) stateClass = "border-amber-800 bg-amber-950/60 text-amber-400";
                 else if (isFinished) stateClass = "border-emerald-700 bg-emerald-950/70 text-emerald-300";
-                else if (isActing) stateClass = "border-emerald-400 bg-emerald-700 text-white";
-                else if (canRecord)
+                else if (isActing) stateClass = "border-emerald-400 bg-emerald-700 text-white animate-pulse";
+                else if (onCooldown) stateClass = "border-slate-700 bg-slate-800 text-slate-100";
+                else if (canTap)
                   stateClass =
                     "border-slate-600 bg-slate-800 text-slate-100 hover:border-emerald-500 hover:bg-slate-700 active:scale-[0.97]";
                 else stateClass = "border-slate-700 bg-slate-800/60 text-slate-400";
-
-                // Small label under the number: status when not racing normally, else the name.
-                let subLabel: string;
-                if (isDQ) subLabel = "DQ";
-                else if (isDNF) subLabel = "DNF";
-                else if (isFinished) subLabel = "✓ เข้าเส้นชัย";
-                else if (willFinish) subLabel = "🏁 รอบสุดท้าย";
-                else subLabel = a.name;
 
                 return (
                   <button
                     key={a.athleteId}
                     type="button"
-                    disabled={!canRecord || isActing}
+                    disabled={!canTap}
                     onClick={() => handleRecordLap(a, seq)}
-                    className={`relative flex aspect-square flex-col items-center justify-center rounded-2xl border-2 p-1 transition-all disabled:cursor-not-allowed ${stateClass} ${isActing ? "animate-pulse" : ""}`}
+                    className={`relative flex aspect-square flex-col items-center justify-center rounded-2xl border-2 p-1 transition-all disabled:cursor-not-allowed ${stateClass}`}
                   >
                     <span className="absolute right-1.5 top-1.5 font-mono text-[11px] text-slate-400">
                       {a.currentLap}/{a.lapCount}
                     </span>
                     <span className="text-4xl font-extrabold leading-none sm:text-5xl">{seq}</span>
-                    <span className="mt-1.5 line-clamp-2 max-w-full px-0.5 text-center text-[10px] leading-tight opacity-80">
-                      {subLabel}
-                    </span>
+
+                    {/* Cooldown overlay — dims the whole card with a countdown ring */}
+                    {onCooldown && (
+                      <span className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-black/90">
+                        <span className="relative flex items-center justify-center">
+                          <svg className="h-14 w-14 -rotate-90" viewBox="0 0 36 36">
+                            <circle cx="18" cy="18" r={RING_R} fill="none" strokeWidth="3.5" className="stroke-slate-700" />
+                            <circle
+                              cx="18"
+                              cy="18"
+                              r={RING_R}
+                              fill="none"
+                              strokeWidth="3.5"
+                              strokeLinecap="round"
+                              className="stroke-slate-400 transition-[stroke-dashoffset] duration-200 ease-linear"
+                              strokeDasharray={RING_C}
+                              strokeDashoffset={RING_C * (1 - cooldownLeftMs / COOLDOWN_MS)}
+                            />
+                          </svg>
+                          <span className="absolute font-mono text-lg font-bold text-white">
+                            {Math.ceil(cooldownLeftMs / 1000)}
+                          </span>
+                        </span>
+                      </span>
+                    )}
                   </button>
                 );
               })}
