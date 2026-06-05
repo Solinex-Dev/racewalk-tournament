@@ -41,7 +41,7 @@ export default async function RoundDetailPage(props: Readonly<Props>) {
     }),
     prisma.eventAthlete.findMany({
       where: { eventId, deletedAt: null },
-      orderBy: { bib: "asc" },
+      orderBy: [{ sortOrder: "asc" }, { bib: "asc" }],
       select: { athleteId: true, bib: true, athlete: { select: { name: true } } },
     }),
     prisma.judge.findMany({

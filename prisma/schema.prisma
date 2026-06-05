@@ -378,6 +378,9 @@ model EventAthlete {
   eventId     String
   athleteId   String
   bib         String
+  // Display order within the event, set by the admin via drag-and-drop in the
+  // event form. Lower sorts first; ties fall back to bib.
+  sortOrder   Int       @default(0)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?

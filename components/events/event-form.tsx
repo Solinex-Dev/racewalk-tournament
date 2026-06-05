@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Reorder, useDragControls } from "framer-motion";
+import { Pencil, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,68 @@ const STATUS_LABEL: Record<EventFormValues["status"], string> = {
   ONGOING: "กำลังดำเนินการ – กำลังแข่งขัน",
   FINISHED: "เสร็จสิ้น – แข่งขันเสร็จแล้ว",
 };
+
+/**
+ * One draggable athlete row. Uses useDragControls + dragListener={false} so only
+ * the grip handle starts a drag — the BIB input stays clickable/typable.
+ */
+function AthleteReorderRow({
+  athleteId,
+  index,
+  athleteName,
+  bib,
+  bibConflict,
+  onBibChange,
+  onRemove,
+}: Readonly<{
+  athleteId: string;
+  index: number;
+  athleteName: string;
+  bib: string;
+  bibConflict: boolean;
+  onBibChange: (value: string) => void;
+  onRemove: () => void;
+}>) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={athleteId}
+      dragListener={false}
+      dragControls={controls}
+      as="div"
+      className="flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2 last:border-b-0"
+    >
+      <button
+        type="button"
+        aria-label="ลากเพื่อจัดลำดับ"
+        onPointerDown={(e) => controls.start(e)}
+        className="flex h-7 w-5 shrink-0 cursor-grab touch-none items-center justify-center text-slate-400 hover:text-slate-600 active:cursor-grabbing"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <span className="w-5 shrink-0 text-[11px] text-slate-500">{index + 1}</span>
+      <span className="flex-1 truncate text-xs text-slate-800">{athleteName}</span>
+      <Input
+        className={`h-7 w-24 shrink-0 px-2 py-1 text-xs ${
+          bibConflict ? "border-red-400 text-red-700 focus-visible:ring-red-200" : ""
+        }`}
+        value={bib}
+        onChange={(e) => onBibChange(e.target.value)}
+        placeholder="เช่น 101"
+        aria-invalid={bibConflict ? true : undefined}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 w-12 shrink-0 rounded-lg border-red-200 px-2 text-[11px] text-red-700 hover:bg-red-50"
+        onClick={onRemove}
+      >
+        ลบ
+      </Button>
+    </Reorder.Item>
+  );
+}
 
 export function EventForm({
   mode,
@@ -109,6 +172,14 @@ export function EventForm({
 
   const handleRemoveAthlete = (index: number) =>
     setForm((p) => ({ ...p, athletes: p.athletes.filter((_, i) => i !== index) }));
+
+  // Drag-and-drop reorder — Framer Motion hands back the reordered athleteIds;
+  // remap them onto the full athlete entries (preserving each one's bib).
+  const handleReorderAthletes = (orderedIds: string[]) =>
+    setForm((p) => {
+      const byId = new Map(p.athletes.map((a) => [a.athleteId, a]));
+      return { ...p, athletes: orderedIds.map((id) => byId.get(id)).filter(Boolean) as EventAthleteEntry[] };
+    });
 
   const confirmAthletePicker = () => {
     const existing = new Set(form.athletes.map((a) => a.athleteId));
@@ -247,7 +318,7 @@ export function EventForm({
                   <div>
                     <h2 className="text-sm font-semibold text-slate-900">นักกีฬาที่เข้าร่วม Event</h2>
                     <p className="mt-0.5 text-[11px] text-slate-600">
-                      เพิ่มนักกีฬาและกำหนดหมายเลข Bib — หมายเลข Bib ที่กำหนดที่นี่จะใช้ในทุกรอบของ Event นี้
+                      เพิ่มนักกีฬาและกำหนดหมายเลข Bib — ลากไอคอน ⠿ เพื่อจัดลำดับ • Bib ที่กำหนดที่นี่ใช้ในทุกรอบของ Event นี้
                     </p>
                   </div>
                   <Button
@@ -274,69 +345,45 @@ export function EventForm({
                   </div>
                 )}
 
-                <div className="min-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                  <table className="min-w-full border-collapse text-xs">
-                    <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
-                      <tr>
-                        <th className="px-3 py-2 text-left">#</th>
-                        <th className="px-3 py-2 text-left">นักกีฬา</th>
-                        <th className="px-3 py-2 text-left">หมายเลข Bib</th>
-                        <th className="px-3 py-2 text-right">ลบ</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {form.athletes.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="px-3 py-4 text-center text-[11px] text-slate-500">
-                            ยังไม่มีนักกีฬา – กด &quot;เพิ่มนักกีฬา&quot;
-                          </td>
-                        </tr>
-                      ) : (
-                        form.athletes.map((row, i) => {
-                          const athlete = globalAthletes.find((a) => a.id === row.athleteId);
-                          const bibConflict = row.bib.trim() !== "" && bibDup.keys.has(row.bib.trim());
-                          return (
-                            <tr key={row.athleteId} className="hover:bg-slate-50/80">
-                              <td className="px-3 py-2 text-[11px] text-slate-500">{i + 1}</td>
-                              <td className="px-3 py-2">
-                                <span className="text-xs text-slate-800">
-                                  {athlete?.name ?? row.athleteId}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2">
-                                <Input
-                                  className={`h-7 w-28 px-2 py-1 text-xs ${
-                                    bibConflict
-                                      ? "border-red-400 text-red-700 focus-visible:ring-red-200"
-                                      : ""
-                                  }`}
-                                  value={row.bib}
-                                  onChange={(e) => handleBibChange(i, e.target.value)}
-                                  placeholder="เช่น 101"
-                                  aria-invalid={bibConflict ? true : undefined}
-                                />
-                                {bibConflict && (
-                                  <p className="mt-1 text-[10px] font-medium text-red-600">⚠ Bib ซ้ำ</p>
-                                )}
-                              </td>
-                              <td className="px-3 py-2 text-right">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 rounded-lg border-red-200 px-2 text-[11px] text-red-700 hover:bg-red-50"
-                                  onClick={() => handleRemoveAthlete(i)}
-                                >
-                                  ลบ
-                                </Button>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                {form.athletes.length === 0 ? (
+                  <div className="rounded-xl border border-slate-200 bg-white px-3 py-4 text-center text-[11px] text-slate-500">
+                    ยังไม่มีนักกีฬา – กด &quot;เพิ่มนักกีฬา&quot;
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    {/* header row */}
+                    <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-medium uppercase text-slate-500">
+                      <span className="w-5 shrink-0" aria-hidden />
+                      <span className="w-5 shrink-0">#</span>
+                      <span className="flex-1">นักกีฬา</span>
+                      <span className="w-24 shrink-0">หมายเลข Bib</span>
+                      <span className="w-12 shrink-0 text-right">ลบ</span>
+                    </div>
+                    <Reorder.Group
+                      as="div"
+                      axis="y"
+                      values={form.athletes.map((a) => a.athleteId)}
+                      onReorder={handleReorderAthletes}
+                    >
+                      {form.athletes.map((row, i) => {
+                        const athlete = globalAthletes.find((a) => a.id === row.athleteId);
+                        const bibConflict = row.bib.trim() !== "" && bibDup.keys.has(row.bib.trim());
+                        return (
+                          <AthleteReorderRow
+                            key={row.athleteId}
+                            athleteId={row.athleteId}
+                            index={i}
+                            athleteName={athlete?.name ?? row.athleteId}
+                            bib={row.bib}
+                            bibConflict={bibConflict}
+                            onBibChange={(v) => handleBibChange(i, v)}
+                            onRemove={() => handleRemoveAthlete(i)}
+                          />
+                        );
+                      })}
+                    </Reorder.Group>
+                  </div>
+                )}
               </div>
 
               {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}

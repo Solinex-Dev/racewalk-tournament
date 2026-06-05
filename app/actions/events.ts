@@ -57,10 +57,11 @@ export async function createEvent(data: EventActionData) {
 
       if (data.athletes.length > 0) {
         await tx.eventAthlete.createMany({
-          data: data.athletes.map((a) => ({
+          data: data.athletes.map((a, i) => ({
             eventId: event.id,
             athleteId: a.athleteId,
             bib: a.bib,
+            sortOrder: i,
             createdById: me.id,
             updatedById: me.id,
           })),
@@ -103,17 +104,20 @@ export async function updateEvent(id: string, data: EventActionData) {
         where: { eventId: id, deletedAt: null },
         data: { deletedAt: now },
       });
-      for (const a of data.athletes) {
+      // The array order IS the display order — persist each athlete's index as sortOrder.
+      for (let i = 0; i < data.athletes.length; i++) {
+        const a = data.athletes[i];
         await tx.eventAthlete.upsert({
           where: { eventId_athleteId: { eventId: id, athleteId: a.athleteId } },
           create: {
             eventId: id,
             athleteId: a.athleteId,
             bib: a.bib,
+            sortOrder: i,
             createdById: me.id,
             updatedById: me.id,
           },
-          update: { bib: a.bib, deletedAt: null, updatedById: me.id },
+          update: { bib: a.bib, sortOrder: i, deletedAt: null, updatedById: me.id },
         });
       }
     })

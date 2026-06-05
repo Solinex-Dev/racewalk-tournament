@@ -44,7 +44,7 @@ export default async function EventDetailPage(props: Readonly<Props>) {
         },
         eventAthletes: {
           where: { deletedAt: null },
-          orderBy: { bib: "asc" },
+          orderBy: [{ sortOrder: "asc" }, { bib: "asc" }],
           include: { athlete: { select: { name: true } } },
         },
       },
