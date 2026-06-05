@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { issueYellowCard, issueRedCard, type CardSymbol } from "@/app/actions/cards";
 import { logoutOfficial } from "@/app/actions/officials";
 import { RaceStatusBanner, racePhaseFromStatus } from "@/components/common/race-status-banner";
+import { metersFromKm } from "@/lib/distance";
 
 export type JudgeAthleteRow = {
   bib: string;
@@ -107,7 +108,7 @@ export function JudgeWorkspace({ eventId, event, judgeName, roundStatus, athlete
                   – {event.roundName}
                 </p>
                 <p className="text-sm text-slate-400">
-                  ระยะ {event.distanceKm} กม. • Lap {event.currentLap} / {event.lapCount}
+                  ระยะ {metersFromKm(event.distanceKm)} ม. • Lap {event.currentLap} / {event.lapCount}
                 </p>
               </>
             ) : (
@@ -124,7 +125,7 @@ export function JudgeWorkspace({ eventId, event, judgeName, roundStatus, athlete
               href={`/events/${eventId}`}
               className="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-slate-800"
             >
-              เปิดหน้า Live
+              ดูกระดานคะแนน
             </Link>
             <button
               type="button"

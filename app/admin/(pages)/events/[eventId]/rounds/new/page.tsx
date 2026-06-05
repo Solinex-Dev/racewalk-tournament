@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 import { ArrowLeft } from "lucide-react";
+import type { EventAthleteOption } from "@/types/event-athlete";
+import { metersFromKm } from "@/lib/distance";
 
 export const metadata: Metadata = {
   title: "สร้างรอบแข่งใหม่ – การแข่งขันเดินทน",
@@ -24,15 +26,15 @@ function toDateInput(dt: Date) {
 export default async function NewRoundPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
-  const [event, athletes, judges] = await Promise.all([
+  const [event, rawEventAthletes, judges] = await Promise.all([
     prisma.event.findUnique({
       where: { id: eventId, deletedAt: null },
       select: { name: true, lapCount: true, distanceKm: true, date: true, status: true },
     }),
-    prisma.athlete.findMany({
-      where: { deletedAt: null },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
+    prisma.eventAthlete.findMany({
+      where: { eventId, deletedAt: null },
+      orderBy: [{ sortOrder: "asc" }, { bib: "asc" }],
+      select: { athleteId: true, bib: true, athlete: { select: { name: true } } },
     }),
     prisma.judge.findMany({
       where: { deletedAt: null },
@@ -41,16 +43,22 @@ export default async function NewRoundPage(props: Readonly<Props>) {
     }),
   ]);
 
+  const eventAthletes: EventAthleteOption[] = rawEventAthletes.map((ea) => ({
+    athleteId: ea.athleteId,
+    athleteName: ea.athlete.name,
+    bib: ea.bib,
+  }));
+
   // A finished event accepts no new rounds — backstop for direct navigation
   // (the "create round" buttons are already hidden on the event page).
   if (event?.status === "FINISHED") {
     redirect(`/admin/events/${eventId}`);
   }
 
-  // Pre-fill lapCount and distanceKm from event so admin doesn't retype
+  // Pre-fill lapCount and distance (metres) from event so admin doesn't retype
   const roundDefaults = {
     lapCount: event?.lapCount ?? 1,
-    distanceKm: event?.distanceKm ?? "",
+    distanceMeters: metersFromKm(event?.distanceKm),
   };
 
   return (
@@ -89,7 +97,7 @@ export default async function NewRoundPage(props: Readonly<Props>) {
         <RoundForm
           mode="create"
           eventId={eventId}
-          athleteOptions={athletes}
+          eventAthletes={eventAthletes}
           judgeOptions={judges}
           eventDate={event ? toDateInput(event.date) : undefined}
           defaultValues={roundDefaults}

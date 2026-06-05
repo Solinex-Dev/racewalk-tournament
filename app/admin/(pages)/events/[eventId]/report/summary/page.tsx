@@ -7,6 +7,7 @@ import { PrintButton } from "@/components/report/print-button";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission } from "@/lib/permissions";
+import { metersFromKm } from "@/lib/distance";
 import {
   loadEventSummary,
   type RoundSummary,
@@ -93,7 +94,7 @@ function RoundSheet({ ev, round }: Readonly<{ ev: EventSummary; round: RoundSumm
             <td className="k">STATUS</td>
             <td>
               {ROUND_STATUS_TH[round.status]}
-              {round.distanceKm ? ` • ${round.distanceKm} กม.` : ""}
+              {round.distanceKm ? ` • ${metersFromKm(round.distanceKm)} ม.` : ""}
             </td>
           </tr>
         </tbody>

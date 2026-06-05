@@ -525,7 +525,9 @@ const ROUNDS: RoundConfig[] = [
       { athleteId: "ath-jw05", bib: "13", outcome: "FINISH", laps: 0, paceSec: 310 },
       { athleteId: "ath-jw02", bib: "14", outcome: "FINISH", laps: 0, paceSec: 302 },
       { athleteId: "ath-jw03", bib: "15", outcome: "FINISH", laps: 0, paceSec: 308 },
-      ...genFillers({ ids: womenFill(18), bibStart: 50, startPos: 0, zones: ["jud-08", "jud-09", "jud-10", "jud-15"], lapCount: 10, basePace: 310, mode: "scheduled" }),
+      // bibStart 100 (not 50): BIB is now event-scoped, and this event also has a
+      // men's round whose fillers use 50+. Women fillers start at 100 to stay unique.
+      ...genFillers({ ids: womenFill(18), bibStart: 100, startPos: 0, zones: ["jud-08", "jud-09", "jud-10", "jud-15"], lapCount: 10, basePace: 310, mode: "scheduled" }),
     ],
   },
 
@@ -632,7 +634,8 @@ const ROUNDS: RoundConfig[] = [
       { athleteId: "ath-w05", bib: "25", outcome: "FINISH", position: 4, laps: 20, paceSec: 287, cards: [Y("K", "jud-09", 6), R("K", "jud-10", 10, "OVERRIDDEN")] },
       { athleteId: "ath-w04", bib: "24", outcome: "FINISH", position: 5, laps: 20, paceSec: 292 },
       { athleteId: "ath-w06", bib: "26", outcome: "DNF", laps: 9, paceSec: 296, reason: "ถอนตัว — เป็นตะคริว" },
-      ...genFillers({ ids: womenFill(16), bibStart: 50, startPos: 6, zones: ["jud-08", "jud-09", "jud-10", "jud-04"], lapCount: 20, basePace: 290, mode: "finished", dqAt: [10], dnfAt: [4] }),
+      // bibStart 100 — event-scoped BIB; men's round (rnd-fin-m) fillers use 50+.
+      ...genFillers({ ids: womenFill(16), bibStart: 100, startPos: 6, zones: ["jud-08", "jud-09", "jud-10", "jud-04"], lapCount: 20, basePace: 290, mode: "finished", dqAt: [10], dnfAt: [4] }),
     ],
   },
 
@@ -672,7 +675,8 @@ const ROUNDS: RoundConfig[] = [
       { athleteId: "ath-jw03", bib: "13", outcome: "FINISH", position: 3, laps: 10, paceSec: 309, cards: [Y("K", "jud-01", 4), Y("F", "jud-12", 8)] },
       { athleteId: "ath-jw05", bib: "15", outcome: "FINISH", position: 4, laps: 10, paceSec: 314 },
       { athleteId: "ath-jw04", bib: "14", outcome: "DNF", laps: 5, paceSec: 318, reason: "ถอนตัว — อ่อนเพลียจากความร้อน" },
-      ...genFillers({ ids: womenFill(14), bibStart: 50, startPos: 5, zones: ["jud-01", "jud-02", "jud-12", "jud-13"], lapCount: 10, basePace: 308, mode: "finished", dnfAt: [7] }),
+      // bibStart 100 — event-scoped BIB; men's round (rnd-asia-jm) fillers use 50+.
+      ...genFillers({ ids: womenFill(14), bibStart: 100, startPos: 5, zones: ["jud-01", "jud-02", "jud-12", "jud-13"], lapCount: 10, basePace: 308, mode: "finished", dnfAt: [7] }),
     ],
   },
 
@@ -724,7 +728,8 @@ type CardRow = {
   color: "YELLOW" | "RED"; symbol: "BENT_KNEE" | "LIFTED_FOOT";
   state: "PENDING" | "CONFIRMED" | "OVERRIDDEN" | null; decidedBy: string | null; decidedAt: Date | null; issuedAt: Date;
 };
-type RoundAthleteRow = { roundId: string; athleteId: string; bib: string; status: "OK" | "DQ" | "DNF"; position: number | null };
+type RoundAthleteRow = { roundId: string; athleteId: string; sortOrder: number; status: "OK" | "DQ" | "DNF"; position: number | null };
+type EventAthleteRow = { eventId: string; athleteId: string; bib: string };
 type OfficialRow = { roundId: string; judgeId: string; position: "JUDGE" | "HEAD_JUDGE" | "EVENT_LOGGER"; secretCode: string; zone: string | null };
 type LogRow = {
   id: string; roundId: string; timestamp: Date; actorId: string; actorName: string; actorRole: string;
@@ -739,6 +744,10 @@ function judgeName(id: string): string {
 
 function buildAll() {
   const roundAthletes: RoundAthleteRow[] = [];
+  // eventAthlete is keyed by "eventId|athleteId" for dedup across rounds.
+  const eventAthleteMap = new Map<string, EventAthleteRow>();
+  // "eventId|bib" → athleteId, to detect BIB collisions within an event.
+  const bibOwner = new Map<string, string>();
   const officials: OfficialRow[] = [];
   const cards: CardRow[] = [];
   const laps: LapRow[] = [];
@@ -776,10 +785,32 @@ function buildAll() {
       });
     }
 
+    // Start-list order within the round = scenario order (drives Lap Time numbering).
+    let raSeq = 0;
     for (const sc of rc.scenarios) {
-      // RoundAthlete row
+      // EventAthlete row (deduplicated — BIB is event-level, not round-level).
+      // The same athlete may appear in several rounds of one event (e.g. prelim →
+      // final) and keeps one BIB; we record it once, on first sighting.
+      const eaKey = `${rc.eventId}|${sc.athleteId}`;
+      if (!eventAthleteMap.has(eaKey)) {
+        // Guard the @@unique([eventId, bib]) constraint at build time so a seed
+        // edit that reuses a BIB across rounds fails with a clear message instead
+        // of a cryptic P2002 mid-insert.
+        const bibKey = `${rc.eventId}|${sc.bib}`;
+        const owner = bibOwner.get(bibKey);
+        if (owner && owner !== sc.athleteId) {
+          throw new Error(
+            `[seed] BIB collision in event ${rc.eventId}: bib "${sc.bib}" is assigned to both ${owner} and ${sc.athleteId}. BIB must be unique per event.`,
+          );
+        }
+        bibOwner.set(bibKey, sc.athleteId);
+        eventAthleteMap.set(eaKey, { eventId: rc.eventId, athleteId: sc.athleteId, bib: sc.bib });
+      }
+
+      // RoundAthlete row (no bib — bib lives on EventAthlete)
       roundAthletes.push({
-        roundId: rc.id, athleteId: sc.athleteId, bib: sc.bib,
+        roundId: rc.id, athleteId: sc.athleteId,
+        sortOrder: raSeq++,
         status: sc.outcome === "FINISH" ? "OK" : sc.outcome,
         position: sc.outcome === "FINISH" ? sc.position ?? null : null,
       });
@@ -890,7 +921,7 @@ function buildAll() {
     }
   }
 
-  return { roundAthletes, officials, cards, laps, finishes, logs };
+  return { roundAthletes, eventAthletes: [...eventAthleteMap.values()], officials, cards, laps, finishes, logs };
 }
 
 const GEN = buildAll();
@@ -912,6 +943,7 @@ async function reset() {
   await prisma.card.deleteMany({});
   await prisma.roundOfficial.deleteMany({});
   await prisma.roundAthlete.deleteMany({});
+  await prisma.eventAthlete.deleteMany({});
   await prisma.round.deleteMany({});
   await prisma.event.deleteMany({});
   await prisma.athlete.deleteMany({});
@@ -1037,10 +1069,18 @@ async function main() {
   }
   console.log(`[seed] rounds:       ${ROUNDS.length}`);
 
+  for (const ea of GEN.eventAthletes) {
+    await prisma.eventAthlete.upsert({
+      where: { eventId_athleteId: { eventId: ea.eventId, athleteId: ea.athleteId } },
+      create: ea, update: { bib: ea.bib, deletedAt: null },
+    });
+  }
+  console.log(`[seed] eventAthletes: ${GEN.eventAthletes.length}`);
+
   for (const ra of GEN.roundAthletes) {
     await prisma.roundAthlete.upsert({
       where: { roundId_athleteId: { roundId: ra.roundId, athleteId: ra.athleteId } },
-      create: ra, update: { bib: ra.bib, status: ra.status, position: ra.position },
+      create: ra, update: { sortOrder: ra.sortOrder, status: ra.status, position: ra.position },
     });
   }
   console.log(`[seed] roundAthletes:  ${GEN.roundAthletes.length}`);

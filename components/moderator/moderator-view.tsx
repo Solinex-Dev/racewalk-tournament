@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { startRound, endRound } from "@/app/actions/round-timing";
+import { metersFromKm } from "@/lib/distance";
 import { SectionToc, type TocItem } from "@/components/common/section-toc";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import {
@@ -393,7 +394,7 @@ export function ModeratorView({
                           {r.info.name}
                         </span>
                         <span className="text-xs text-slate-500">
-                          {r.info.distance_km && `${r.info.distance_km} กม.`}
+                          {r.info.distance_km && `${metersFromKm(r.info.distance_km)} ม.`}
                           {status === "ongoing" &&
                             r.info.lapCount &&
                             r.info.currentLap !== undefined &&
@@ -425,7 +426,7 @@ export function ModeratorView({
                         </h2>
                         <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-600">
                           {displayRound.distance_km && (
-                            <span>ระยะ {displayRound.distance_km} กม.</span>
+                            <span>ระยะ {metersFromKm(displayRound.distance_km)} ม.</span>
                           )}
                           {displayRound.lapCount &&
                             displayRound.currentLap !== undefined && (
@@ -940,7 +941,7 @@ export function ModeratorView({
                   <span className="text-slate-500">{event.name}</span>
                   {displayRound.distance_km && (
                     <span className="rounded-full bg-slate-200 px-2 py-0.5 font-medium text-slate-700">
-                      {displayRound.distance_km} กม.
+                      {metersFromKm(displayRound.distance_km)} ม.
                     </span>
                   )}
                   <span

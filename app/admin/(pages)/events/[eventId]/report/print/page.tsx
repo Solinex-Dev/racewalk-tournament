@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { compareAthletesByFinish } from "@/lib/athlete-sort";
+import { metersFromKm } from "@/lib/distance";
 import { PrintButton } from "@/components/report/print-button";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
@@ -45,26 +46,35 @@ export default async function PrintReportPage(props: Readonly<Props>) {
   const me = await getCurrentAdmin();
   if (!hasPermission(me, "reports", "view")) return <NoAccess />;
 
-  const event = await prisma.event.findUnique({
-    where: { id: eventId, deletedAt: null },
-    include: {
-      rounds: {
-        where: { deletedAt: null },
-        orderBy: { scheduledTime: "asc" },
-        include: {
-          roundAthletes: {
-            where: { deletedAt: null },
-            include: { athlete: { include: { affiliation: { select: { name: true } } } } },
-            orderBy: [{ position: "asc" }, { bib: "asc" }],
+  const [event, rawEventAthletes] = await Promise.all([
+    prisma.event.findUnique({
+      where: { id: eventId, deletedAt: null },
+      include: {
+        rounds: {
+          where: { deletedAt: null },
+          orderBy: { scheduledTime: "asc" },
+          include: {
+            roundAthletes: {
+              where: { deletedAt: null },
+              include: { athlete: { include: { affiliation: { select: { name: true } } } } },
+              orderBy: [{ position: "asc" }, { athleteId: "asc" }],
+            },
+            cards: { where: { deletedAt: null } },
+            finishTimes: { where: { deletedAt: null } },
           },
-          cards: { where: { deletedAt: null } },
-          finishTimes: { where: { deletedAt: null } },
         },
       },
-    },
-  });
+    }),
+    prisma.eventAthlete.findMany({
+      where: { eventId, deletedAt: null },
+      select: { athleteId: true, bib: true },
+    }),
+  ]);
 
   if (!event) notFound();
+
+  // BIB is stored at Event level — build a lookup map for use throughout this page.
+  const bibMap = new Map(rawEventAthletes.map((ea) => [ea.athleteId, ea.bib]));
 
   // Per-round standings: sort with the shared finish comparator and assign a
   // DQ-aware rank (the same logic as the public leaderboard). A finisher who was
@@ -88,8 +98,8 @@ export default async function PrintReportPage(props: Readonly<Props>) {
       });
       rows.sort((a, b) =>
         compareAthletesByFinish(
-          { status: a.ra.status, position: a.ra.position ?? null, isFinished: a.isFinished, currentLap: 0, bib: a.ra.bib },
-          { status: b.ra.status, position: b.ra.position ?? null, isFinished: b.isFinished, currentLap: 0, bib: b.ra.bib },
+          { status: a.ra.status, position: a.ra.position ?? null, isFinished: a.isFinished, currentLap: 0, bib: bibMap.get(a.ra.athleteId) ?? "" },
+          { status: b.ra.status, position: b.ra.position ?? null, isFinished: b.isFinished, currentLap: 0, bib: bibMap.get(b.ra.athleteId) ?? "" },
         ),
       );
       let rank = 0;
@@ -137,7 +147,7 @@ export default async function PrintReportPage(props: Readonly<Props>) {
         </p>
         <p>สถานที่: {event.location}</p>
         <p>สถานะ Event: {STATUS_LABEL[event.status] ?? event.status}</p>
-        <p>ระยะ: {event.distanceKm} กม.</p>
+        <p>ระยะ: {metersFromKm(event.distanceKm)} ม.</p>
       </div>
 
       {event.rounds.length === 0 && (
@@ -149,7 +159,7 @@ export default async function PrintReportPage(props: Readonly<Props>) {
           <h2 className="mt-6 border-b-2 border-slate-800 pb-1 text-lg font-bold">{round.name}</h2>
           <div className="mt-2 text-sm text-slate-600">
             สถานะ: {ROUND_STATUS_LABEL[round.status] ?? round.status}
-            {round.distanceKm && ` • ระยะ ${round.distanceKm} กม.`}
+            {round.distanceKm && ` • ระยะ ${metersFromKm(round.distanceKm)} ม.`}
           </div>
           {round.startedAt && (
             <p className="mt-1 text-xs text-slate-600">
@@ -182,7 +192,7 @@ export default async function PrintReportPage(props: Readonly<Props>) {
                   return (
                     <tr key={r.ra.id} className={rowClass}>
                       <td>{r.rank ?? "—"}</td>
-                      <td className="font-mono">{r.ra.bib}</td>
+                      <td className="font-mono">{bibMap.get(r.ra.athleteId) ?? "?"}</td>
                       <td>{r.ra.athlete.name}</td>
                       <td>{r.ra.athlete.country}</td>
                       <td>{r.ra.athlete.affiliation?.name ?? "—"}</td>

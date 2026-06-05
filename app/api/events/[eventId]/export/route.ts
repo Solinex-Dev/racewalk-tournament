@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission } from "@/lib/permissions";
 import { attachmentContentDisposition } from "@/lib/content-disposition";
+import { metersFromKm } from "@/lib/distance";
 
 type Ctx = { params: Promise<{ eventId: string }> };
 
@@ -42,29 +43,37 @@ export async function GET(request: Request, ctx: Ctx) {
   const url = new URL(request.url);
   const roundFilter = url.searchParams.get("round");
 
-  const event = await prisma.event.findUnique({
-    where: { id: eventId, deletedAt: null },
-    include: {
-      rounds: {
-        where: {
-          deletedAt: null,
-          ...(roundFilter ? { id: roundFilter } : {}),
-        },
-        orderBy: { scheduledTime: "asc" },
-        include: {
-          roundAthletes: {
-            where: { deletedAt: null },
-            include: { athlete: { include: { affiliation: { select: { name: true } } } } },
-            orderBy: [{ position: "asc" }, { bib: "asc" }],
+  const [event, rawEventAthletes] = await Promise.all([
+    prisma.event.findUnique({
+      where: { id: eventId, deletedAt: null },
+      include: {
+        rounds: {
+          where: {
+            deletedAt: null,
+            ...(roundFilter ? { id: roundFilter } : {}),
           },
-          cards: { where: { deletedAt: null } },
-          finishTimes: { where: { deletedAt: null } },
+          orderBy: { scheduledTime: "asc" },
+          include: {
+            roundAthletes: {
+              where: { deletedAt: null },
+              include: { athlete: { include: { affiliation: { select: { name: true } } } } },
+              orderBy: [{ position: "asc" }, { athleteId: "asc" }],
+            },
+            cards: { where: { deletedAt: null } },
+            finishTimes: { where: { deletedAt: null } },
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.eventAthlete.findMany({
+      where: { eventId, deletedAt: null },
+      select: { athleteId: true, bib: true },
+    }),
+  ]);
 
   if (!event) return new NextResponse("Not found", { status: 404 });
+
+  const bibMap = new Map(rawEventAthletes.map((ea) => [ea.athleteId, ea.bib]));
 
   const lines: string[] = [];
 
@@ -79,7 +88,7 @@ export async function GET(request: Request, ctx: Ctx) {
 
   for (const round of event.rounds) {
     lines.push(`Round,${escapeCsv(round.name)}`, `Status,${round.status}`);
-    if (round.distanceKm) lines.push(`Distance (km),${escapeCsv(round.distanceKm)}`);
+    if (round.distanceKm) lines.push(`Distance (m),${escapeCsv(metersFromKm(round.distanceKm))}`);
     if (round.startedAt) lines.push(`Started at,${round.startedAt.toISOString()}`);
     if (round.endedAt) lines.push(`Ended at,${round.endedAt.toISOString()}`);
     // Athlete table for this round
@@ -113,7 +122,7 @@ export async function GET(request: Request, ctx: Ctx) {
 
       lines.push(
         [
-          ra.bib,
+          bibMap.get(ra.athleteId) ?? "?",
           ra.athlete.name,
           ra.athlete.country,
           ra.athlete.affiliation?.name ?? "",

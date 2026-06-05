@@ -36,15 +36,16 @@ export default async function HeadJudgePage(props: Readonly<Props>) {
     redirect(`/head-judge/events/${eventId}/join`);
   }
 
-  const round = await prisma.round.findUnique({
-    where: { id: session.roundId, deletedAt: null },
-    include: {
-      event: { select: { name: true } },
-      roundAthletes: {
-        where: { deletedAt: null },
-        include: { athlete: { include: { affiliation: { select: { name: true } } } } },
-        orderBy: [{ position: "asc" }, { bib: "asc" }],
-      },
+  const [round, eventAthletes] = await Promise.all([
+    prisma.round.findUnique({
+      where: { id: session.roundId, deletedAt: null },
+      include: {
+        event: { select: { name: true } },
+        roundAthletes: {
+          where: { deletedAt: null },
+          include: { athlete: { include: { affiliation: { select: { name: true } } } } },
+          orderBy: [{ position: "asc" }, { athleteId: "asc" }],
+        },
       roundOfficials: {
         where: { deletedAt: null },
         include: { judge: { select: { name: true } } },
@@ -59,11 +60,18 @@ export default async function HeadJudgePage(props: Readonly<Props>) {
         take: 50,
       },
     },
-  });
+  }),
+    prisma.eventAthlete.findMany({
+      where: { eventId: session.eventId, deletedAt: null },
+      select: { athleteId: true, bib: true },
+    }),
+  ]);
 
   if (!round) {
     redirect(`/head-judge/events/${eventId}/join`);
   }
+
+  const bibMap = new Map(eventAthletes.map((ea) => [ea.athleteId, ea.bib]));
 
   const pendingCards: PendingCard[] = round.cards
     .filter((c) => c.color === "RED" && c.state === "PENDING")
@@ -74,7 +82,7 @@ export default async function HeadJudgePage(props: Readonly<Props>) {
         id: c.id,
         athleteId: c.athleteId,
         athleteName: c.athlete.name,
-        bib: ra?.bib ?? "?",
+        bib: bibMap.get(c.athleteId) ?? "?",
         symbol: c.symbol === "LIFTED_FOOT" ? "~" : ">",
         symbolLabel: symbolLabel(c.symbol),
         judgeName: c.judge.name,
@@ -94,7 +102,7 @@ export default async function HeadJudgePage(props: Readonly<Props>) {
       (c) => c.athleteId === ra.athleteId && c.color === "RED" && c.state === "PENDING",
     ).length;
     return {
-      bib: ra.bib,
+      bib: bibMap.get(ra.athleteId) ?? "?",
       athleteId: ra.athleteId,
       name: ra.athlete.name,
       affiliation: ra.athlete.affiliation?.name ?? "",

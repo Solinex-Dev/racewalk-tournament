@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { EditRoundInfo } from "./moderator-edit-types";
+import { metersFromKm, kmFromMeters } from "@/lib/distance";
 
 type RoundInfoValue = {
   name: string;
@@ -43,7 +44,8 @@ export function RoundInfoDialog({
   isPending?: boolean;
 }>) {
   const [name, setName] = React.useState("");
-  const [distanceKm, setDistanceKm] = React.useState("");
+  // Edited in METRES; converted to km for storage on submit.
+  const [distanceMeters, setDistanceMeters] = React.useState("");
   const [lapCount, setLapCount] = React.useState("");
   const [startedAt, setStartedAt] = React.useState("");
   const [endedAt, setEndedAt] = React.useState("");
@@ -52,7 +54,7 @@ export function RoundInfoDialog({
   React.useEffect(() => {
     if (!open || !roundInfo) return;
     setName(roundInfo.name);
-    setDistanceKm(roundInfo.distanceKm);
+    setDistanceMeters(metersFromKm(roundInfo.distanceKm));
     setLapCount(roundInfo.lapCount == null ? "" : String(roundInfo.lapCount));
     setStartedAt(toDatetimeLocal(roundInfo.startedAt));
     setEndedAt(toDatetimeLocal(roundInfo.endedAt));
@@ -67,7 +69,7 @@ export function RoundInfoDialog({
     if (!trimmed || !name.trim()) return;
     onConfirm({
       name: name.trim(),
-      distanceKm: distanceKm.trim(),
+      distanceKm: kmFromMeters(distanceMeters.trim()),
       lapCount: lapCount.trim() ? Math.max(1, Math.floor(Number(lapCount))) : null,
       startedAtMs: startedAt ? new Date(startedAt).getTime() : null,
       endedAtMs: endedAt ? new Date(endedAt).getTime() : null,
@@ -106,14 +108,17 @@ export function RoundInfoDialog({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label htmlFor="round-distance" className="text-sm font-medium text-slate-900">
-                  ระยะ (กม.)
+                  ระยะ (เมตร)
                 </label>
                 <Input
                   id="round-distance"
-                  value={distanceKm}
-                  onChange={(e) => setDistanceKm(e.target.value)}
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={distanceMeters}
+                  onChange={(e) => setDistanceMeters(e.target.value)}
                   disabled={isPending}
-                  placeholder="เช่น 20"
+                  placeholder="เช่น 20000"
                   className="rounded-xl"
                 />
               </div>

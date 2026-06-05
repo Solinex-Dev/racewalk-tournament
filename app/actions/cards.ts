@@ -38,12 +38,17 @@ export async function issueYellowCard(athleteId: string, symbol: CardSymbol) {
   const round = await loadOfficialRound(session.roundId);
   assertRoundOngoingForCards(round);
 
-  const ra = await prisma.roundAthlete.findFirst({
-    where: { roundId: session.roundId, athleteId, deletedAt: null },
-  });
+  const [ra, ea] = await Promise.all([
+    prisma.roundAthlete.findFirst({ where: { roundId: session.roundId, athleteId, deletedAt: null } }),
+    prisma.eventAthlete.findFirst({
+      where: { eventId: session.eventId, athleteId, deletedAt: null },
+      select: { bib: true },
+    }),
+  ]);
   if (!ra) throw new Error("นักกีฬาไม่อยู่ในรอบนี้");
   assertAthleteActive(ra);
   await assertAthleteNotFinished(session.roundId, athleteId);
+  const athleteBib = ea?.bib ?? undefined;
 
   const existingSameSymbol = await prisma.card.count({
     where: {
@@ -77,7 +82,7 @@ export async function issueYellowCard(athleteId: string, symbol: CardSymbol) {
       actorRole: "JUDGE",
       actionType: "yellow_card",
       targetAthleteId: athleteId,
-      targetBib: ra.bib,
+      targetBib: athleteBib,
       details: symbol === "LIFTED_FOOT" ? "ยกเท้า" : "เข่างอ",
     },
   });
@@ -95,12 +100,17 @@ export async function issueRedCard(athleteId: string, symbol: CardSymbol) {
   const round = await loadOfficialRound(session.roundId);
   assertRoundOngoingForCards(round);
 
-  const ra = await prisma.roundAthlete.findFirst({
-    where: { roundId: session.roundId, athleteId, deletedAt: null },
-  });
+  const [ra, ea] = await Promise.all([
+    prisma.roundAthlete.findFirst({ where: { roundId: session.roundId, athleteId, deletedAt: null } }),
+    prisma.eventAthlete.findFirst({
+      where: { eventId: session.eventId, athleteId, deletedAt: null },
+      select: { bib: true },
+    }),
+  ]);
   if (!ra) throw new Error("นักกีฬาไม่อยู่ในรอบนี้");
   assertAthleteActive(ra);
   await assertAthleteNotFinished(session.roundId, athleteId);
+  const athleteBib = ea?.bib ?? undefined;
 
   const existing = await prisma.card.count({
     where: {
@@ -135,7 +145,7 @@ export async function issueRedCard(athleteId: string, symbol: CardSymbol) {
       actorRole: "JUDGE",
       actionType: "red_card",
       targetAthleteId: athleteId,
-      targetBib: ra.bib,
+      targetBib: athleteBib,
       details: symbol === "LIFTED_FOOT" ? "ยกเท้า" : "เข่างอ",
       canOverride: true,
     },

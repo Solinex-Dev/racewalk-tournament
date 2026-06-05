@@ -7,7 +7,7 @@ import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
 import { requirePermission } from "@/lib/authz";
 import { assertNoScheduleConflict, assertRoundWithinEvent } from "@/lib/scheduling";
 
-type AthleteInput = { athleteId: string; bib: string };
+type AthleteInput = { athleteId: string };
 type OfficialInput = {
   judgeId: string;
   zone?: string;
@@ -81,7 +81,7 @@ function rethrowFriendly(err: unknown): never {
     (err as { code?: unknown }).code === "P2002"
   ) {
     throw new Error(
-      "บันทึกไม่สำเร็จ — มีข้อมูลซ้ำกันในรอบนี้ (เช่น หมายเลข Bib หรือ รหัสกรรมการ ที่ซ้ำกัน) กรุณาแก้ไขรายการที่ขึ้นเตือนสีแดงแล้วบันทึกอีกครั้ง",
+      "บันทึกไม่สำเร็จ — มีข้อมูลซ้ำกันในรอบนี้ (เช่น รหัสกรรมการที่ซ้ำกัน หรือ นักกีฬาที่ถูกเพิ่มซ้ำ) กรุณาแก้ไขรายการที่ขึ้นเตือนสีแดงแล้วบันทึกอีกครั้ง",
     );
   }
   throw err;
@@ -110,6 +110,21 @@ export async function createRound(eventId: string, data: RoundActionData) {
     judgeIds: data.officials.map((o) => o.judgeId),
   });
 
+  // Validate that every submitted athlete is registered in the event (has an EventAthlete row).
+  if (data.athletes.length > 0) {
+    const registered = await prisma.eventAthlete.findMany({
+      where: { eventId, athleteId: { in: data.athletes.map((a) => a.athleteId) }, deletedAt: null },
+      select: { athleteId: true },
+    });
+    const registeredIds = new Set(registered.map((r) => r.athleteId));
+    const unregistered = data.athletes.filter((a) => !registeredIds.has(a.athleteId));
+    if (unregistered.length > 0) {
+      throw new Error(
+        "นักกีฬาบางคนยังไม่ได้ลงทะเบียนในกิจกรรมนี้ — กรุณาเพิ่มนักกีฬาในหน้ากิจกรรมก่อน",
+      );
+    }
+  }
+
   let createdId = "";
   await prisma.$transaction(async (tx) => {
     const round = await tx.round.create({
@@ -128,10 +143,10 @@ export async function createRound(eventId: string, data: RoundActionData) {
 
     if (data.athletes.length > 0) {
       await tx.roundAthlete.createMany({
-        data: data.athletes.map((a) => ({
+        data: data.athletes.map((a, i) => ({
           roundId: round.id,
           athleteId: a.athleteId,
-          bib: a.bib,
+          sortOrder: i,
         })),
       });
     }
@@ -200,6 +215,21 @@ export async function updateRound(
     judgeIds: data.officials.map((o) => o.judgeId),
   });
 
+  // Validate that every submitted athlete is registered in the event.
+  if (data.athletes.length > 0) {
+    const registered = await prisma.eventAthlete.findMany({
+      where: { eventId, athleteId: { in: data.athletes.map((a) => a.athleteId) }, deletedAt: null },
+      select: { athleteId: true },
+    });
+    const registeredIds = new Set(registered.map((r) => r.athleteId));
+    const unregistered = data.athletes.filter((a) => !registeredIds.has(a.athleteId));
+    if (unregistered.length > 0) {
+      throw new Error(
+        "นักกีฬาบางคนยังไม่ได้ลงทะเบียนในกิจกรรมนี้ — กรุณาเพิ่มนักกีฬาในหน้ากิจกรรมก่อน",
+      );
+    }
+  }
+
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {
@@ -220,11 +250,13 @@ export async function updateRound(
       where: { roundId, deletedAt: null },
       data: { deletedAt: now },
     });
-    for (const a of data.athletes) {
+    // The array order IS the start-list order — persist each athlete's index.
+    for (let i = 0; i < data.athletes.length; i++) {
+      const a = data.athletes[i];
       await tx.roundAthlete.upsert({
         where: { roundId_athleteId: { roundId, athleteId: a.athleteId } },
-        create: { roundId, athleteId: a.athleteId, bib: a.bib },
-        update: { bib: a.bib, deletedAt: null },
+        create: { roundId, athleteId: a.athleteId, sortOrder: i },
+        update: { sortOrder: i, deletedAt: null },
       });
     }
 
