@@ -8,6 +8,7 @@ import { ChevronDown, Gavel, Timer, Flag, History, ClipboardList } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { metersFromKm } from "@/lib/distance";
 import {
   moderatorDeleteCard,
   moderatorConfirmRedCard,
@@ -455,7 +456,7 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
                 <div className="min-w-0 space-y-1">
                   <p className="text-sm font-semibold text-slate-900">{props.roundInfo.name}</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-                    <span>ระยะ {props.roundInfo.distanceKm || "—"} กม.</span>
+                    <span>ระยะ {metersFromKm(props.roundInfo.distanceKm) || "—"} ม.</span>
                     <span>Lap {props.roundInfo.lapCount ?? "—"}</span>
                     <span>เริ่ม {fmtDateTime(props.roundInfo.startedAt)}</span>
                     <span>จบ {fmtDateTime(props.roundInfo.endedAt)}</span>

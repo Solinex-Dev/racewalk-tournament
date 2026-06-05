@@ -728,7 +728,7 @@ type CardRow = {
   color: "YELLOW" | "RED"; symbol: "BENT_KNEE" | "LIFTED_FOOT";
   state: "PENDING" | "CONFIRMED" | "OVERRIDDEN" | null; decidedBy: string | null; decidedAt: Date | null; issuedAt: Date;
 };
-type RoundAthleteRow = { roundId: string; athleteId: string; status: "OK" | "DQ" | "DNF"; position: number | null };
+type RoundAthleteRow = { roundId: string; athleteId: string; sortOrder: number; status: "OK" | "DQ" | "DNF"; position: number | null };
 type EventAthleteRow = { eventId: string; athleteId: string; bib: string };
 type OfficialRow = { roundId: string; judgeId: string; position: "JUDGE" | "HEAD_JUDGE" | "EVENT_LOGGER"; secretCode: string; zone: string | null };
 type LogRow = {
@@ -785,6 +785,8 @@ function buildAll() {
       });
     }
 
+    // Start-list order within the round = scenario order (drives Lap Time numbering).
+    let raSeq = 0;
     for (const sc of rc.scenarios) {
       // EventAthlete row (deduplicated — BIB is event-level, not round-level).
       // The same athlete may appear in several rounds of one event (e.g. prelim →
@@ -808,6 +810,7 @@ function buildAll() {
       // RoundAthlete row (no bib — bib lives on EventAthlete)
       roundAthletes.push({
         roundId: rc.id, athleteId: sc.athleteId,
+        sortOrder: raSeq++,
         status: sc.outcome === "FINISH" ? "OK" : sc.outcome,
         position: sc.outcome === "FINISH" ? sc.position ?? null : null,
       });
@@ -1077,7 +1080,7 @@ async function main() {
   for (const ra of GEN.roundAthletes) {
     await prisma.roundAthlete.upsert({
       where: { roundId_athleteId: { roundId: ra.roundId, athleteId: ra.athleteId } },
-      create: ra, update: { status: ra.status, position: ra.position },
+      create: ra, update: { sortOrder: ra.sortOrder, status: ra.status, position: ra.position },
     });
   }
   console.log(`[seed] roundAthletes:  ${GEN.roundAthletes.length}`);

@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission } from "@/lib/permissions";
 import { attachmentContentDisposition } from "@/lib/content-disposition";
+import { metersFromKm } from "@/lib/distance";
 
 type Ctx = { params: Promise<{ eventId: string }> };
 
@@ -87,7 +88,7 @@ export async function GET(request: Request, ctx: Ctx) {
 
   for (const round of event.rounds) {
     lines.push(`Round,${escapeCsv(round.name)}`, `Status,${round.status}`);
-    if (round.distanceKm) lines.push(`Distance (km),${escapeCsv(round.distanceKm)}`);
+    if (round.distanceKm) lines.push(`Distance (m),${escapeCsv(metersFromKm(round.distanceKm))}`);
     if (round.startedAt) lines.push(`Started at,${round.startedAt.toISOString()}`);
     if (round.endedAt) lines.push(`Ended at,${round.endedAt.toISOString()}`);
     // Athlete table for this round

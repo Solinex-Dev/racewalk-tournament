@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { metersFromKm } from "@/lib/distance";
 import {
   Select,
   SelectContent,
@@ -130,7 +131,7 @@ export function EventsList({
         event.name.toLowerCase().includes(searchLower) ||
         event.location.toLowerCase().includes(searchLower) ||
         event.date.includes(searchQuery) ||
-        event.distance_km.includes(searchQuery);
+        metersFromKm(event.distance_km).includes(searchQuery);
 
       // Status filter
       const matchesStatus =
@@ -350,7 +351,7 @@ export function EventsList({
                   <th className="px-4 py-3 text-left">ชื่อ Event</th>
                   <th className="px-4 py-3 text-left">วันที่แข่งขัน</th>
                   <th className="px-4 py-3 text-left">สถานที่</th>
-                  <th className="px-4 py-3 text-left">ระยะทาง (กม.)</th>
+                  <th className="px-4 py-3 text-left">ระยะทาง (ม.)</th>
                   <th className="px-4 py-3 text-left">สถานะ</th>
                   <th className="px-4 py-3 text-right">การจัดการ</th>
                 </tr>
@@ -387,7 +388,7 @@ export function EventsList({
                         {event.location || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {event.distance_km || "-"}
+                        {metersFromKm(event.distance_km) || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600 text-nowrap">
                         {STATUS_LABEL[event.status]}

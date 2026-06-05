@@ -7,6 +7,7 @@ import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 import { ArrowLeft } from "lucide-react";
 import type { EventAthleteOption } from "@/types/event-athlete";
+import { metersFromKm } from "@/lib/distance";
 
 export const metadata: Metadata = {
   title: "แก้ไขรอบแข่ง – การแข่งขันเดินทน",
@@ -35,7 +36,7 @@ export default async function RoundDetailPage(props: Readonly<Props>) {
       where: { id: roundId, deletedAt: null },
       include: {
         event: { select: { name: true, date: true } },
-        roundAthletes: { where: { deletedAt: null } },
+        roundAthletes: { where: { deletedAt: null }, orderBy: { sortOrder: "asc" } },
         roundOfficials: { where: { deletedAt: null } },
       },
     }),
@@ -63,7 +64,7 @@ export default async function RoundDetailPage(props: Readonly<Props>) {
     name: round.name,
     scheduledTime: round.scheduledTime ? toDatetimeLocal(round.scheduledTime) : "",
     expectedEndTime: round.expectedEndTime ? toDatetimeLocal(round.expectedEndTime) : "",
-    distanceKm: round.distanceKm ?? "",
+    distanceMeters: metersFromKm(round.distanceKm),
     lapCount: round.lapCount ?? 1,
     note: round.note ?? "",
     status: round.status,

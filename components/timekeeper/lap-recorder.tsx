@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { recordLapTime, recordFinishTime } from "@/app/actions/timing";
 import { logoutOfficial } from "@/app/actions/officials";
 import { RaceStatusBanner } from "@/components/common/race-status-banner";
+import { metersFromKm } from "@/lib/distance";
 
 export type AthleteRecord = {
   bib: string;
@@ -60,7 +61,7 @@ export function LapRecorder({
   const endMs = raceEndedAt ? new Date(raceEndedAt).getTime() : null;
 
   const [now, setNow] = React.useState(() => Date.now());
-  const [actingBib, setActingBib] = React.useState<string | null>(null);
+  const [actingId, setActingId] = React.useState<string | null>(null);
   const [isPending, startTransition] = React.useTransition();
 
   // Tick every 250ms while race is live
@@ -83,18 +84,20 @@ export function LapRecorder({
   // number and double-fire. Other athletes stay independently tappable for fast
   // multi-athlete logging. (The server actions are also idempotent as a backstop.)
   React.useEffect(() => {
-    if (!isPending) setActingBib(null);
+    if (!isPending) setActingId(null);
   }, [isPending]);
 
-  const handleRecordLap = (athlete: AthleteRecord) => {
-    if (isPending && actingBib === athlete.bib) return;
+  // `seq` is the athlete's 1-based start-list number (shown on the button), used
+  // in toasts so the message matches what the official sees on screen.
+  const handleRecordLap = (athlete: AthleteRecord, seq: number) => {
+    if (isPending && actingId === athlete.athleteId) return;
     if (!isRunning) {
       toast.error("รอ Admin เริ่มจับเวลาก่อน");
       return;
     }
     if (athlete.status !== "OK" || athlete.finishedAt) return;
 
-    setActingBib(athlete.bib);
+    setActingId(athlete.athleteId);
     const nextLap = athlete.currentLap + 1;
     const captureMs = elapsedMs;
 
@@ -103,9 +106,9 @@ export function LapRecorder({
         if (nextLap >= athlete.lapCount) {
           const res = await recordFinishTime(athlete.athleteId, captureMs);
           if (res?.alreadyFinished) {
-            toast.info(`BIB ${athlete.bib} เข้าเส้นชัยอยู่แล้ว`);
+            toast.info(`ลำดับ ${seq} (${athlete.name}) เข้าเส้นชัยอยู่แล้ว`);
           } else {
-            toast.success(`บันทึกเข้าเส้นชัย BIB ${athlete.bib} — ${formatMs(captureMs)}`);
+            toast.success(`เข้าเส้นชัย — ลำดับ ${seq} (${athlete.name}) ${formatMs(captureMs)}`);
             if (res?.roundEnded) {
               toast.success("นักกีฬาเข้าเส้นชัยครบทุกคน — จบการแข่งขันอัตโนมัติ");
             }
@@ -113,9 +116,9 @@ export function LapRecorder({
         } else {
           const res = await recordLapTime(athlete.athleteId, nextLap, captureMs);
           if (res?.duplicate) {
-            toast.info(`Lap ${nextLap} ของ BIB ${athlete.bib} บันทึกอยู่แล้ว`);
+            toast.info(`Lap ${nextLap} ของลำดับ ${seq} บันทึกอยู่แล้ว`);
           } else {
-            toast.success(`บันทึก Lap ${nextLap} ของ BIB ${athlete.bib}`);
+            toast.success(`บันทึก Lap ${nextLap} — ลำดับ ${seq} (${athlete.name})`);
           }
         }
         router.refresh();
@@ -144,7 +147,7 @@ export function LapRecorder({
               กิจกรรม: <span className="font-semibold text-slate-100">{eventName}</span> – {roundName}
             </p>
             <p className="text-sm text-slate-400">
-              ระยะ {distanceKm} กม. • {lapCount} รอบ
+              ระยะ {metersFromKm(distanceKm)} ม. • {lapCount} รอบ
             </p>
           </div>
 
@@ -168,7 +171,7 @@ export function LapRecorder({
               href={`/events/${eventId}`}
               className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-slate-800"
             >
-              เปิดหน้า Live
+              ดูกระดานคะแนน
             </Link>
             <button
               type="button"
@@ -185,96 +188,63 @@ export function LapRecorder({
           action="บันทึก Lap"
         />
 
-        <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
-          <div className="border-b border-slate-800 bg-slate-900/50 px-4 py-3">
-            <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
-              รายชื่อนักกีฬา ({athletes.length} คน) – กดที่ปุ่ม &quot;Lap&quot; เพื่อบันทึก
-            </p>
-          </div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-sm sm:p-4">
+          <p className="mb-3 px-1 text-sm font-bold uppercase tracking-wide text-slate-400">
+            นักกีฬา ({athletes.length} คน) — แตะปุ่มเพื่อบันทึก Lap
+          </p>
 
-          <div className="max-h-[600px] overflow-auto">
-            <table className="min-w-full border-collapse text-sm">
-              <thead className="border-b border-slate-800 bg-slate-900/95 text-[11px] font-medium uppercase text-slate-400">
-                <tr>
-                  <th className="px-3 py-2 text-left">BIB</th>
-                  {/* <th className="px-3 py-2 text-left">นักกีฬา</th> */}
-                  <th className="px-3 py-2 text-center">รอบ</th>
-                  <th className="px-3 py-2 text-center">Lap ล่าสุด</th>
-                  <th className="px-3 py-2 text-center">สถานะ</th>
-                  <th className="px-3 py-2 text-right">บันทึก</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {athletes.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-slate-500">
-                      ไม่มีนักกีฬาในรอบนี้
-                    </td>
-                  </tr>
-                ) : (
-                  athletes.map((a) => {
-                    const isDQ = a.status === "DQ" || a.status === "DNF";
-                    const isFinished = !!a.finishedAt;
-                    const canRecord = isRunning && !isDQ && !isFinished;
-                    const isActing = actingBib === a.bib && isPending;
+          {athletes.length === 0 ? (
+            <p className="px-3 py-8 text-center text-slate-500">ไม่มีนักกีฬาในรอบนี้</p>
+          ) : (
+            <div className="grid grid-cols-4 gap-2 sm:gap-3">
+              {athletes.map((a, i) => {
+                const seq = i + 1;
+                const isDQ = a.status === "DQ";
+                const isDNF = a.status === "DNF";
+                const isOut = isDQ || isDNF;
+                const isFinished = !!a.finishedAt;
+                const canRecord = isRunning && !isOut && !isFinished;
+                const isActing = actingId === a.athleteId && isPending;
+                const willFinish = a.currentLap + 1 >= a.lapCount;
 
-                    let statusBadgeClass: string;
-                    if (a.status === "DQ") statusBadgeClass = "bg-red-950 text-red-400 ring-red-800";
-                    else if (a.status === "DNF") statusBadgeClass = "bg-amber-950 text-amber-400 ring-amber-800";
-                    else if (isFinished) statusBadgeClass = "bg-emerald-950 text-emerald-400 ring-emerald-800";
-                    else statusBadgeClass = "bg-slate-800 text-slate-300 ring-slate-700";
+                let stateClass: string;
+                if (isDQ) stateClass = "border-red-800 bg-red-950/60 text-red-400";
+                else if (isDNF) stateClass = "border-amber-800 bg-amber-950/60 text-amber-400";
+                else if (isFinished) stateClass = "border-emerald-700 bg-emerald-950/70 text-emerald-300";
+                else if (isActing) stateClass = "border-emerald-400 bg-emerald-700 text-white";
+                else if (canRecord)
+                  stateClass =
+                    "border-slate-600 bg-slate-800 text-slate-100 hover:border-emerald-500 hover:bg-slate-700 active:scale-[0.97]";
+                else stateClass = "border-slate-700 bg-slate-800/60 text-slate-400";
 
-                    let recordButtonLabel: string;
-                    if (isActing) recordButtonLabel = "กำลังบันทึก...";
-                    else if (isFinished) recordButtonLabel = "เสร็จสิ้น";
-                    else if (a.currentLap + 1 >= a.lapCount) recordButtonLabel = "เข้าเส้นชัย";
-                    else recordButtonLabel = `Lap ${a.currentLap + 1}`;
+                // Small label under the number: status when not racing normally, else the name.
+                let subLabel: string;
+                if (isDQ) subLabel = "DQ";
+                else if (isDNF) subLabel = "DNF";
+                else if (isFinished) subLabel = "✓ เข้าเส้นชัย";
+                else if (willFinish) subLabel = "🏁 รอบสุดท้าย";
+                else subLabel = a.name;
 
-                    return (
-                      <tr
-                        key={a.bib}
-                        className={`transition-colors ${
-                          isDQ ? "opacity-60" : "hover:bg-slate-800/50"
-                        }`}
-                      >
-                        <td className={`px-3 py-3 font-mono text-base font-bold ${isDQ ? "text-slate-500" : "text-amber-400"}`}>
-                          {a.bib}
-                        </td>
-                        {/* <td className="px-3 py-3 text-slate-100">{a.name}</td> */}
-                        <td className="px-3 py-3 text-center font-mono text-sm">
-                          {a.currentLap}<span className="text-xs text-slate-500">/{a.lapCount}</span>
-                        </td>
-                        <td className="px-3 py-3 text-center font-mono text-xs text-slate-400">
-                          {a.lastLapAt ?? "-"}
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${statusBadgeClass}`}
-                          >
-                            {a.status === "OK" && isFinished ? "เสร็จสิ้น" : a.status}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3 text-right">
-                          <button
-                            type="button"
-                            disabled={!canRecord || isActing}
-                            onClick={() => handleRecordLap(a)}
-                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                              !canRecord || isActing
-                                ? "cursor-not-allowed bg-slate-800 text-slate-500"
-                                : "bg-emerald-600 text-white hover:bg-emerald-500"
-                            }`}
-                          >
-                            {recordButtonLabel}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                return (
+                  <button
+                    key={a.athleteId}
+                    type="button"
+                    disabled={!canRecord || isActing}
+                    onClick={() => handleRecordLap(a, seq)}
+                    className={`relative flex aspect-square flex-col items-center justify-center rounded-2xl border-2 p-1 transition-all disabled:cursor-not-allowed ${stateClass} ${isActing ? "animate-pulse" : ""}`}
+                  >
+                    <span className="absolute right-1.5 top-1.5 font-mono text-[11px] text-slate-400">
+                      {a.currentLap}/{a.lapCount}
+                    </span>
+                    <span className="text-4xl font-extrabold leading-none sm:text-5xl">{seq}</span>
+                    <span className="mt-1.5 line-clamp-2 max-w-full px-0.5 text-center text-[10px] leading-tight opacity-80">
+                      {subLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </main>

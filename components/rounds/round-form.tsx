@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Copy } from "lucide-react";
+import { Reorder, useDragControls } from "framer-motion";
+import { Copy, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/tooltip";
 import { createRound, updateRound } from "@/app/actions/rounds";
 import type { EventAthleteOption } from "@/types/event-athlete";
+import { kmFromMeters } from "@/lib/distance";
 
 export type JudgeOption = { id: string; name: string };
 
@@ -36,7 +38,8 @@ export type RoundFormValues = {
   name: string;
   scheduledTime: string;
   expectedEndTime: string;
-  distanceKm: string;
+  /** distance in METRES (UI unit) — converted to km on save */
+  distanceMeters: string;
   lapCount: number;
   note: string;
   status: "SCHEDULED" | "ONGOING" | "FINISHED";
@@ -60,7 +63,7 @@ const EMPTY: RoundFormValues = {
   name: "",
   scheduledTime: "",
   expectedEndTime: "",
-  distanceKm: "",
+  distanceMeters: "",
   lapCount: 1,
   note: "",
   status: "SCHEDULED",
@@ -98,6 +101,56 @@ const POSITION_LABEL: Record<OfficialEntry["position"], string> = {
   HEAD_JUDGE: "หัวหน้ากรรมการ",
   EVENT_LOGGER: "เก็บ Lap Time",
 };
+
+/**
+ * One draggable athlete row in the round's start list. The number (seq) is the
+ * athlete's position in the round — this is what the Lap Time keeper screen shows.
+ */
+function RoundAthleteReorderRow({
+  athleteId,
+  seq,
+  bib,
+  name,
+  onRemove,
+}: Readonly<{
+  athleteId: string;
+  seq: number;
+  bib: string;
+  name: string;
+  onRemove: () => void;
+}>) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={athleteId}
+      dragListener={false}
+      dragControls={controls}
+      as="div"
+      className="flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2 last:border-b-0"
+    >
+      <button
+        type="button"
+        aria-label="ลากเพื่อจัดลำดับ"
+        onPointerDown={(e) => controls.start(e)}
+        className="flex h-7 w-5 shrink-0 cursor-grab touch-none items-center justify-center text-slate-400 hover:text-slate-600 active:cursor-grabbing"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <span className="w-6 shrink-0 text-center text-sm font-bold text-slate-700">{seq}</span>
+      <span className="w-16 shrink-0 font-mono text-xs font-semibold text-slate-800">{bib}</span>
+      <span className="flex-1 truncate text-xs text-slate-800">{name}</span>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 w-12 shrink-0 rounded-lg border-red-200 px-2 text-[11px] text-red-700 hover:bg-red-50"
+        onClick={onRemove}
+      >
+        ลบ
+      </Button>
+    </Reorder.Item>
+  );
+}
 
 export function RoundForm({
   mode,
@@ -179,6 +232,13 @@ export function RoundForm({
 
   const handleRemoveAthlete = (index: number) =>
     setForm((p) => ({ ...p, athletes: p.athletes.filter((_, i) => i !== index) }));
+
+  // Drag-and-drop reorder — Framer Motion returns the reordered athleteIds.
+  const handleReorderAthletes = (orderedIds: string[]) =>
+    setForm((p) => {
+      const byId = new Map(p.athletes.map((a) => [a.athleteId, a]));
+      return { ...p, athletes: orderedIds.map((id) => byId.get(id)).filter(Boolean) as AthleteEntry[] };
+    });
 
   const handleRemoveOfficial = (index: number) =>
     setForm((p) => ({ ...p, officials: p.officials.filter((_, i) => i !== index) }));
@@ -344,12 +404,15 @@ export function RoundForm({
       setError("เวลาสิ้นสุด (โดยประมาณ) ต้องไม่ก่อนเวลาเริ่มของรอบ");
       return;
     }
+    // The form works in metres; storage is km — convert at the boundary.
+    const { distanceMeters, ...rest } = form;
+    const payload = { ...rest, distanceKm: kmFromMeters(distanceMeters) };
     startTransition(async () => {
       try {
         if (isEdit && roundId) {
-          await updateRound(eventId, roundId, form);
+          await updateRound(eventId, roundId, payload);
         } else {
-          await createRound(eventId, form);
+          await createRound(eventId, payload);
         }
         // redirect() inside the Server Action handles navigation to the event page.
         // router.push here is a safety-net in case the redirect response is not
@@ -499,16 +562,16 @@ export function RoundForm({
 
             <div className="space-y-1.5">
               <label htmlFor="round-distance" className="text-sm font-medium text-slate-800">
-                ระยะทาง (กม.)
+                ระยะทาง (เมตร)
               </label>
               <Input
                 id="round-distance"
                 type="number"
                 min={0}
-                step="0.1"
-                value={form.distanceKm}
-                onChange={(e) => setForm((p) => ({ ...p, distanceKm: e.target.value }))}
-                placeholder="เช่น 10, 20"
+                step="any"
+                value={form.distanceMeters}
+                onChange={(e) => setForm((p) => ({ ...p, distanceMeters: e.target.value }))}
+                placeholder="เช่น 10000, 20000"
               />
             </div>
 
@@ -584,7 +647,7 @@ export function RoundForm({
                   รายชื่อนักกีฬาในรอบนี้
                 </h2>
                 <p className="mt-0.5 text-[11px] text-slate-600">
-                  เลือกนักกีฬาจากที่ลงทะเบียนใน Event — หมายเลข Bib กำหนดไว้ที่ระดับ Event แล้ว
+                  เลือกนักกีฬาจากที่ลงทะเบียนใน Event — ลากไอคอน ⠿ เพื่อจัดลำดับ (ลำดับนี้ใช้แสดงในหน้าเก็บ Lap Time)
                 </p>
               </div>
               <Button
@@ -611,63 +674,47 @@ export function RoundForm({
               </div>
             )}
 
-            <div className="min-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white">
-              <table className="min-w-full border-collapse text-xs">
-                <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
-                  <tr>
-                    <th className="px-3 py-2 text-left">#</th>
-                    <th className="px-3 py-2 text-left">Bib</th>
-                    <th className="px-3 py-2 text-left">นักกีฬา</th>
-                    <th className="px-3 py-2 text-right">ลบ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {form.athletes.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-3 py-4 text-center text-[11px] text-slate-500">
-                        ยังไม่มีนักกีฬา – กด &quot;เพิ่มนักกีฬา&quot;
-                      </td>
-                    </tr>
-                  ) : (
-                    form.athletes.map((row, i) => {
-                      const ea = eventAthletes.find((x) => x.athleteId === row.athleteId);
-                      return (
-                        <tr key={row.athleteId} className="hover:bg-slate-50/80">
-                          <td className="px-3 py-2 text-[11px] text-slate-500">{i + 1}</td>
-                          <td className="px-3 py-2">
-                            <span className="font-mono text-xs font-semibold text-slate-800">
-                              {bibByAthleteId.get(row.athleteId) ?? "—"}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="text-xs text-slate-800">
-                              {ea?.athleteName ?? row.athleteId}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-7 rounded-lg border-red-200 px-2 text-[11px] text-red-700 hover:bg-red-50"
-                              onClick={() =>
-                                setDeleteTarget({
-                                  kind: "athlete",
-                                  index: i,
-                                  name: ea?.athleteName ?? row.athleteId,
-                                })
-                              }
-                            >
-                              ลบ
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+            {form.athletes.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white px-3 py-4 text-center text-[11px] text-slate-500">
+                ยังไม่มีนักกีฬา – กด &quot;เพิ่มนักกีฬา&quot;
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-medium uppercase text-slate-500">
+                  <span className="w-5 shrink-0" aria-hidden />
+                  <span className="w-6 shrink-0 text-center">#</span>
+                  <span className="w-16 shrink-0">Bib</span>
+                  <span className="flex-1">นักกีฬา</span>
+                  <span className="w-12 shrink-0 text-right">ลบ</span>
+                </div>
+                <Reorder.Group
+                  as="div"
+                  axis="y"
+                  values={form.athletes.map((a) => a.athleteId)}
+                  onReorder={handleReorderAthletes}
+                >
+                  {form.athletes.map((row, i) => {
+                    const ea = eventAthletes.find((x) => x.athleteId === row.athleteId);
+                    return (
+                      <RoundAthleteReorderRow
+                        key={row.athleteId}
+                        athleteId={row.athleteId}
+                        seq={i + 1}
+                        bib={bibByAthleteId.get(row.athleteId) ?? "—"}
+                        name={ea?.athleteName ?? row.athleteId}
+                        onRemove={() =>
+                          setDeleteTarget({
+                            kind: "athlete",
+                            index: i,
+                            name: ea?.athleteName ?? row.athleteId,
+                          })
+                        }
+                      />
+                    );
+                  })}
+                </Reorder.Group>
+              </div>
+            )}
           </div>
 
           {/* Officials */}

@@ -4,6 +4,7 @@ import { AutoRefresh } from "@/components/common/auto-refresh";
 import { LiveTimer } from "@/components/common/live-timer";
 import { Logo } from "@/components/partials/admin-sidebar/logo";
 import { prisma } from "@/lib/prisma";
+import { metersFromKm } from "@/lib/distance";
 
 // Landing page reflects live race state — render at request time and let the
 // client poll so newly-started / finished events appear without a hard reload.
@@ -367,7 +368,7 @@ function EventCard({ event }: Readonly<{ event: EventVM }>) {
       <div className="relative mb-4 flex items-center justify-between gap-2">
         <StatusBadge status={event.status} />
         <span className="rounded-full bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-300">
-          {event.distanceKm} กม.
+          {metersFromKm(event.distanceKm)} ม.
         </span>
       </div>
 

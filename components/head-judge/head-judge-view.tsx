@@ -135,7 +135,7 @@ export function HeadJudgeView({
               href={`/events/${eventId}`}
               className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-slate-800"
             >
-              เปิดหน้า Live
+              ดูกระดานคะแนน
             </Link>
             <button
               type="button"

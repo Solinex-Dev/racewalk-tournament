@@ -9,14 +9,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { DetailField } from "@/components/common/detail-field";
 import { createEvent, updateEvent } from "@/app/actions/events";
+import { kmFromMeters } from "@/lib/distance";
 
 export type EventAthleteEntry = { athleteId: string; bib: string };
 
 export type EventFormValues = {
   name: string;
-  date: string;
+  /** datetime-local string, e.g. "2026-07-12T08:00" */
+  startTime: string;
+  /** datetime-local string; optional */
+  endTime: string;
   location: string;
-  distanceKm: string;
+  /** distance in METRES (UI unit) — converted to km on save */
+  distanceMeters: string;
   lapCount: number;
   status: "DRAFT" | "SCHEDULED" | "ONGOING" | "FINISHED";
   athletes: EventAthleteEntry[];
@@ -35,9 +40,10 @@ type EventFormProps = {
 
 const EMPTY: EventFormValues = {
   name: "",
-  date: "",
+  startTime: "",
+  endTime: "",
   location: "",
-  distanceKm: "",
+  distanceMeters: "",
   lapCount: 1,
   status: "DRAFT",
   athletes: [],
@@ -197,15 +203,22 @@ export function EventForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (form.endTime && form.startTime && form.endTime < form.startTime) {
+      setError("เวลาจบกิจกรรมต้องไม่ก่อนเวลาเริ่มกิจกรรม");
+      return;
+    }
+    // The form works in metres; storage is km — convert at the boundary.
+    const { distanceMeters, ...rest } = form;
+    const payload = { ...rest, distanceKm: kmFromMeters(distanceMeters) };
     startTransition(async () => {
       try {
         if (isEdit && eventId) {
-          await updateEvent(eventId, form);
+          await updateEvent(eventId, payload);
           setSaved(form);
           setEditing(false);
           router.refresh();
         } else {
-          const result = await createEvent(form);
+          const result = await createEvent(payload);
           router.push(`/admin/events/${result.id}`);
         }
       } catch (err) {
@@ -237,14 +250,27 @@ export function EventForm({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="event-date" className="text-sm font-medium text-slate-800">วันที่จัดการแข่งขัน</label>
+                  <label htmlFor="event-start-time" className="text-sm font-medium text-slate-800">เวลาเริ่มกิจกรรม</label>
                   <Input
-                    id="event-date"
-                    type="date"
+                    id="event-start-time"
+                    type="datetime-local"
                     required
-                    value={form.date}
-                    onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
+                    value={form.startTime}
+                    onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))}
                   />
+                  <p className="text-[11px] text-slate-500">วันและเวลาที่เริ่มกิจกรรม</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="event-end-time" className="text-sm font-medium text-slate-800">เวลาจบกิจกรรม</label>
+                  <Input
+                    id="event-end-time"
+                    type="datetime-local"
+                    min={form.startTime || undefined}
+                    value={form.endTime}
+                    onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))}
+                  />
+                  <p className="text-[11px] text-slate-500">วันและเวลาที่คาดว่าจะจบ (ไม่บังคับ)</p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -258,17 +284,17 @@ export function EventForm({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="event-distance" className="text-sm font-medium text-slate-800">ระยะทางรวม (กิโลเมตร)</label>
+                  <label htmlFor="event-distance" className="text-sm font-medium text-slate-800">ระยะทางรวม (เมตร)</label>
                   <Input
                     id="event-distance"
                     type="number"
                     min={0}
-                    step="0.1"
-                    value={form.distanceKm}
-                    onChange={(e) => setForm((p) => ({ ...p, distanceKm: e.target.value }))}
-                    placeholder="เช่น 10, 20, 50"
+                    step="any"
+                    value={form.distanceMeters}
+                    onChange={(e) => setForm((p) => ({ ...p, distanceMeters: e.target.value }))}
+                    placeholder="เช่น 10000, 20000"
                   />
-                  <p className="text-[11px] text-slate-500">ระยะทางทั้งหมดของการแข่งขัน (รวมทุกรอบสนาม)</p>
+                  <p className="text-[11px] text-slate-500">ระยะทางทั้งหมดของการแข่งขันเป็นเมตร (ใส่ทศนิยมได้)</p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -287,9 +313,9 @@ export function EventForm({
                   />
                   <p className="text-[11px] text-slate-500">
                     จำนวนรอบที่นักกีฬาต้องเดินครบเพื่อจบการแข่งขัน — กำหนดตามขนาดสนามจริง
-                    {form.distanceKm && form.lapCount > 0 && (
+                    {form.distanceMeters && form.lapCount > 0 && (
                       <span className="mt-0.5 block text-emerald-600">
-                        ระยะต่อรอบประมาณ {(Number(form.distanceKm) / form.lapCount).toFixed(2)} กม./รอบ
+                        ระยะต่อรอบประมาณ {(Number(form.distanceMeters) / form.lapCount).toFixed(2)} ม./รอบ
                       </span>
                     )}
                   </p>
@@ -416,9 +442,10 @@ export function EventForm({
               )}
               <dl>
                 <DetailField label="ชื่อ Event" value={saved.name} />
-                <DetailField label="วันที่จัดการแข่งขัน" value={saved.date} />
+                <DetailField label="เวลาเริ่มกิจกรรม" value={saved.startTime ? saved.startTime.replace("T", " ") : "—"} />
+                <DetailField label="เวลาจบกิจกรรม" value={saved.endTime ? saved.endTime.replace("T", " ") : "—"} />
                 <DetailField label="สถานที่" value={saved.location} />
-                <DetailField label="ระยะทางรวม (กม.)" value={saved.distanceKm} />
+                <DetailField label="ระยะทางรวม (ม.)" value={saved.distanceMeters} />
                 <DetailField label="จำนวนรอบสนาม" value={String(saved.lapCount)} />
                 <DetailField label="สถานะ" value={STATUS_LABEL[saved.status]} />
                 <DetailField

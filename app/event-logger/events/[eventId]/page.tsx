@@ -39,7 +39,8 @@ export default async function EventLoggerPage(props: Readonly<Props>) {
         roundAthletes: {
           where: { deletedAt: null },
           include: { athlete: { select: { name: true } } },
-          orderBy: [{ position: "asc" }, { athleteId: "asc" }],
+          // Start-list order — drives the sequential numbering on the lap screen.
+          orderBy: [{ sortOrder: "asc" }, { athleteId: "asc" }],
         },
         lapTimes: { where: { deletedAt: null }, orderBy: { lapNumber: "asc" } },
         finishTimes: { where: { deletedAt: null } },

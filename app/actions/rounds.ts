@@ -143,9 +143,10 @@ export async function createRound(eventId: string, data: RoundActionData) {
 
     if (data.athletes.length > 0) {
       await tx.roundAthlete.createMany({
-        data: data.athletes.map((a) => ({
+        data: data.athletes.map((a, i) => ({
           roundId: round.id,
           athleteId: a.athleteId,
+          sortOrder: i,
         })),
       });
     }
@@ -249,11 +250,13 @@ export async function updateRound(
       where: { roundId, deletedAt: null },
       data: { deletedAt: now },
     });
-    for (const a of data.athletes) {
+    // The array order IS the start-list order — persist each athlete's index.
+    for (let i = 0; i < data.athletes.length; i++) {
+      const a = data.athletes[i];
       await tx.roundAthlete.upsert({
         where: { roundId_athleteId: { roundId, athleteId: a.athleteId } },
-        create: { roundId, athleteId: a.athleteId },
-        update: { deletedAt: null },
+        create: { roundId, athleteId: a.athleteId, sortOrder: i },
+        update: { sortOrder: i, deletedAt: null },
       });
     }
 

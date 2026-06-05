@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { type RedCardDetail } from "@/components/judge/card-matrix";
 import { LeaderboardRows } from "@/components/events/leaderboard-rows";
 import { AutoRefresh } from "@/components/common/auto-refresh";
@@ -7,6 +8,8 @@ import { LiveTimer } from "@/components/common/live-timer";
 import { prisma } from "@/lib/prisma";
 import { compareAthletesByFinish } from "@/lib/athlete-sort";
 import { lapsCompleted } from "@/lib/lap-progress";
+import { getOfficialSession, defaultRouteForPosition } from "@/lib/official-session";
+import { metersFromKm } from "@/lib/distance";
 
 // Always render at request time — public scoreboard must reflect status changes
 // (race start/end, card issuance, lap recordings) within one poll cycle.
@@ -52,6 +55,13 @@ const ROUND_STATUS_LABEL: Record<string, string> = {
   scheduled: "ยังไม่เริ่ม",
   ongoing: "กำลังแข่งขัน",
   finished: "เสร็จสิ้น",
+};
+
+// Thai label for the official's workspace, shown on the "back to workspace" button.
+const OFFICIAL_ROLE_LABEL: Record<string, string> = {
+  JUDGE: "กรรมการ",
+  HEAD_JUDGE: "หัวหน้ากรรมการ",
+  EVENT_LOGGER: "ผู้เก็บ Lap Time",
 };
 
 // The heavy nested query behind the public board.
@@ -133,6 +143,18 @@ export default async function EventLivePage(props: Readonly<Props>) {
   const event = await getLeaderboard(eventId);
 
   if (!event) notFound();
+
+  // If an official (judge/head-judge/event-logger) is still logged in for THIS
+  // event, offer a button back into their workspace. Read per-request (not cached
+  // with the leaderboard data) so it reflects the current viewer's session.
+  const officialSession = await getOfficialSession();
+  const officialBack =
+    officialSession && officialSession.eventId === eventId
+      ? {
+          href: defaultRouteForPosition(officialSession.position, eventId),
+          label: OFFICIAL_ROLE_LABEL[officialSession.position] ?? "เจ้าหน้าที่",
+        }
+      : null;
 
   // Pick current round: ONGOING, else last FINISHED, else first SCHEDULED
   const currentRound =
@@ -252,6 +274,14 @@ export default async function EventLivePage(props: Readonly<Props>) {
       <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col gap-1 px-4 py-6 lg:py-10">
         <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div className="w-full">
+            {officialBack && (
+              <Link
+                href={officialBack.href}
+                className="mb-2 inline-flex items-center gap-1.5 rounded-lg border border-emerald-700/60 bg-emerald-950/50 px-3 py-1.5 text-xs font-medium text-emerald-300 transition-colors hover:bg-emerald-900/50"
+              >
+                <span aria-hidden>←</span> กลับเข้าหน้า{officialBack.label}
+              </Link>
+            )}
             <div className="flex flex-col md:flex-row gap-3 items-start justify-between">
               <div>
                 <div className="text-lg font-semibold uppercase tracking-[0.2em] text-slate-400 flex gap-2 items-center">
@@ -261,7 +291,7 @@ export default async function EventLivePage(props: Readonly<Props>) {
                 </div>
                 <div className="flex gap-1.5 align-center flex-wrap">
                   <p className="text-sm text-slate-300">
-                    {currentRound?.distanceKm || event.distanceKm} กม. •{" "}
+                    {metersFromKm(currentRound?.distanceKm || event.distanceKm)} ม. •{" "}
                     {event.location} •{" "}
                     {currentRound?.name ?? ""}
                   </p>

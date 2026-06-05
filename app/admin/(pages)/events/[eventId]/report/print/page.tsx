@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { compareAthletesByFinish } from "@/lib/athlete-sort";
+import { metersFromKm } from "@/lib/distance";
 import { PrintButton } from "@/components/report/print-button";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
@@ -146,7 +147,7 @@ export default async function PrintReportPage(props: Readonly<Props>) {
         </p>
         <p>สถานที่: {event.location}</p>
         <p>สถานะ Event: {STATUS_LABEL[event.status] ?? event.status}</p>
-        <p>ระยะ: {event.distanceKm} กม.</p>
+        <p>ระยะ: {metersFromKm(event.distanceKm)} ม.</p>
       </div>
 
       {event.rounds.length === 0 && (
@@ -158,7 +159,7 @@ export default async function PrintReportPage(props: Readonly<Props>) {
           <h2 className="mt-6 border-b-2 border-slate-800 pb-1 text-lg font-bold">{round.name}</h2>
           <div className="mt-2 text-sm text-slate-600">
             สถานะ: {ROUND_STATUS_LABEL[round.status] ?? round.status}
-            {round.distanceKm && ` • ระยะ ${round.distanceKm} กม.`}
+            {round.distanceKm && ` • ระยะ ${metersFromKm(round.distanceKm)} ม.`}
           </div>
           {round.startedAt && (
             <p className="mt-1 text-xs text-slate-600">

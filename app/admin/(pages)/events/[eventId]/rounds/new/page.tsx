@@ -7,6 +7,7 @@ import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 import { ArrowLeft } from "lucide-react";
 import type { EventAthleteOption } from "@/types/event-athlete";
+import { metersFromKm } from "@/lib/distance";
 
 export const metadata: Metadata = {
   title: "สร้างรอบแข่งใหม่ – การแข่งขันเดินทน",
@@ -54,10 +55,10 @@ export default async function NewRoundPage(props: Readonly<Props>) {
     redirect(`/admin/events/${eventId}`);
   }
 
-  // Pre-fill lapCount and distanceKm from event so admin doesn't retype
+  // Pre-fill lapCount and distance (metres) from event so admin doesn't retype
   const roundDefaults = {
     lapCount: event?.lapCount ?? 1,
-    distanceKm: event?.distanceKm ?? "",
+    distanceMeters: metersFromKm(event?.distanceKm),
   };
 
   return (

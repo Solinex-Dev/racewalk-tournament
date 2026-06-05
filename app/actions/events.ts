@@ -9,13 +9,26 @@ export type EventAthleteInput = { athleteId: string; bib: string };
 
 export type EventActionData = {
   name: string;
-  date: string;
+  /** datetime-local string, e.g. "2026-07-12T08:00". Required — also drives `date`. */
+  startTime: string;
+  /** datetime-local string; optional. */
+  endTime?: string;
   location: string;
   distanceKm: string;
   lapCount: number;
   status: "DRAFT" | "SCHEDULED" | "ONGOING" | "FINISHED";
   athletes: EventAthleteInput[];
 };
+
+/**
+ * Derive the event's calendar day (date-only, midnight UTC) from the start-time
+ * input. Keeps `Event.date` identical in shape to the old date-only field so all
+ * day-based scheduling/display logic keeps working unchanged.
+ */
+function resolveEventDate(startTime: string): Date {
+  // startTime is "yyyy-mm-ddThh:mm"; the first 10 chars are the calendar day.
+  return new Date(startTime.slice(0, 10));
+}
 
 /**
  * Converts a Prisma unique-constraint failure (P2002) into a friendly Thai
@@ -44,7 +57,9 @@ export async function createEvent(data: EventActionData) {
       const event = await tx.event.create({
         data: {
           name: data.name,
-          date: new Date(data.date),
+          date: resolveEventDate(data.startTime),
+          startTime: new Date(data.startTime),
+          endTime: data.endTime ? new Date(data.endTime) : null,
           location: data.location,
           distanceKm: data.distanceKm,
           lapCount: Math.max(1, Math.floor(data.lapCount || 1)),
@@ -89,7 +104,9 @@ export async function updateEvent(id: string, data: EventActionData) {
         where: { id },
         data: {
           name: data.name,
-          date: new Date(data.date),
+          date: resolveEventDate(data.startTime),
+          startTime: new Date(data.startTime),
+          endTime: data.endTime ? new Date(data.endTime) : null,
           location: data.location,
           distanceKm: data.distanceKm,
           lapCount: Math.max(1, Math.floor(data.lapCount || 1)),
