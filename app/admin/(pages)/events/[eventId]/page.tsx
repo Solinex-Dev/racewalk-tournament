@@ -26,23 +26,35 @@ function toDateInput(dt: Date) {
 export default async function EventDetailPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
-  const event = await prisma.event.findUnique({
-    where: { id: eventId, deletedAt: null },
-    include: {
-      rounds: {
-        where: { deletedAt: null },
-        orderBy: { scheduledTime: "asc" },
-        include: {
-          _count: {
-            select: {
-              roundAthletes: { where: { deletedAt: null } },
-              roundOfficials: { where: { deletedAt: null } },
+  const [event, globalAthletes] = await Promise.all([
+    prisma.event.findUnique({
+      where: { id: eventId, deletedAt: null },
+      include: {
+        rounds: {
+          where: { deletedAt: null },
+          orderBy: { scheduledTime: "asc" },
+          include: {
+            _count: {
+              select: {
+                roundAthletes: { where: { deletedAt: null } },
+                roundOfficials: { where: { deletedAt: null } },
+              },
             },
           },
         },
+        eventAthletes: {
+          where: { deletedAt: null },
+          orderBy: { bib: "asc" },
+          include: { athlete: { select: { name: true } } },
+        },
       },
-    },
-  });
+    }),
+    prisma.athlete.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
 
   if (!event) notFound();
 
@@ -58,6 +70,10 @@ export default async function EventDetailPage(props: Readonly<Props>) {
     distanceKm: event.distanceKm,
     lapCount: event.lapCount,
     status: event.status,
+    athletes: event.eventAthletes.map((ea) => ({
+      athleteId: ea.athleteId,
+      bib: ea.bib,
+    })),
   };
 
   const rounds: Round[] = event.rounds.map((r) => ({
@@ -111,6 +127,7 @@ export default async function EventDetailPage(props: Readonly<Props>) {
             eventId={eventId}
             canEdit={hasPermission(me, "events", "edit")}
             defaultValues={eventValues}
+            globalAthletes={globalAthletes}
           />
           <div className="mt-3">
             <AuditInfo {...audit} />

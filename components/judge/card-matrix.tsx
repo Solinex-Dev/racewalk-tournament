@@ -56,7 +56,7 @@ export function JudgeCardMatrix({
       : `grid grid-cols-2 gap-1 shrink-0${redGridSuffix}`;
 
   const rootClass = mobile
-    ? "flex justify-center items-center rounded-full px-1 py-0.5"
+    ? "flex justify-start items-center rounded-full px-1 py-0.5"
     : "inline-flex items-center gap-2 rounded-full px-1.5 py-1";
 
   const yellowCardClass = mobile

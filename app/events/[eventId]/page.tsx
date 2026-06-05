@@ -59,6 +59,10 @@ function queryLeaderboard(eventId: string) {
   return prisma.event.findUnique({
     where: { id: eventId, deletedAt: null },
     include: {
+      eventAthletes: {
+        where: { deletedAt: null },
+        select: { athleteId: true, bib: true },
+      },
       rounds: {
         where: { deletedAt: null },
         orderBy: { scheduledTime: "asc" },
@@ -163,6 +167,9 @@ export default async function EventLivePage(props: Readonly<Props>) {
     isFinished: boolean;
   };
 
+  // BIB is stored at Event level.
+  const bibMap = new Map((event.eventAthletes ?? []).map((ea) => [ea.athleteId, ea.bib]));
+
   let athletes: Row[] = [];
   let lapCount = 0;
 
@@ -192,7 +199,7 @@ export default async function EventLivePage(props: Readonly<Props>) {
       const lastTimeMs =
         finish?.timeMs ?? lapsForMe.at(-1)?.timeMs;
       return {
-        bib: ra.bib,
+        bib: bibMap.get(ra.athleteId) ?? "?",
         athleteId: ra.athleteId,
         name: ra.athlete.name,
         affiliation: ra.athlete.affiliation?.name ?? "",

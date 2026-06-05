@@ -228,6 +228,7 @@ model Athlete {
 
   affiliation   Affiliation?   @relation(fields: [affiliationId], references: [id])
   roundAthletes RoundAthlete[]
+  eventAthletes EventAthlete[]
   cards         Card[]
   lapTimes      LapTime[]
   finishTimes   FinishTime[]
@@ -314,7 +315,8 @@ model Event {
   createdById String?
   updatedById String?
 
-  rounds Round[]
+  rounds        Round[]
+  eventAthletes EventAthlete[]
 }
 
 model Round {
@@ -349,12 +351,13 @@ model Round {
   @@index([eventId])
 }
 
-// Join: Athlete in a Round. bib uniqueness is per round (enforced by @@unique).
+// Join: Athlete in a Round. BIB is stored at the Event level (EventAthlete) —
+// not here. RoundAthlete only records which event-registered athlete participates
+// in this specific round, plus their race result (status, position).
 model RoundAthlete {
   id        String             @id @default(cuid())
   roundId   String
   athleteId String
-  bib       String
   status    AthleteRoundStatus @default(OK)
   position  Int?
   createdAt DateTime           @default(now())
@@ -365,8 +368,28 @@ model RoundAthlete {
   athlete Athlete @relation(fields: [athleteId], references: [id])
 
   @@unique([roundId, athleteId])
-  @@unique([roundId, bib])
   @@index([roundId])
+}
+
+// Join: Athlete registered for an Event, with their BIB number.
+// BIB is event-scoped — the same BIB is reused across all rounds within an event.
+model EventAthlete {
+  id          String    @id @default(cuid())
+  eventId     String
+  athleteId   String
+  bib         String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  event   Event   @relation(fields: [eventId], references: [id])
+  athlete Athlete @relation(fields: [athleteId], references: [id])
+
+  @@unique([eventId, athleteId])
+  @@unique([eventId, bib])
+  @@index([eventId])
 }
 
 // Join: Official in a Round. Each judge may serve in only one position per round.

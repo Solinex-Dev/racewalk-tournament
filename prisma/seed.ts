@@ -724,7 +724,8 @@ type CardRow = {
   color: "YELLOW" | "RED"; symbol: "BENT_KNEE" | "LIFTED_FOOT";
   state: "PENDING" | "CONFIRMED" | "OVERRIDDEN" | null; decidedBy: string | null; decidedAt: Date | null; issuedAt: Date;
 };
-type RoundAthleteRow = { roundId: string; athleteId: string; bib: string; status: "OK" | "DQ" | "DNF"; position: number | null };
+type RoundAthleteRow = { roundId: string; athleteId: string; status: "OK" | "DQ" | "DNF"; position: number | null };
+type EventAthleteRow = { eventId: string; athleteId: string; bib: string };
 type OfficialRow = { roundId: string; judgeId: string; position: "JUDGE" | "HEAD_JUDGE" | "EVENT_LOGGER"; secretCode: string; zone: string | null };
 type LogRow = {
   id: string; roundId: string; timestamp: Date; actorId: string; actorName: string; actorRole: string;
@@ -739,6 +740,8 @@ function judgeName(id: string): string {
 
 function buildAll() {
   const roundAthletes: RoundAthleteRow[] = [];
+  // eventAthlete is keyed by "eventId|athleteId" for dedup across rounds.
+  const eventAthleteMap = new Map<string, EventAthleteRow>();
   const officials: OfficialRow[] = [];
   const cards: CardRow[] = [];
   const laps: LapRow[] = [];
@@ -777,9 +780,15 @@ function buildAll() {
     }
 
     for (const sc of rc.scenarios) {
-      // RoundAthlete row
+      // EventAthlete row (deduplicated — BIB is event-level, not round-level)
+      const eaKey = `${rc.eventId}|${sc.athleteId}`;
+      if (!eventAthleteMap.has(eaKey)) {
+        eventAthleteMap.set(eaKey, { eventId: rc.eventId, athleteId: sc.athleteId, bib: sc.bib });
+      }
+
+      // RoundAthlete row (no bib — bib lives on EventAthlete)
       roundAthletes.push({
-        roundId: rc.id, athleteId: sc.athleteId, bib: sc.bib,
+        roundId: rc.id, athleteId: sc.athleteId,
         status: sc.outcome === "FINISH" ? "OK" : sc.outcome,
         position: sc.outcome === "FINISH" ? sc.position ?? null : null,
       });
@@ -890,7 +899,7 @@ function buildAll() {
     }
   }
 
-  return { roundAthletes, officials, cards, laps, finishes, logs };
+  return { roundAthletes, eventAthletes: [...eventAthleteMap.values()], officials, cards, laps, finishes, logs };
 }
 
 const GEN = buildAll();
@@ -1037,10 +1046,18 @@ async function main() {
   }
   console.log(`[seed] rounds:       ${ROUNDS.length}`);
 
+  for (const ea of GEN.eventAthletes) {
+    await prisma.eventAthlete.upsert({
+      where: { eventId_athleteId: { eventId: ea.eventId, athleteId: ea.athleteId } },
+      create: ea, update: { bib: ea.bib, deletedAt: null },
+    });
+  }
+  console.log(`[seed] eventAthletes: ${GEN.eventAthletes.length}`);
+
   for (const ra of GEN.roundAthletes) {
     await prisma.roundAthlete.upsert({
       where: { roundId_athleteId: { roundId: ra.roundId, athleteId: ra.athleteId } },
-      create: ra, update: { bib: ra.bib, status: ra.status, position: ra.position },
+      create: ra, update: { status: ra.status, position: ra.position },
     });
   }
   console.log(`[seed] roundAthletes:  ${GEN.roundAthletes.length}`);

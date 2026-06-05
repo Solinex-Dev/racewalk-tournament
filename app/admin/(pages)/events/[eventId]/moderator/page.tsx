@@ -83,6 +83,10 @@ export default async function ModeratorPage(props: Readonly<Props>) {
   const event = await prisma.event.findUnique({
     where: { id: eventId, deletedAt: null },
     include: {
+      eventAthletes: {
+        where: { deletedAt: null },
+        select: { athleteId: true, bib: true },
+      },
       rounds: {
         where: { deletedAt: null },
         orderBy: { scheduledTime: "asc" },
@@ -94,7 +98,7 @@ export default async function ModeratorPage(props: Readonly<Props>) {
                 include: { affiliation: { select: { name: true } } },
               },
             },
-            orderBy: [{ position: "asc" }, { bib: "asc" }],
+            orderBy: [{ position: "asc" }, { athleteId: "asc" }],
           },
           roundOfficials: {
             where: { deletedAt: null },
@@ -119,6 +123,9 @@ export default async function ModeratorPage(props: Readonly<Props>) {
   if (event.status === "DRAFT") {
     redirect(`/admin/events/${eventId}`);
   }
+
+  // BIB is stored at Event level — build a lookup map for use throughout this page.
+  const bibMap = new Map(event.eventAthletes.map((ea) => [ea.athleteId, ea.bib]));
 
   const eventInfo: EventInfo = {
     id: event.id,
@@ -149,7 +156,7 @@ export default async function ModeratorPage(props: Readonly<Props>) {
           isFinished: finishedAthleteIds.has(a.athleteId),
           currentLap:
             (lapsByAthlete.get(a.athleteId) ?? 0) + (finishedAthleteIds.has(a.athleteId) ? 1 : 0),
-          bib: a.bib,
+          bib: bibMap.get(a.athleteId) ?? "",
         },
         {
           status: b.status,
@@ -157,7 +164,7 @@ export default async function ModeratorPage(props: Readonly<Props>) {
           isFinished: finishedAthleteIds.has(b.athleteId),
           currentLap:
             (lapsByAthlete.get(b.athleteId) ?? 0) + (finishedAthleteIds.has(b.athleteId) ? 1 : 0),
-          bib: b.bib,
+          bib: bibMap.get(b.athleteId) ?? "",
         },
       ),
     );
@@ -190,7 +197,7 @@ export default async function ModeratorPage(props: Readonly<Props>) {
         }));
 
       return {
-        bib: ra.bib,
+        bib: bibMap.get(ra.athleteId) ?? "?",
         name: ra.athlete.name,
         affiliation: ra.athlete.affiliation?.name ?? "",
         country: ra.athlete.country,
@@ -223,7 +230,7 @@ export default async function ModeratorPage(props: Readonly<Props>) {
       action: c.color === "YELLOW" ? "ให้ใบเหลือง" : "ให้ใบแดง",
       actionType: c.color === "YELLOW" ? "yellow_card" : "red_card",
       targetAthlete: c.athlete.name,
-      targetBib: r.roundAthletes.find((ra) => ra.athleteId === c.athleteId)?.bib,
+      targetBib: bibMap.get(c.athleteId),
       roundId: r.id,
       details: symbolLabel(c.symbol),
       symbol: symbolForCard(c.symbol),
@@ -275,7 +282,7 @@ export default async function ModeratorPage(props: Readonly<Props>) {
           judgeId: c.judgeId,
           judgeName: c.judge.name,
           judgeZone: ro?.zone ?? "",
-          targetBib: ra?.bib ?? "?",
+          targetBib: bibMap.get(c.athleteId) ?? "?",
           targetAthlete: c.athlete.name,
           symbol: symbolForCard(c.symbol),
           time: formatTime(c.issuedAt),

@@ -6,6 +6,7 @@ import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission } from "@/lib/permissions";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "สร้างกิจกรรมใหม่ – การแข่งขันเดินทน",
@@ -16,6 +17,12 @@ export const metadata: Metadata = {
 export default async function NewEventPage() {
   const me = await getCurrentAdmin();
   if (!hasPermission(me, "events", "create")) return <NoAccess />;
+
+  const globalAthletes = await prisma.athlete.findMany({
+    where: { deletedAt: null },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
 
   return (
     <main className="flex-1 overflow-auto p-6 lg:p-8">
@@ -49,7 +56,7 @@ export default async function NewEventPage() {
           </Link>
         </div>
 
-        <EventForm mode="create" />
+        <EventForm mode="create" globalAthletes={globalAthletes} />
       </div>
     </main>
   );

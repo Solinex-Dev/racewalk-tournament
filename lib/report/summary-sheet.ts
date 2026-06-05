@@ -107,6 +107,10 @@ export async function loadEventSummary(
   const event = await prisma.event.findUnique({
     where: { id: eventId, deletedAt: null },
     include: {
+      eventAthletes: {
+        where: { deletedAt: null },
+        select: { athleteId: true, bib: true },
+      },
       rounds: {
         where: { deletedAt: null, ...(roundId ? { id: roundId } : {}) },
         orderBy: { scheduledTime: "asc" },
@@ -114,7 +118,7 @@ export async function loadEventSummary(
           roundAthletes: {
             where: { deletedAt: null },
             include: { athlete: { include: { affiliation: { select: { name: true } } } } },
-            orderBy: [{ position: "asc" }, { bib: "asc" }],
+            orderBy: [{ position: "asc" }, { athleteId: "asc" }],
           },
           roundOfficials: {
             where: { deletedAt: null },
@@ -131,6 +135,9 @@ export async function loadEventSummary(
   });
 
   if (!event) return null;
+
+  // BIB is stored at Event level — build a lookup map for all athlete rows below.
+  const bibMap = new Map(event.eventAthletes.map((ea) => [ea.athleteId, ea.bib]));
 
   const rounds: RoundSummary[] = event.rounds.map((r) => {
     // Zone judges become the columns of the sheet, ordered by zone label.
@@ -214,7 +221,7 @@ export async function loadEventSummary(
       const finish = finishByAthlete.get(ra.athleteId);
 
       return {
-        bib: ra.bib,
+        bib: bibMap.get(ra.athleteId) ?? "?",
         name: ra.athlete.name,
         country: ra.athlete.country,
         affiliation: ra.athlete.affiliation?.name ?? "",

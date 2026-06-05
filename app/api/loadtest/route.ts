@@ -63,15 +63,26 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const round = await prisma.round.findFirst({
-      where: { eventId, status: "ONGOING", deletedAt: null },
-      include: {
-        roundAthletes: { where: { deletedAt: null }, select: { athleteId: true, bib: true } },
-      },
-    });
+    const [round, eventAthletes] = await Promise.all([
+      prisma.round.findFirst({
+        where: { eventId, status: "ONGOING", deletedAt: null },
+        include: {
+          roundAthletes: { where: { deletedAt: null }, select: { athleteId: true } },
+        },
+      }),
+      prisma.eventAthlete.findMany({
+        where: { eventId, deletedAt: null },
+        select: { athleteId: true, bib: true },
+      }),
+    ]);
     if (!round) {
       return NextResponse.json({ ok: false, error: `no ONGOING round for ${eventId}` }, { status: 200 });
     }
+    const bibMap = new Map(eventAthletes.map((ea) => [ea.athleteId, ea.bib]));
+    const athletes = round.roundAthletes.map((ra) => ({
+      athleteId: ra.athleteId,
+      bib: bibMap.get(ra.athleteId) ?? "?",
+    }));
 
     const officials = await prisma.roundOfficial.findMany({
       where: { roundId: round.id, deletedAt: null },
@@ -111,7 +122,7 @@ export async function GET(req: NextRequest) {
       ),
     );
 
-    return NextResponse.json({ ok: true, eventId, roundId: round.id, athletes: round.roundAthletes, cookies, judges });
+    return NextResponse.json({ ok: true, eventId, roundId: round.id, athletes, cookies, judges });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "prep error" }, { status: 200 });
   }

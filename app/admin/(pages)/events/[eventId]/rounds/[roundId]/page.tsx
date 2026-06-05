@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 import { ArrowLeft } from "lucide-react";
+import type { EventAthleteOption } from "@/types/event-athlete";
 
 export const metadata: Metadata = {
   title: "แก้ไขรอบแข่ง – การแข่งขันเดินทน",
@@ -29,7 +30,7 @@ function toDateInput(dt: Date) {
 export default async function RoundDetailPage(props: Readonly<Props>) {
   const { eventId, roundId } = await props.params;
 
-  const [round, athletes, judges] = await Promise.all([
+  const [round, rawEventAthletes, judges] = await Promise.all([
     prisma.round.findUnique({
       where: { id: roundId, deletedAt: null },
       include: {
@@ -38,10 +39,10 @@ export default async function RoundDetailPage(props: Readonly<Props>) {
         roundOfficials: { where: { deletedAt: null } },
       },
     }),
-    prisma.athlete.findMany({
-      where: { deletedAt: null },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
+    prisma.eventAthlete.findMany({
+      where: { eventId, deletedAt: null },
+      orderBy: { bib: "asc" },
+      select: { athleteId: true, bib: true, athlete: { select: { name: true } } },
     }),
     prisma.judge.findMany({
       where: { deletedAt: null },
@@ -51,6 +52,12 @@ export default async function RoundDetailPage(props: Readonly<Props>) {
   ]);
 
   if (!round) notFound();
+
+  const eventAthletes: EventAthleteOption[] = rawEventAthletes.map((ea) => ({
+    athleteId: ea.athleteId,
+    athleteName: ea.athlete.name,
+    bib: ea.bib,
+  }));
 
   const defaultValues: RoundFormValues = {
     name: round.name,
@@ -62,7 +69,6 @@ export default async function RoundDetailPage(props: Readonly<Props>) {
     status: round.status,
     athletes: round.roundAthletes.map((ra) => ({
       athleteId: ra.athleteId,
-      bib: ra.bib,
     })),
     officials: round.roundOfficials.map((ro) => ({
       judgeId: ro.judgeId,
@@ -108,7 +114,7 @@ export default async function RoundDetailPage(props: Readonly<Props>) {
           mode="edit"
           eventId={eventId}
           roundId={roundId}
-          athleteOptions={athletes}
+          eventAthletes={eventAthletes}
           judgeOptions={judges}
           eventDate={toDateInput(round.event.date)}
           defaultValues={defaultValues}

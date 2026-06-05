@@ -31,22 +31,29 @@ export default async function EventLoggerPage(props: Readonly<Props>) {
     redirect(`/event-logger/events/${eventId}/join`);
   }
 
-  const round = await prisma.round.findUnique({
-    where: { id: session.roundId, deletedAt: null },
-    include: {
-      event: { select: { name: true } },
-      roundAthletes: {
-        where: { deletedAt: null },
-        include: { athlete: { select: { name: true } } },
-        orderBy: [{ position: "asc" }, { bib: "asc" }],
+  const [round, eventAthletes] = await Promise.all([
+    prisma.round.findUnique({
+      where: { id: session.roundId, deletedAt: null },
+      include: {
+        event: { select: { name: true } },
+        roundAthletes: {
+          where: { deletedAt: null },
+          include: { athlete: { select: { name: true } } },
+          orderBy: [{ position: "asc" }, { athleteId: "asc" }],
+        },
+        lapTimes: { where: { deletedAt: null }, orderBy: { lapNumber: "asc" } },
+        finishTimes: { where: { deletedAt: null } },
       },
-      lapTimes: { where: { deletedAt: null }, orderBy: { lapNumber: "asc" } },
-      finishTimes: { where: { deletedAt: null } },
-    },
-  });
+    }),
+    prisma.eventAthlete.findMany({
+      where: { eventId: session.eventId, deletedAt: null },
+      select: { athleteId: true, bib: true },
+    }),
+  ]);
 
   if (!round) redirect(`/event-logger/events/${eventId}/join`);
 
+  const bibMap = new Map(eventAthletes.map((ea) => [ea.athleteId, ea.bib]));
   const lapCount = round.lapCount ?? 0;
 
   const athletes: AthleteRecord[] = round.roundAthletes.map((ra) => {
@@ -55,7 +62,7 @@ export default async function EventLoggerPage(props: Readonly<Props>) {
     const finish = round.finishTimes.find((f) => f.athleteId === ra.athleteId);
     const lastLapAtFallback = lastLap ? formatMs(lastLap.timeMs) : null;
     return {
-      bib: ra.bib,
+      bib: bibMap.get(ra.athleteId) ?? "?",
       athleteId: ra.athleteId,
       name: ra.athlete.name,
       currentLap: lapsCompleted(myLaps.length, !!finish, lapCount),

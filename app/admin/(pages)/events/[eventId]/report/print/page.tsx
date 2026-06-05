@@ -45,26 +45,35 @@ export default async function PrintReportPage(props: Readonly<Props>) {
   const me = await getCurrentAdmin();
   if (!hasPermission(me, "reports", "view")) return <NoAccess />;
 
-  const event = await prisma.event.findUnique({
-    where: { id: eventId, deletedAt: null },
-    include: {
-      rounds: {
-        where: { deletedAt: null },
-        orderBy: { scheduledTime: "asc" },
-        include: {
-          roundAthletes: {
-            where: { deletedAt: null },
-            include: { athlete: { include: { affiliation: { select: { name: true } } } } },
-            orderBy: [{ position: "asc" }, { bib: "asc" }],
+  const [event, rawEventAthletes] = await Promise.all([
+    prisma.event.findUnique({
+      where: { id: eventId, deletedAt: null },
+      include: {
+        rounds: {
+          where: { deletedAt: null },
+          orderBy: { scheduledTime: "asc" },
+          include: {
+            roundAthletes: {
+              where: { deletedAt: null },
+              include: { athlete: { include: { affiliation: { select: { name: true } } } } },
+              orderBy: [{ position: "asc" }, { athleteId: "asc" }],
+            },
+            cards: { where: { deletedAt: null } },
+            finishTimes: { where: { deletedAt: null } },
           },
-          cards: { where: { deletedAt: null } },
-          finishTimes: { where: { deletedAt: null } },
         },
       },
-    },
-  });
+    }),
+    prisma.eventAthlete.findMany({
+      where: { eventId, deletedAt: null },
+      select: { athleteId: true, bib: true },
+    }),
+  ]);
 
   if (!event) notFound();
+
+  // BIB is stored at Event level — build a lookup map for use throughout this page.
+  const bibMap = new Map(rawEventAthletes.map((ea) => [ea.athleteId, ea.bib]));
 
   // Per-round standings: sort with the shared finish comparator and assign a
   // DQ-aware rank (the same logic as the public leaderboard). A finisher who was
@@ -88,8 +97,8 @@ export default async function PrintReportPage(props: Readonly<Props>) {
       });
       rows.sort((a, b) =>
         compareAthletesByFinish(
-          { status: a.ra.status, position: a.ra.position ?? null, isFinished: a.isFinished, currentLap: 0, bib: a.ra.bib },
-          { status: b.ra.status, position: b.ra.position ?? null, isFinished: b.isFinished, currentLap: 0, bib: b.ra.bib },
+          { status: a.ra.status, position: a.ra.position ?? null, isFinished: a.isFinished, currentLap: 0, bib: bibMap.get(a.ra.athleteId) ?? "" },
+          { status: b.ra.status, position: b.ra.position ?? null, isFinished: b.isFinished, currentLap: 0, bib: bibMap.get(b.ra.athleteId) ?? "" },
         ),
       );
       let rank = 0;
@@ -182,7 +191,7 @@ export default async function PrintReportPage(props: Readonly<Props>) {
                   return (
                     <tr key={r.ra.id} className={rowClass}>
                       <td>{r.rank ?? "—"}</td>
-                      <td className="font-mono">{r.ra.bib}</td>
+                      <td className="font-mono">{bibMap.get(r.ra.athleteId) ?? "?"}</td>
                       <td>{r.ra.athlete.name}</td>
                       <td>{r.ra.athlete.country}</td>
                       <td>{r.ra.athlete.affiliation?.name ?? "—"}</td>

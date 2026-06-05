@@ -28,12 +28,19 @@ export async function recordLapTime(
     throw new Error("ค่าไม่ถูกต้อง");
   }
 
-  const ra = await prisma.roundAthlete.findFirst({
-    where: { roundId: session.roundId, athleteId, deletedAt: null },
-    include: { athlete: { select: { name: true } } },
-  });
+  const [ra, ea] = await Promise.all([
+    prisma.roundAthlete.findFirst({
+      where: { roundId: session.roundId, athleteId, deletedAt: null },
+      include: { athlete: { select: { name: true } } },
+    }),
+    prisma.eventAthlete.findFirst({
+      where: { eventId: session.eventId, athleteId, deletedAt: null },
+      select: { bib: true },
+    }),
+  ]);
   if (!ra) throw new Error("นักกีฬาไม่อยู่ในรอบนี้");
   assertAthleteActive(ra);
+  const athleteBib = ea?.bib ?? undefined;
 
   const duplicateLap = await prisma.lapTime.findFirst({
     where: {
@@ -85,7 +92,7 @@ export async function recordLapTime(
       actorRole: session.position,
       actionType: "lap_time",
       targetAthleteId: athleteId,
-      targetBib: ra.bib,
+      targetBib: athleteBib,
       lapNumber,
       details: `Lap ${lapNumber} - ${formatMs(timeMs)}`,
     },
@@ -109,12 +116,19 @@ export async function recordFinishTime(
 
   if (timeMs < 0) throw new Error("ค่าเวลาไม่ถูกต้อง");
 
-  const ra = await prisma.roundAthlete.findFirst({
-    where: { roundId: session.roundId, athleteId, deletedAt: null },
-    include: { athlete: { select: { name: true } } },
-  });
+  const [ra, ea] = await Promise.all([
+    prisma.roundAthlete.findFirst({
+      where: { roundId: session.roundId, athleteId, deletedAt: null },
+      include: { athlete: { select: { name: true } } },
+    }),
+    prisma.eventAthlete.findFirst({
+      where: { eventId: session.eventId, athleteId, deletedAt: null },
+      select: { bib: true },
+    }),
+  ]);
   if (!ra) throw new Error("นักกีฬาไม่อยู่ในรอบนี้");
   assertAthleteActive(ra);
+  const athleteBib = ea?.bib ?? undefined;
 
   const existing = await prisma.finishTime.findUnique({
     where: { roundId_athleteId: { roundId: session.roundId, athleteId } },
@@ -169,7 +183,7 @@ export async function recordFinishTime(
             actorRole: session.position,
             actionType: "lap_time",
             targetAthleteId: athleteId,
-            targetBib: ra.bib,
+            targetBib: athleteBib,
             lapNumber: lapCount,
             details: `Lap ${lapCount} - ${formatMs(timeMs)}`,
           },
@@ -197,7 +211,7 @@ export async function recordFinishTime(
         actorRole: session.position,
         actionType: "finish_time",
         targetAthleteId: athleteId,
-        targetBib: ra.bib,
+        targetBib: athleteBib,
         lapNumber: lapCount > 0 ? lapCount : undefined,
         details: `เข้าเส้นชัยอันดับ ${position} - ${formatMs(timeMs)}`,
       },

@@ -309,11 +309,22 @@ export async function moderatorOverrideAthleteStatus(
   reason: string,
 ) {
   const user = await requireAdmin();
-  const ra = await prisma.roundAthlete.findFirst({
-    where: { roundId, athleteId },
-    include: { athlete: { select: { name: true } } },
-  });
+  const [ra, round] = await Promise.all([
+    prisma.roundAthlete.findFirst({
+      where: { roundId, athleteId },
+      include: { athlete: { select: { name: true } } },
+    }),
+    prisma.round.findUnique({ where: { id: roundId }, select: { eventId: true } }),
+  ]);
   if (!ra) throw new Error("ไม่พบนักกีฬาในรอบ");
+
+  const ea = round
+    ? await prisma.eventAthlete.findFirst({
+        where: { eventId: round.eventId, athleteId, deletedAt: null },
+        select: { bib: true },
+      })
+    : null;
+  const athleteBib = ea?.bib ?? "?";
 
   await prisma.roundAthlete.update({
     where: { id: ra.id },
@@ -324,9 +335,9 @@ export async function moderatorOverrideAthleteStatus(
     roundId,
     user,
     "moderator_override_status",
-    `เปลี่ยนสถานะ ${ra.athlete.name} (Bib ${ra.bib}) จาก ${ra.status} เป็น ${newStatus} — เหตุผล: ${reason}`,
+    `เปลี่ยนสถานะ ${ra.athlete.name} (Bib ${athleteBib}) จาก ${ra.status} เป็น ${newStatus} — เหตุผล: ${reason}`,
     athleteId,
-    ra.bib,
+    athleteBib,
   );
   await logCurrentAdmin(ActivityLogAction.MODERATOR_OVERRIDE_STATUS, "RoundAthlete", ra.id, {
     roundId,

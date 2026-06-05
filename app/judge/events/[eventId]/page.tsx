@@ -27,15 +27,16 @@ export default async function JudgePage(props: Readonly<Props>) {
     redirect(`/judge/events/${eventId}/join`);
   }
 
-  const round = await prisma.round.findUnique({
-    where: { id: session.roundId, deletedAt: null },
-    include: {
-      event: { select: { id: true, name: true } },
-      roundAthletes: {
-        where: { deletedAt: null },
-        include: { athlete: { select: { name: true } } },
-        orderBy: [{ position: "asc" }, { bib: "asc" }],
-      },
+  const [round, eventAthletes] = await Promise.all([
+    prisma.round.findUnique({
+      where: { id: session.roundId, deletedAt: null },
+      include: {
+        event: { select: { id: true, name: true } },
+        roundAthletes: {
+          where: { deletedAt: null },
+          include: { athlete: { select: { name: true } } },
+          orderBy: [{ position: "asc" }, { athleteId: "asc" }],
+        },
       cards: {
         where: { deletedAt: null },
       },
@@ -44,12 +45,18 @@ export default async function JudgePage(props: Readonly<Props>) {
         select: { athleteId: true },
       },
     },
-  });
+  }),
+    prisma.eventAthlete.findMany({
+      where: { eventId: session.eventId, deletedAt: null },
+      select: { athleteId: true, bib: true },
+    }),
+  ]);
 
   if (!round) {
     redirect(`/judge/events/${eventId}/join`);
   }
 
+  const bibMap = new Map(eventAthletes.map((ea) => [ea.athleteId, ea.bib]));
   const myJudgeId = session.judgeId;
   const finishedAthleteIds = new Set(round.finishTimes.map((f) => f.athleteId));
 
@@ -66,7 +73,7 @@ export default async function JudgePage(props: Readonly<Props>) {
     const myRedSymbolChar = myRed?.symbol === "BENT_KNEE" ? ">" : "~";
     const myRedSymbol = myRed ? myRedSymbolChar : null;
     return {
-      bib: ra.bib,
+      bib: bibMap.get(ra.athleteId) ?? "?",
       athleteId: ra.athleteId,
       name: ra.athlete.name,
       status: ra.status,
