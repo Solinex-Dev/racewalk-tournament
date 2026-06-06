@@ -8,16 +8,12 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/authz";
 import { attachmentContentDisposition } from "@/lib/content-disposition";
 import { toCsv } from "@/lib/csv/serialize";
+import { CSV_HEADERS } from "@/lib/csv/import-types";
 import { bangkokDateISO } from "@/lib/datetime";
 import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const HEADERS = [
-  "id", "name", "country", "province",
-  "head_judge_id", "head_judge_name", "joined_at", "note",
-] as const;
 
 export async function GET() {
   const me = await getCurrentAdmin();
@@ -30,7 +26,7 @@ export async function GET() {
   });
 
   const csv = toCsv(
-    HEADERS,
+    CSV_HEADERS.affiliation,
     rows.map((a) => [
       a.id, a.name, a.country, a.province ?? "",
       a.headJudgeId ?? "", a.headJudge?.name ?? "",

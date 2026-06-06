@@ -7,6 +7,7 @@ import {
   parseDateOnly,
   normalizeJudgeStatus,
 } from "@/lib/csv/normalize";
+import { keyOf, markDuplicates, collectDupGroups, type Dupable } from "@/lib/csv/dedup";
 
 describe("serialize", () => {
   it("escapes commas, quotes, newlines; passes plain/empty", () => {
@@ -94,5 +95,53 @@ describe("normalizeJudgeStatus", () => {
     expect(normalizeJudgeStatus("INACTIVE")).toEqual({ ok: true, value: "INACTIVE" });
     expect(normalizeJudgeStatus("")).toEqual({ ok: true, value: "ACTIVE" });
     expect(normalizeJudgeStatus("foo").ok).toBe(false);
+  });
+});
+
+describe("dedup", () => {
+  it("keyOf: trims/lowercases, all-fields equal → equal, one diff → not, no collision", () => {
+    expect(keyOf(["นาย", "อนุพงศ์", "", "โชติวนาวรรณ"])).toBe(
+      keyOf([" นาย ", "อนุพงศ์", null, "โชติวนาวรรณ"]),
+    );
+    expect(keyOf(["TH"])).toBe(keyOf(["th"]));
+    expect(keyOf(["a", "b"])).not.toBe(keyOf(["a", "c"]));
+    expect(keyOf(["ab", "c"])).not.toBe(keyOf(["a", "bc"]));
+  });
+
+  it("markDuplicates: in-file group keeps first, vs-DB flagged, updates ignored", () => {
+    const dupKey = keyOf(["x"]);
+    const rows: Dupable[] = [
+      { rowNumber: 1, verdict: "create", key: dupKey },
+      { rowNumber: 2, verdict: "create", key: dupKey },
+      { rowNumber: 3, verdict: "create", key: keyOf(["unique"]) },
+      { rowNumber: 4, verdict: "create", key: keyOf(["exists"]) },
+      { rowNumber: 5, verdict: "update", key: null },
+    ];
+    markDuplicates(rows, new Set([keyOf(["exists"])]));
+    expect(rows[0].dup).toEqual({ kind: "file", group: 1 });
+    expect(rows[1].dup).toEqual({ kind: "file", group: 1 });
+    expect(rows[2].dup).toBeUndefined();
+    expect(rows[3].dup).toEqual({ kind: "db" });
+    expect(rows[4].dup).toBeUndefined();
+  });
+
+  it("collectDupGroups: db group carries existing label, file group lists incoming, uniques omitted", () => {
+    const fileKey = keyOf(["a"]);
+    const dbKey = keyOf(["b"]);
+    const rows = [
+      { rowNumber: 1, verdict: "create" as const, label: "A หนึ่ง", key: fileKey },
+      { rowNumber: 2, verdict: "create" as const, label: "A สอง", key: fileKey },
+      { rowNumber: 3, verdict: "create" as const, label: "B ใหม่", key: dbKey },
+      { rowNumber: 4, verdict: "create" as const, label: "ไม่ซ้ำ", key: keyOf(["c"]) },
+      { rowNumber: 5, verdict: "update" as const, label: "อัปเดต", key: null },
+    ];
+    const groups = collectDupGroups(rows, new Map([[dbKey, "B เดิมในระบบ"]]));
+    expect(groups).toHaveLength(2);
+    const db = groups.find((g) => g.kind === "db")!;
+    expect(db.existingLabel).toBe("B เดิมในระบบ");
+    expect(db.incoming).toEqual([{ rowNumber: 3, label: "B ใหม่" }]);
+    const file = groups.find((g) => g.kind === "file")!;
+    expect(file.existingLabel).toBeUndefined();
+    expect(file.incoming.map((r) => r.rowNumber)).toEqual([1, 2]);
   });
 });

@@ -33,6 +33,7 @@ import type {
   RowVerdict,
   CommitResult,
 } from "@/lib/csv/import-types";
+import { keyOf, markDuplicates, collectDupGroups, type Dup } from "@/lib/csv/dedup";
 
 const MAX_ROWS = 5000;
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -82,35 +83,49 @@ type ResolvedRow<TPayload> = {
   reasons: string[];
   id: string | null;
   payload: TPayload | null;
+  /** Content key for dedup (only set on valid CREATE rows). */
+  key: string | null;
+  dup?: Dup;
 };
 
 function finalVerdict(base: "create" | "update", errors: string[]): RowVerdict {
   return errors.length > 0 ? "error" : base;
 }
 
-function toPreview<T>(entity: ImportEntity, resolved: ResolvedRow<T>[]): ImportPreview {
-  const rows: PreviewRow[] = resolved.map((r) => ({
+type PreviewableRow = {
+  rowNumber: number;
+  verdict: RowVerdict;
+  label: string;
+  reasons: string[];
+  key: string | null;
+  dup?: Dup;
+};
+
+/** Map resolved rows → client-safe preview (verdict counts + per-row verdict/dup + dup detail, no payloads). */
+function toPreview<T extends PreviewableRow>(
+  entity: ImportEntity,
+  rows: T[],
+  existingByKey: Map<string, string>,
+): ImportPreview {
+  const counts = { create: 0, update: 0, error: 0, total: rows.length };
+  for (const r of rows) counts[r.verdict]++;
+  const previewRows: PreviewRow[] = rows.map((r) => ({
     rowNumber: r.rowNumber,
     verdict: r.verdict,
     label: r.label,
     reasons: r.reasons,
+    dup: r.dup,
   }));
-  return {
-    entity,
-    counts: {
-      create: rows.filter((r) => r.verdict === "create").length,
-      update: rows.filter((r) => r.verdict === "update").length,
-      error: rows.filter((r) => r.verdict === "error").length,
-      total: rows.length,
-    },
-    rows,
-  };
+  return { entity, counts, rows: previewRows, dupGroups: collectDupGroups(rows, existingByKey) };
 }
 
-function assertNoErrors<T>(resolved: ResolvedRow<T>[]) {
-  if (resolved.some((r) => r.verdict === "error")) {
-    throw new Error("มีแถวที่ไม่ผ่านการตรวจสอบ — กรุณาแก้ไขไฟล์แล้วลองใหม่");
-  }
+/** Drop deselected rows; refuse to commit if any KEPT row is an error. */
+function excludeRows<T extends { rowNumber: number; verdict: RowVerdict }>(rows: T[], excluded: number[]): T[] {
+  const skip = new Set(excluded);
+  const kept = rows.filter((r) => !skip.has(r.rowNumber));
+  const bad = kept.find((r) => r.verdict === "error");
+  if (bad) throw new Error(`มีแถวที่ผิดพลาดในรายการที่จะนำเข้า (แถว ${bad.rowNumber})`);
+  return kept;
 }
 
 // ─── Athletes ─────────────────────────────────────────────────────────────────
@@ -128,12 +143,27 @@ type AthletePayload = {
   note: string | null;
 };
 
-async function resolveAthletes(rows: CsvRow[]): Promise<ResolvedRow<AthletePayload>[]> {
+type Resolved<T> = { rows: ResolvedRow<T>[]; existingByKey: Map<string, string> };
+
+async function resolveAthletes(rows: CsvRow[]): Promise<Resolved<AthletePayload>> {
   const [athletes, affiliations] = await Promise.all([
-    prisma.athlete.findMany({ where: { deletedAt: null }, select: { id: true } }),
+    prisma.athlete.findMany({
+      where: { deletedAt: null },
+      select: {
+        id: true, prefix: true, firstName: true, middleName: true, lastName: true,
+        country: true, province: true, club: true, affiliationId: true, note: true,
+      },
+    }),
     prisma.affiliation.findMany({ where: { deletedAt: null }, select: { id: true, name: true } }),
   ]);
   const existing = new Set(athletes.map((a) => a.id));
+  const existingByKey = new Map<string, string>();
+  for (const a of athletes) {
+    const k = keyOf([a.prefix, a.firstName, a.middleName, a.lastName, a.country, a.province, a.club, a.affiliationId, a.note]);
+    if (!existingByKey.has(k)) {
+      existingByKey.set(k, composeName({ prefix: a.prefix, firstName: a.firstName, middleName: a.middleName, lastName: a.lastName }) || (a.firstName ?? "(ไม่มีชื่อ)"));
+    }
+  }
   const affById = new Set(affiliations.map((a) => a.id));
   const affByName = new Map<string, string[]>();
   for (const a of affiliations) {
@@ -142,7 +172,7 @@ async function resolveAthletes(rows: CsvRow[]): Promise<ResolvedRow<AthletePaylo
   }
   const seen = new Set<string>();
 
-  return rows.map((row, i) => {
+  const result: ResolvedRow<AthletePayload>[] = rows.map((row, i) => {
     const errors: string[] = [];
     const { verdict: base, id } = idVerdict(pick(row, "id"), existing, seen, errors);
 
@@ -189,6 +219,11 @@ async function resolveAthletes(rows: CsvRow[]): Promise<ResolvedRow<AthletePaylo
           note: pick(row, "note") || null,
         };
 
+    const key =
+      base === "create" && errors.length === 0
+        ? keyOf([prefix, firstName, middleName, lastName, country, p.ok ? p.value : null, pick(row, "club"), affiliationId, pick(row, "note")])
+        : null;
+
     return {
       rowNumber: i + 1,
       verdict: finalVerdict(base, errors),
@@ -196,33 +231,38 @@ async function resolveAthletes(rows: CsvRow[]): Promise<ResolvedRow<AthletePaylo
       reasons: errors,
       id,
       payload,
+      key,
     };
   });
+
+  markDuplicates(result, existingByKey);
+  return { rows: result, existingByKey };
 }
 
 export async function previewAthleteImport(formData: FormData): Promise<ImportPreview> {
   await requireRoot();
   const up = await readUpload(formData, ["first_name"]);
   if ("topError" in up) return { entity: "athlete", counts: { create: 0, update: 0, error: 0, total: 0 }, rows: [], topError: up.topError };
-  return toPreview("athlete", await resolveAthletes(up.rows));
+  const { rows, existingByKey } = await resolveAthletes(up.rows);
+  return toPreview("athlete", rows, existingByKey);
 }
 
-export async function commitAthleteImport(formData: FormData): Promise<CommitResult> {
+export async function commitAthleteImport(formData: FormData, excluded: number[] = []): Promise<CommitResult> {
   const me = await requireRoot();
   const up = await readUpload(formData, ["first_name"]);
   if ("topError" in up) throw new Error(up.topError);
-  const resolved = await resolveAthletes(up.rows);
-  assertNoErrors(resolved);
+  const { rows: resolved } = await resolveAthletes(up.rows);
+  const included = excludeRows(resolved, excluded);
 
-  const ops = resolved.map((r) =>
+  const ops = included.map((r) =>
     r.verdict === "create"
       ? prisma.athlete.create({ data: { ...r.payload!, createdById: me.id, updatedById: me.id } })
       : prisma.athlete.update({ where: { id: r.id! }, data: { ...r.payload!, updatedById: me.id } }),
   );
   await prisma.$transaction(ops, { timeout: 30000, maxWait: 15000 });
 
-  const created = resolved.filter((r) => r.verdict === "create").length;
-  const updated = resolved.length - created;
+  const created = included.filter((r) => r.verdict === "create").length;
+  const updated = included.length - created;
   await logCurrentAdmin(ActivityLogAction.ATHLETES_BULK_IMPORTED, "Athlete", "*", { created, updated });
   revalidatePath("/admin/athletes");
   return { created, updated };
@@ -239,12 +279,20 @@ type AffiliationPayload = {
   note: string | null;
 };
 
-async function resolveAffiliations(rows: CsvRow[]): Promise<ResolvedRow<AffiliationPayload>[]> {
+async function resolveAffiliations(rows: CsvRow[]): Promise<Resolved<AffiliationPayload>> {
   const [affiliations, judges] = await Promise.all([
-    prisma.affiliation.findMany({ where: { deletedAt: null }, select: { id: true } }),
+    prisma.affiliation.findMany({
+      where: { deletedAt: null },
+      select: { id: true, name: true, country: true, province: true, headJudgeId: true, joinedAt: true, note: true },
+    }),
     prisma.judge.findMany({ where: { deletedAt: null }, select: { id: true, name: true } }),
   ]);
   const existing = new Set(affiliations.map((a) => a.id));
+  const existingByKey = new Map<string, string>();
+  for (const a of affiliations) {
+    const k = keyOf([a.name, a.country, a.province, a.headJudgeId, a.joinedAt ? a.joinedAt.toISOString().slice(0, 10) : "", a.note]);
+    if (!existingByKey.has(k)) existingByKey.set(k, a.name);
+  }
   const judgeById = new Set(judges.map((j) => j.id));
   const judgeByName = new Map<string, string[]>();
   for (const j of judges) {
@@ -253,7 +301,7 @@ async function resolveAffiliations(rows: CsvRow[]): Promise<ResolvedRow<Affiliat
   }
   const seen = new Set<string>();
 
-  return rows.map((row, i) => {
+  const result: ResolvedRow<AffiliationPayload>[] = rows.map((row, i) => {
     const errors: string[] = [];
     const { verdict: base, id } = idVerdict(pick(row, "id"), existing, seen, errors);
 
@@ -293,6 +341,11 @@ async function resolveAffiliations(rows: CsvRow[]): Promise<ResolvedRow<Affiliat
           note: pick(row, "note") || null,
         };
 
+    const key =
+      base === "create" && errors.length === 0
+        ? keyOf([name, country, p.ok ? p.value : null, headJudgeId, d.ok && d.value ? d.value.toISOString().slice(0, 10) : "", pick(row, "note")])
+        : null;
+
     return {
       rowNumber: i + 1,
       verdict: finalVerdict(base, errors),
@@ -300,33 +353,38 @@ async function resolveAffiliations(rows: CsvRow[]): Promise<ResolvedRow<Affiliat
       reasons: errors,
       id,
       payload,
+      key,
     };
   });
+
+  markDuplicates(result, existingByKey);
+  return { rows: result, existingByKey };
 }
 
 export async function previewAffiliationImport(formData: FormData): Promise<ImportPreview> {
   await requireRoot();
   const up = await readUpload(formData, ["name"]);
   if ("topError" in up) return { entity: "affiliation", counts: { create: 0, update: 0, error: 0, total: 0 }, rows: [], topError: up.topError };
-  return toPreview("affiliation", await resolveAffiliations(up.rows));
+  const { rows, existingByKey } = await resolveAffiliations(up.rows);
+  return toPreview("affiliation", rows, existingByKey);
 }
 
-export async function commitAffiliationImport(formData: FormData): Promise<CommitResult> {
+export async function commitAffiliationImport(formData: FormData, excluded: number[] = []): Promise<CommitResult> {
   const me = await requireRoot();
   const up = await readUpload(formData, ["name"]);
   if ("topError" in up) throw new Error(up.topError);
-  const resolved = await resolveAffiliations(up.rows);
-  assertNoErrors(resolved);
+  const { rows: resolved } = await resolveAffiliations(up.rows);
+  const included = excludeRows(resolved, excluded);
 
-  const ops = resolved.map((r) =>
+  const ops = included.map((r) =>
     r.verdict === "create"
       ? prisma.affiliation.create({ data: { ...r.payload!, createdById: me.id, updatedById: me.id } })
       : prisma.affiliation.update({ where: { id: r.id! }, data: { ...r.payload!, updatedById: me.id } }),
   );
   await prisma.$transaction(ops, { timeout: 30000, maxWait: 15000 });
 
-  const created = resolved.filter((r) => r.verdict === "create").length;
-  const updated = resolved.length - created;
+  const created = included.filter((r) => r.verdict === "create").length;
+  const updated = included.length - created;
   await logCurrentAdmin(ActivityLogAction.AFFILIATIONS_BULK_IMPORTED, "Affiliation", "*", { created, updated });
   revalidatePath("/admin/affiliations");
   return { created, updated };
@@ -336,6 +394,18 @@ export async function commitAffiliationImport(formData: FormData): Promise<Commi
 
 type OrgSpec = { kind: "none" } | { kind: "id"; id: string } | { kind: "create"; name: string };
 type DeptSpec = { kind: "none" } | { kind: "id"; id: string } | { kind: "create"; name: string };
+
+// Stable tokens for the dedup content key (existing rows use the id form).
+function orgTokenOf(org: OrgSpec): string {
+  if (org.kind === "id") return `oid:${org.id}`;
+  if (org.kind === "create") return `oname:${org.name.trim().toLowerCase()}`;
+  return "";
+}
+function deptTokenOf(dept: DeptSpec): string {
+  if (dept.kind === "id") return `did:${dept.id}`;
+  if (dept.kind === "create") return `dname:${dept.name.trim().toLowerCase()}`;
+  return "";
+}
 
 type JudgeFields = {
   name: string;
@@ -358,15 +428,35 @@ type JudgeRow = {
   fields: JudgeFields | null;
   org: OrgSpec;
   dept: DeptSpec;
+  key: string | null;
+  dup?: Dup;
 };
 
-async function resolveJudges(rows: CsvRow[]): Promise<JudgeRow[]> {
+async function resolveJudges(rows: CsvRow[]): Promise<{ rows: JudgeRow[]; existingByKey: Map<string, string> }> {
   const [judges, orgs, depts] = await Promise.all([
-    prisma.judge.findMany({ where: { deletedAt: null }, select: { id: true } }),
+    prisma.judge.findMany({
+      where: { deletedAt: null },
+      select: {
+        id: true, prefix: true, firstName: true, middleName: true, lastName: true,
+        country: true, province: true, status: true, organizationId: true, departmentId: true, note: true,
+      },
+    }),
     prisma.organization.findMany({ where: { deletedAt: null }, select: { id: true, name: true } }),
     prisma.department.findMany({ where: { deletedAt: null }, select: { id: true, name: true, organizationId: true } }),
   ]);
   const existing = new Set(judges.map((j) => j.id));
+  const existingByKey = new Map<string, string>();
+  for (const j of judges) {
+    const k = keyOf([
+      j.prefix, j.firstName, j.middleName, j.lastName, j.country, j.province, j.status,
+      j.organizationId ? `oid:${j.organizationId}` : "",
+      j.departmentId ? `did:${j.departmentId}` : "",
+      j.note,
+    ]);
+    if (!existingByKey.has(k)) {
+      existingByKey.set(k, composeName({ prefix: j.prefix, firstName: j.firstName, middleName: j.middleName, lastName: j.lastName }) || (j.firstName ?? "(ไม่มีชื่อ)"));
+    }
+  }
   const orgById = new Set(orgs.map((o) => o.id));
   const orgByName = new Map<string, string[]>();
   for (const o of orgs) {
@@ -377,7 +467,7 @@ async function resolveJudges(rows: CsvRow[]): Promise<JudgeRow[]> {
   const deptByKey = new Map(depts.map((d) => [`${d.organizationId}::${d.name.toLowerCase()}`, d.id]));
   const seen = new Set<string>();
 
-  return rows.map((row, i): JudgeRow => {
+  const result: JudgeRow[] = rows.map((row, i): JudgeRow => {
     const errors: string[] = [];
     const notes: string[] = [];
     const { verdict: base, id } = idVerdict(pick(row, "id"), existing, seen, errors);
@@ -451,6 +541,14 @@ async function resolveJudges(rows: CsvRow[]): Promise<JudgeRow[]> {
           note: pick(row, "note") || null,
         };
 
+    const key =
+      base === "create" && errors.length === 0
+        ? keyOf([
+            prefix, firstName, middleName, lastName, country, p.ok ? p.value : null,
+            s.ok ? s.value : "ACTIVE", orgTokenOf(org), deptTokenOf(dept), pick(row, "note"),
+          ])
+        : null;
+
     return {
       rowNumber: i + 1,
       verdict: finalVerdict(base, errors),
@@ -460,35 +558,28 @@ async function resolveJudges(rows: CsvRow[]): Promise<JudgeRow[]> {
       fields,
       org,
       dept,
+      key,
     };
   });
+
+  markDuplicates(result, existingByKey);
+  return { rows: result, existingByKey };
 }
 
 export async function previewJudgeImport(formData: FormData): Promise<ImportPreview> {
   await requireRoot();
   const up = await readUpload(formData, ["first_name"]);
   if ("topError" in up) return { entity: "judge", counts: { create: 0, update: 0, error: 0, total: 0 }, rows: [], topError: up.topError };
-  const resolved = await resolveJudges(up.rows);
-  return {
-    entity: "judge",
-    counts: {
-      create: resolved.filter((r) => r.verdict === "create").length,
-      update: resolved.filter((r) => r.verdict === "update").length,
-      error: resolved.filter((r) => r.verdict === "error").length,
-      total: resolved.length,
-    },
-    rows: resolved.map((r) => ({ rowNumber: r.rowNumber, verdict: r.verdict, label: r.label, reasons: r.reasons })),
-  };
+  const { rows, existingByKey } = await resolveJudges(up.rows);
+  return toPreview("judge", rows, existingByKey);
 }
 
-export async function commitJudgeImport(formData: FormData): Promise<CommitResult> {
+export async function commitJudgeImport(formData: FormData, excluded: number[] = []): Promise<CommitResult> {
   const me = await requireRoot();
   const up = await readUpload(formData, ["first_name"]);
   if ("topError" in up) throw new Error(up.topError);
-  const resolved = await resolveJudges(up.rows);
-  if (resolved.some((r) => r.verdict === "error")) {
-    throw new Error("มีแถวที่ไม่ผ่านการตรวจสอบ — กรุณาแก้ไขไฟล์แล้วลองใหม่");
-  }
+  const { rows: judgeRows } = await resolveJudges(up.rows);
+  const resolved = excludeRows(judgeRows, excluded);
 
   let created = 0;
   let updated = 0;
