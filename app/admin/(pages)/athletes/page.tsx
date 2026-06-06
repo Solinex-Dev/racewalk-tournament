@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AthletesList } from "@/components/athletes/athletes-list";
+import { CsvExportImport } from "@/components/admin/csv-export-import";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 import { countryLabel } from "@/lib/data/countries";
@@ -58,13 +59,18 @@ export default async function AthletesPage() {
             </p>
           </div>
 
-          {hasPermission(me, "athletes", "create") && (
-            <Link href="/admin/athletes/new">
-              <Button className="rounded-xl px-4 py-2 text-sm font-medium">
-                + เพิ่มนักกีฬาใหม่
-              </Button>
-            </Link>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {me?.isRoot && (
+              <CsvExportImport entity="athlete" exportHref="/api/admin/export/athletes" />
+            )}
+            {hasPermission(me, "athletes", "create") && (
+              <Link href="/admin/athletes/new">
+                <Button className="rounded-xl px-4 py-2 text-sm font-medium">
+                  + เพิ่มนักกีฬาใหม่
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
 
         <AthletesList athletes={athletes} />

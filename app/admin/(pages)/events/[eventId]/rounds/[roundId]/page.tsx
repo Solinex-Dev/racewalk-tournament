@@ -125,6 +125,7 @@ export default async function RoundDetailPage(props: Readonly<Props>) {
           judgeOptions={judges}
           eventDate={toDateInput(round.event.date)}
           existingEventCodes={existingCodes.map((c) => c.secretCode)}
+          locked={round.status === "ONGOING"}
           defaultValues={defaultValues}
         />
       </div>

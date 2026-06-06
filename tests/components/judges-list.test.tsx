@@ -16,6 +16,7 @@ const makeJudges = (n: number) =>
     id: `id-${i}`,
     prefix: "นาย",
     first_name: `Judge${i}`,
+    middle_name: "",
     last_name: "X",
     department: "Dept",
     organization: "Org",

@@ -241,9 +241,18 @@ export async function updateRound(
 
   const [event, existing] = await Promise.all([
     prisma.event.findUnique({ where: { id: eventId }, select: { date: true } }),
-    prisma.round.findUnique({ where: { id: roundId }, select: { startedAt: true, endedAt: true } }),
+    prisma.round.findUnique({ where: { id: roundId }, select: { status: true, startedAt: true, endedAt: true } }),
   ]);
   if (!event) throw new Error("ไม่พบกิจกรรม");
+
+  // A live (ONGOING) round is locked — its setup must not change mid-race. Live
+  // corrections go through the Moderator tool (audit-logged); editing resumes once
+  // the round is finished.
+  if (existing?.status === "ONGOING") {
+    throw new Error(
+      "รอบนี้กำลังแข่งขันอยู่ — แก้ไขข้อมูลรอบไม่ได้จนกว่าจะจบการแข่งขัน (แก้ไขระหว่างแข่งได้ที่หน้า Moderator)",
+    );
+  }
 
   const scheduledTime = data.scheduledTime ? new Date(data.scheduledTime) : null;
   const expectedEndTime = data.expectedEndTime ? new Date(data.expectedEndTime) : null;
