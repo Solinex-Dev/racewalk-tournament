@@ -4,8 +4,23 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
 import { requirePermission } from "@/lib/authz";
+import { parseBibAgeGroup } from "@/lib/bib";
 
 export type EventAthleteInput = { athleteId: string; bib: string };
+
+/**
+ * Every registered athlete must have a valid age-encoded BIB ([age band][3-digit
+ * sequence], e.g. 65001). Reject otherwise — a malformed/short BIB must not be
+ * saved. Server-side enforcement (the form blocks it too, this is defense).
+ */
+function assertValidBibs(athletes: EventAthleteInput[]) {
+  const bad = athletes.filter((a) => !parseBibAgeGroup(a.bib));
+  if (bad.length > 0) {
+    throw new Error(
+      `หมายเลข BIB ต้องเป็นรูปแบบ [รุ่นอายุ][ลำดับ 3 หลัก] เช่น 65001 — มี ${bad.length} รายการที่ยังไม่ได้กรอกหรือไม่ถูกต้อง`,
+    );
+  }
+}
 
 export type EventActionData = {
   name: string;
@@ -51,6 +66,7 @@ function rethrowFriendly(err: unknown): never {
 
 export async function createEvent(data: EventActionData) {
   const me = await requirePermission("events", "create");
+  assertValidBibs(data.athletes);
   let eventId = "";
   await prisma
     .$transaction(async (tx) => {
@@ -96,6 +112,7 @@ export async function createEvent(data: EventActionData) {
 
 export async function updateEvent(id: string, data: EventActionData) {
   const me = await requirePermission("events", "edit");
+  assertValidBibs(data.athletes);
   const now = new Date();
 
   await prisma

@@ -13,6 +13,7 @@
  * the export deliberately follows the official form.
  */
 import { prisma } from "@/lib/prisma";
+import { bibMatchesAgeGroups } from "@/lib/bib";
 
 export const OFFICIAL_SYMBOL = { LIFTED_FOOT: "~", BENT_KNEE: "<" } as const;
 export const SYMBOL_TH = { LIFTED_FOOT: "ยกเท้า", BENT_KNEE: "เข่างอ" } as const;
@@ -48,6 +49,8 @@ export type AthleteRow = {
   totals: { lifted: number; bent: number; red: number };
   /** DQ notification info (only when status === "DQ") */
   dq: { time: string | null; offence: string | null } | null;
+  /** Stored WA rule code for a post-race DQ (null = none / "Other" / auto-DQ). */
+  dqReasonCode: string | null;
 };
 
 export type RoundSummary = {
@@ -103,6 +106,7 @@ export function formatClockSec(dt: Date | null | undefined): string {
 export async function loadEventSummary(
   eventId: string,
   roundId?: string,
+  ageGroups?: number[],
 ): Promise<EventSummary | null> {
   const event = await prisma.event.findUnique({
     where: { id: eventId, deletedAt: null },
@@ -112,7 +116,10 @@ export async function loadEventSummary(
         select: { athleteId: true, bib: true },
       },
       rounds: {
-        where: { deletedAt: null, ...(roundId ? { id: roundId } : {}) },
+        // Only FINISHED rounds are exportable — a round still in progress (or not
+        // started) must not produce a report. A per-round request for an unfinished
+        // round therefore yields zero rounds, which callers treat as "blocked".
+        where: { deletedAt: null, status: "FINISHED", ...(roundId ? { id: roundId } : {}) },
         orderBy: { scheduledTime: "asc" },
         include: {
           roundAthletes: {
@@ -199,7 +206,9 @@ export async function loadEventSummary(
         }
       }
 
-      // DQ notification — time of the latest confirmed red, offence = its symbols
+      // DQ notification — time of the latest confirmed red. The "offence" prefers
+      // the moderator's structured rule code (e.g. "TR54.7.5"); otherwise it falls
+      // back to the confirmed red-card symbols (auto-DQ / "Other" free-text reason).
       let dq: AthleteRow["dq"] = null;
       if (ra.status === "DQ") {
         const confirmedReds = cards
@@ -209,12 +218,12 @@ export async function loadEventSummary(
               (a.decidedAt ?? a.issuedAt).getTime() - (b.decidedAt ?? b.issuedAt).getTime(),
           );
         const last = confirmedReds.at(-1);
-        const offence = confirmedReds
+        const symbols = confirmedReds
           .map((c) => OFFICIAL_SYMBOL[c.symbol as DbSymbol])
           .join(" ");
         dq = {
           time: last ? formatClock(last.decidedAt ?? last.issuedAt) : null,
-          offence: offence || null,
+          offence: ra.dqReasonCode || symbols || null,
         };
       }
 
@@ -231,8 +240,16 @@ export async function loadEventSummary(
         marks,
         totals: { lifted: liftedTotal, bent: bentTotal, red: redConfirmed },
         dq,
+        dqReasonCode: ra.dqReasonCode ?? null,
       };
     });
+
+    // Optional age-group filter (BIB-derived) — applied after shaping so the
+    // CHECK·TOTAL tallies (computed from this array downstream) stay consistent.
+    const filteredAthletes =
+      ageGroups && ageGroups.length > 0
+        ? athletes.filter((a) => bibMatchesAgeGroups(a.bib, ageGroups))
+        : athletes;
 
     return {
       id: r.id,
@@ -247,7 +264,7 @@ export async function loadEventSummary(
       chiefJudge,
       recorders,
       judges,
-      athletes,
+      athletes: filteredAthletes,
     };
   });
 

@@ -84,7 +84,8 @@ export function buildRoundWorksheet(
   ws.getColumn(C_PEN_IN).width = 7;
   ws.getColumn(C_PEN_OUT).width = 7;
   ws.getColumn(C_CHIEF_T).width = 8;
-  ws.getColumn(C_CHIEF_O).width = 9;
+  // Offence holds the DQ rule code (e.g. "TR7.1[TR6.3.1]") when set, else symbols.
+  ws.getColumn(C_CHIEF_O).width = 14;
   // DQ / CHECK OF / YELLOW PADDLES / DISQUAL. — vertical-text headers (narrow)
   ws.getColumn(C_DQ_T).width = 6;
   ws.getColumn(C_TOT_LIFT).width = 6;
@@ -158,14 +159,14 @@ export function buildRoundWorksheet(
 
   infoLabel(C_ATH, dateEnd, "DATE / วันที่");
   infoLabel(dateEnd + 1, startEnd, "START TIME");
-  infoLabel(eventStart, eventEnd, "EVENT / รายการ");
+  infoLabel(eventStart, eventEnd, "รายการ");
   infoLabel(chiefStart, LAST, "CHIEF JUDGE / หัวหน้ากรรมการ");
   infoValue(C_ATH, dateEnd, thaiDate(ev.date));
   infoValue(dateEnd + 1, startEnd, round.startTime || "—", true);
   infoValue(
     eventStart,
     eventEnd,
-    `${ev.name} — ${round.name}  •  ${ROUND_STATUS_TH[round.status]}`,
+    `${round.name}  •  ${ROUND_STATUS_TH[round.status]}`,
   );
   infoValue(chiefStart, LAST, round.chiefJudge || "—");
   ws.getRow(3).height = 16;

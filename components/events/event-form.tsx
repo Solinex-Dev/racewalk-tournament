@@ -3,13 +3,14 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Reorder, useDragControls } from "framer-motion";
-import { Pencil, GripVertical } from "lucide-react";
+import { Pencil, GripVertical, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { DetailField } from "@/components/common/detail-field";
 import { createEvent, updateEvent } from "@/app/actions/events";
 import { kmFromMeters } from "@/lib/distance";
+import { parseBibAgeGroup } from "@/lib/bib";
 
 export type EventAthleteEntry = { athleteId: string; bib: string };
 
@@ -56,28 +57,49 @@ const STATUS_LABEL: Record<EventFormValues["status"], string> = {
   FINISHED: "เสร็จสิ้น – แข่งขันเสร็จแล้ว",
 };
 
+// Athlete list shows this many rows per page; the rest paginate.
+const ATHLETES_PER_PAGE = 20;
+
 /**
- * One draggable athlete row. Uses useDragControls + dragListener={false} so only
- * the grip handle starts a drag — the BIB input stays clickable/typable.
+ * One athlete row. Reorder by dragging the grip handle (only when not searching)
+ * OR by clicking the position number, typing a new one, and pressing Enter / ✓.
  */
 function AthleteReorderRow({
   athleteId,
-  index,
+  position,
   athleteName,
   bib,
   bibConflict,
+  canDrag,
+  isEditingPos,
+  editPosValue,
   onBibChange,
   onRemove,
+  onStartEditPos,
+  onChangeEditPos,
+  onCommitPos,
+  onCancelPos,
 }: Readonly<{
   athleteId: string;
-  index: number;
+  position: number;
   athleteName: string;
   bib: string;
   bibConflict: boolean;
+  canDrag: boolean;
+  isEditingPos: boolean;
+  editPosValue: string;
   onBibChange: (value: string) => void;
   onRemove: () => void;
+  onStartEditPos: () => void;
+  onChangeEditPos: (value: string) => void;
+  onCommitPos: () => void;
+  onCancelPos: () => void;
 }>) {
   const controls = useDragControls();
+  // BIB must be age-encoded ([age band][3-digit seq], e.g. 65001). Anything else
+  // (empty or malformed) is invalid and blocks saving.
+  const ageGroup = parseBibAgeGroup(bib);
+  const bibInvalid = !ageGroup;
   return (
     <Reorder.Item
       value={athleteId}
@@ -86,25 +108,87 @@ function AthleteReorderRow({
       as="div"
       className="flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2 last:border-b-0"
     >
-      <button
-        type="button"
-        aria-label="ลากเพื่อจัดลำดับ"
-        onPointerDown={(e) => controls.start(e)}
-        className="flex h-7 w-5 shrink-0 cursor-grab touch-none items-center justify-center text-slate-400 hover:text-slate-600 active:cursor-grabbing"
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <span className="w-5 shrink-0 text-[11px] text-slate-500">{index + 1}</span>
+      {canDrag ? (
+        <button
+          type="button"
+          aria-label="ลากเพื่อจัดลำดับ"
+          onPointerDown={(e) => controls.start(e)}
+          className="flex h-7 w-5 shrink-0 cursor-grab touch-none items-center justify-center text-slate-400 hover:text-slate-600 active:cursor-grabbing"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      ) : (
+        <span className="w-5 shrink-0" aria-hidden />
+      )}
+
+      {/* Position — click to edit, Enter / ✓ to apply (the list then re-sorts) */}
+      <span className="flex w-16 shrink-0 items-center gap-1">
+        {isEditingPos ? (
+          <>
+            <input
+              type="number"
+              min={1}
+              autoFocus
+              value={editPosValue}
+              onChange={(e) => onChangeEditPos(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onCommitPos();
+                } else if (e.key === "Escape") {
+                  onCancelPos();
+                }
+              }}
+              onBlur={onCommitPos}
+              className="h-7 w-10 rounded-md border border-slate-300 px-1 text-center text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            />
+            <button
+              type="button"
+              aria-label="บันทึกลำดับ"
+              // onMouseDown (not onClick) so it fires before the input's onBlur cancels it
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onCommitPos();
+              }}
+              className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-500"
+            >
+              <Check className="h-3.5 w-3.5" />
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={onStartEditPos}
+            title="คลิกเพื่อแก้ลำดับ"
+            className="h-7 w-7 rounded-md text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+          >
+            {position}
+          </button>
+        )}
+      </span>
+
       <span className="flex-1 truncate text-xs text-slate-800">{athleteName}</span>
       <Input
         className={`h-7 w-24 shrink-0 px-2 py-1 text-xs ${
-          bibConflict ? "border-red-400 text-red-700 focus-visible:ring-red-200" : ""
+          bibConflict || bibInvalid ? "border-red-400 text-red-700 focus-visible:ring-red-200" : ""
         }`}
         value={bib}
         onChange={(e) => onBibChange(e.target.value)}
-        placeholder="เช่น 101"
-        aria-invalid={bibConflict ? true : undefined}
+        placeholder="เช่น 65001"
+        aria-invalid={bibConflict || bibInvalid ? true : undefined}
       />
+      {/* Live age-band chip (valid) or a format hint (invalid) */}
+      <span className="flex w-20 shrink-0 justify-center">
+        {ageGroup ? (
+          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+            รุ่น {ageGroup.label}
+          </span>
+        ) : (
+          <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600 ring-1 ring-red-200">
+            ผิดรูปแบบ
+          </span>
+        )}
+      </span>
       <Button
         type="button"
         variant="outline"
@@ -140,6 +224,12 @@ export function EventForm({
   const [athletePickerOpen, setAthletePickerOpen] = React.useState(false);
   const [athletePickerSelected, setAthletePickerSelected] = React.useState<string[]>([]);
 
+  // In-list search / pagination / inline position editing
+  const [listQuery, setListQuery] = React.useState("");
+  const [listPage, setListPage] = React.useState(0);
+  const [editPosId, setEditPosId] = React.useState<string | null>(null);
+  const [editPosValue, setEditPosValue] = React.useState("");
+
   const startEdit = () => {
     setForm(saved);
     setError(null);
@@ -170,21 +260,47 @@ export function EventForm({
     return { keys, labels: [...keys] };
   }, [form.athletes]);
 
-  const handleBibChange = (index: number, bib: string) =>
+  // Operate by athleteId (robust under search/pagination, where the row index
+  // shown is not the index in the full array).
+  const handleBibChange = (athleteId: string, bib: string) =>
     setForm((p) => ({
       ...p,
-      athletes: p.athletes.map((a, i) => (i === index ? { ...a, bib } : a)),
+      athletes: p.athletes.map((a) => (a.athleteId === athleteId ? { ...a, bib } : a)),
     }));
 
-  const handleRemoveAthlete = (index: number) =>
-    setForm((p) => ({ ...p, athletes: p.athletes.filter((_, i) => i !== index) }));
+  const handleRemoveAthlete = (athleteId: string) =>
+    setForm((p) => ({ ...p, athletes: p.athletes.filter((a) => a.athleteId !== athleteId) }));
 
-  // Drag-and-drop reorder — Framer Motion hands back the reordered athleteIds;
-  // remap them onto the full athlete entries (preserving each one's bib).
-  const handleReorderAthletes = (orderedIds: string[]) =>
+  // Move an athlete to a new 1-based position; the rest shift to fill in.
+  const movePosition = (athleteId: string, newPos1: number) =>
+    setForm((p) => {
+      const from = p.athletes.findIndex((a) => a.athleteId === athleteId);
+      if (from < 0 || Number.isNaN(newPos1)) return p;
+      const to = Math.min(Math.max(0, newPos1 - 1), p.athletes.length - 1);
+      if (to === from) return p;
+      const next = [...p.athletes];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return { ...p, athletes: next };
+    });
+
+  const commitPosEdit = (athleteId: string) => {
+    const n = Number.parseInt(editPosValue, 10);
+    if (!Number.isNaN(n)) movePosition(athleteId, n);
+    setEditPosId(null);
+    setEditPosValue("");
+  };
+
+  // Drag reorder within the current (unfiltered) page slice — reconstruct the
+  // full array by replacing that contiguous slice with the reordered ids.
+  const reorderPageSlice = (start: number, orderedIds: string[]) =>
     setForm((p) => {
       const byId = new Map(p.athletes.map((a) => [a.athleteId, a]));
-      return { ...p, athletes: orderedIds.map((id) => byId.get(id)).filter(Boolean) as EventAthleteEntry[] };
+      const middle = orderedIds.map((id) => byId.get(id)).filter(Boolean) as EventAthleteEntry[];
+      return {
+        ...p,
+        athletes: [...p.athletes.slice(0, start), ...middle, ...p.athletes.slice(start + orderedIds.length)],
+      };
     });
 
   const confirmAthletePicker = () => {
@@ -207,6 +323,11 @@ export function EventForm({
       setError("เวลาจบกิจกรรมต้องไม่ก่อนเวลาเริ่มกิจกรรม");
       return;
     }
+    // Every athlete must have a valid age-encoded BIB (e.g. 65001) before saving.
+    if (form.athletes.some((a) => !parseBibAgeGroup(a.bib))) {
+      setError("มีนักกีฬาที่ยังไม่ได้กรอกหมายเลข BIB หรือกรอกไม่ถูกต้อง (ต้องเป็นรูปแบบ เช่น 65001)");
+      return;
+    }
     // The form works in metres; storage is km — convert at the boundary.
     const { distanceMeters, ...rest } = form;
     const payload = { ...rest, distanceKm: kmFromMeters(distanceMeters) };
@@ -226,6 +347,22 @@ export function EventForm({
       }
     });
   };
+
+  // ── Athlete list: search + pagination ──────────────────────────────────────
+  const athleteListQ = listQuery.trim().toLowerCase();
+  const filteredAthleteRows = form.athletes
+    .map((entry, fullIndex) => ({ entry, fullIndex }))
+    .filter(({ entry }) => {
+      if (!athleteListQ) return true;
+      const nm = (globalAthletes.find((g) => g.id === entry.athleteId)?.name ?? "").toLowerCase();
+      return entry.bib.toLowerCase().includes(athleteListQ) || nm.includes(athleteListQ);
+    });
+  const athleteTotalPages = Math.max(1, Math.ceil(filteredAthleteRows.length / ATHLETES_PER_PAGE));
+  const athletePage = Math.min(listPage, athleteTotalPages - 1);
+  const athletePageStart = athletePage * ATHLETES_PER_PAGE;
+  const athletePageRows = filteredAthleteRows.slice(athletePageStart, athletePageStart + ATHLETES_PER_PAGE);
+  // Drag only when not searching (then the page is a contiguous slice of the full list).
+  const athleteCanDrag = athleteListQ === "";
 
   return (
     <>
@@ -340,30 +477,35 @@ export function EventForm({
 
               {/* Athletes */}
               <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div>
                     <h2 className="text-sm font-semibold text-slate-900">นักกีฬาที่เข้าร่วม Event</h2>
                     <p className="mt-0.5 text-[11px] text-slate-600">
-                      เพิ่มนักกีฬาและกำหนดหมายเลข Bib — ลากไอคอน ⠿ เพื่อจัดลำดับ • Bib ที่กำหนดที่นี่ใช้ในทุกรอบของ Event นี้
+                      จัดลำดับด้วยการลากไอคอน ⠿ หรือคลิกที่เลขลำดับเพื่อแก้ • Bib ที่กำหนดที่นี่ใช้ในทุกรอบของ Event นี้
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-7 rounded-lg px-3 text-xs"
-                    onClick={() => {
-                      setAthletePickerSelected([]);
-                      setAthleteSearch("");
-                      setAthletePickerOpen(true);
-                    }}
-                  >
-                    + เพิ่มนักกีฬา
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 rounded-lg px-3 text-xs"
+                      onClick={() => {
+                        setAthletePickerSelected([]);
+                        setAthleteSearch("");
+                        setAthletePickerOpen(true);
+                      }}
+                    >
+                      + เพิ่มนักกีฬา
+                    </Button>
+                    <Button type="submit" size="sm" disabled={isPending} className="h-7 rounded-lg px-3 text-xs font-medium">
+                      {isPending ? "กำลังบันทึก..." : "บันทึก"}
+                    </Button>
+                  </div>
                 </div>
 
                 {bibDup.keys.size > 0 && (
                   <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-[11px] text-red-700">
-                    <span aria-hidden>⚠</span>
                     <span>
                       มีหมายเลข Bib ซ้ำกัน:{" "}
                       <span className="font-semibold">{bibDup.labels.join(", ")}</span> — กรุณาตรวจสอบ
@@ -376,39 +518,108 @@ export function EventForm({
                     ยังไม่มีนักกีฬา – กด &quot;เพิ่มนักกีฬา&quot;
                   </div>
                 ) : (
-                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    {/* header row */}
-                    <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-medium uppercase text-slate-500">
-                      <span className="w-5 shrink-0" aria-hidden />
-                      <span className="w-5 shrink-0">#</span>
-                      <span className="flex-1">นักกีฬา</span>
-                      <span className="w-24 shrink-0">หมายเลข Bib</span>
-                      <span className="w-12 shrink-0 text-right">ลบ</span>
+                  <>
+                    <Input
+                      className="h-8 px-2 py-1 text-xs"
+                      placeholder="ค้นหาด้วยชื่อ หรือ Bib..."
+                      value={listQuery}
+                      onChange={(e) => {
+                        setListQuery(e.target.value);
+                        setListPage(0);
+                      }}
+                    />
+
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      {/* header row */}
+                      <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-medium uppercase text-slate-500">
+                        <span className="w-5 shrink-0" aria-hidden />
+                        <span className="w-16 shrink-0">ลำดับ</span>
+                        <span className="flex-1">นักกีฬา</span>
+                        <span className="w-24 shrink-0">หมายเลข Bib</span>
+                        <span className="w-20 shrink-0 text-center">รุ่นอายุ</span>
+                        <span className="w-12 shrink-0 text-right">ลบ</span>
+                      </div>
+
+                      {athletePageRows.length === 0 ? (
+                        <div className="px-3 py-4 text-center text-[11px] text-slate-500">
+                          ไม่พบนักกีฬาตามคำค้นหา
+                        </div>
+                      ) : (
+                        <Reorder.Group
+                          as="div"
+                          axis="y"
+                          values={athletePageRows.map(({ entry }) => entry.athleteId)}
+                          onReorder={
+                            athleteCanDrag
+                              ? (ids: string[]) => reorderPageSlice(athletePageStart, ids)
+                              : () => {}
+                          }
+                        >
+                          {athletePageRows.map(({ entry, fullIndex }) => {
+                            const athlete = globalAthletes.find((a) => a.id === entry.athleteId);
+                            const bibConflict = entry.bib.trim() !== "" && bibDup.keys.has(entry.bib.trim());
+                            return (
+                              <AthleteReorderRow
+                                key={entry.athleteId}
+                                athleteId={entry.athleteId}
+                                position={fullIndex + 1}
+                                athleteName={athlete?.name ?? entry.athleteId}
+                                bib={entry.bib}
+                                bibConflict={bibConflict}
+                                canDrag={athleteCanDrag}
+                                isEditingPos={editPosId === entry.athleteId}
+                                editPosValue={editPosValue}
+                                onBibChange={(v) => handleBibChange(entry.athleteId, v)}
+                                onRemove={() => handleRemoveAthlete(entry.athleteId)}
+                                onStartEditPos={() => {
+                                  setEditPosId(entry.athleteId);
+                                  setEditPosValue(String(fullIndex + 1));
+                                }}
+                                onChangeEditPos={setEditPosValue}
+                                onCommitPos={() => commitPosEdit(entry.athleteId)}
+                                onCancelPos={() => {
+                                  setEditPosId(null);
+                                  setEditPosValue("");
+                                }}
+                              />
+                            );
+                          })}
+                        </Reorder.Group>
+                      )}
                     </div>
-                    <Reorder.Group
-                      as="div"
-                      axis="y"
-                      values={form.athletes.map((a) => a.athleteId)}
-                      onReorder={handleReorderAthletes}
-                    >
-                      {form.athletes.map((row, i) => {
-                        const athlete = globalAthletes.find((a) => a.id === row.athleteId);
-                        const bibConflict = row.bib.trim() !== "" && bibDup.keys.has(row.bib.trim());
-                        return (
-                          <AthleteReorderRow
-                            key={row.athleteId}
-                            athleteId={row.athleteId}
-                            index={i}
-                            athleteName={athlete?.name ?? row.athleteId}
-                            bib={row.bib}
-                            bibConflict={bibConflict}
-                            onBibChange={(v) => handleBibChange(i, v)}
-                            onRemove={() => handleRemoveAthlete(i)}
-                          />
-                        );
-                      })}
-                    </Reorder.Group>
-                  </div>
+
+                    <div className="flex items-center justify-between px-1 text-[11px] text-slate-600">
+                      <span>
+                        แสดง {athletePageRows.length} จาก {filteredAthleteRows.length} คน
+                        {athleteListQ ? " (กรองแล้ว)" : ` • ทั้งหมด ${form.athletes.length} คน`}
+                      </span>
+                      {athleteTotalPages > 1 && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={athletePage <= 0}
+                            onClick={() => setListPage(athletePage - 1)}
+                            className="h-7 rounded-lg px-2 text-[11px]"
+                          >
+                            ก่อนหน้า
+                          </Button>
+                          <span>หน้า {athletePage + 1}/{athleteTotalPages}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={athletePage >= athleteTotalPages - 1}
+                            onClick={() => setListPage(athletePage + 1)}
+                            className="h-7 rounded-lg px-2 text-[11px]"
+                          >
+                            ถัดไป
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
 

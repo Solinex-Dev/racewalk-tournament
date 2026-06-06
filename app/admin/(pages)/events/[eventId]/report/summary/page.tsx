@@ -8,6 +8,7 @@ import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission } from "@/lib/permissions";
 import { metersFromKm } from "@/lib/distance";
+import { parseAgeGroupsParam, ageGroupLabel } from "@/lib/bib";
 import {
   loadEventSummary,
   type RoundSummary,
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
 
 type Props = {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ round?: string }>;
+  searchParams: Promise<{ round?: string; ageGroups?: string }>;
 };
 
 const JUDGE_SLOTS = 8;
@@ -87,9 +88,9 @@ function RoundSheet({ ev, round }: Readonly<{ ev: EventSummary; round: RoundSumm
             <td>{round.chiefJudge || "—"}</td>
           </tr>
           <tr>
-            <td className="k">EVENT / รายการ</td>
+            <td className="k">รายการ</td>
             <td colSpan={3}>
-              {ev.name} — {round.name}
+              {round.name}
             </td>
             <td className="k">STATUS</td>
             <td>
@@ -266,16 +267,20 @@ function RoundSheet({ ev, round }: Readonly<{ ev: EventSummary; round: RoundSumm
 
 export default async function SummaryPrintPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
-  const { round: roundId } = await props.searchParams;
+  const { round: roundId, ageGroups: ageGroupsRaw } = await props.searchParams;
+  const ageGroups = parseAgeGroupsParam(ageGroupsRaw);
 
   const me = await getCurrentAdmin();
   if (!hasPermission(me, "reports", "view")) return <NoAccess />;
 
-  const summary = await loadEventSummary(eventId, roundId);
+  const summary = await loadEventSummary(eventId, roundId, ageGroups);
   if (!summary) notFound();
 
-  const roundQuery = roundId ? `?round=${roundId}` : "";
-  const xlsxHref = `/api/events/${eventId}/summary-xlsx${roundQuery}`;
+  const xlsxParams = new URLSearchParams();
+  if (roundId) xlsxParams.set("round", roundId);
+  if (ageGroups.length > 0) xlsxParams.set("ageGroups", ageGroups.join(","));
+  const xlsxQuery = xlsxParams.toString();
+  const xlsxHref = `/api/events/${eventId}/summary-xlsx${xlsxQuery ? `?${xlsxQuery}` : ""}`;
 
   return (
     <div id="summary-print" className="summary-root flex min-h-full w-full flex-1 flex-col">
@@ -297,6 +302,11 @@ export default async function SummaryPrintPage(props: Readonly<Props>) {
           กลับไปหน้า Report
         </Link>
         <span className="thint">เคล็ดลับ: ในกล่อง Print เลือกแนวกระดาษ “แนวนอน” (Landscape) เพื่อให้ตารางเต็มหน้า</span>
+        {ageGroups.length > 0 && (
+          <span className="tfilter">
+            กรองรุ่นอายุ: {ageGroups.map((g) => ageGroupLabel(g)).join(", ")} ปี
+          </span>
+        )}
       </div>
 
       {summary.rounds.map((round) => (
@@ -307,7 +317,9 @@ export default async function SummaryPrintPage(props: Readonly<Props>) {
         <section className="sheet">
           <div className="title">RACE WALKING JUDGES SUMMARY SHEET</div>
           <p className="empty" style={{ padding: 24 }}>
-            {summary.name} — ยังไม่มีรอบการแข่งขัน
+            {roundId
+              ? `${summary.name} — รอบนี้ยังแข่งไม่เสร็จ จึงยังไม่สามารถออกรายงานได้`
+              : `${summary.name} — ยังไม่มีรอบที่แข่งเสร็จสำหรับออกรายงาน`}
           </p>
         </section>
       )}
@@ -323,6 +335,7 @@ const CSS = `
 .toolbar .tlink { display:inline-flex; align-items:center; gap:6px; color:#475569; font-size:13px; text-decoration:none; }
 .toolbar .tlink:hover { text-decoration:underline; }
 .toolbar .thint { color:#64748b; font-size:12px; }
+.toolbar .tfilter { display:inline-flex; align-items:center; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; border-radius:9999px; padding:3px 10px; font-size:12px; font-weight:600; }
 
 .title { text-align:center; font-weight:700; font-size:15pt; padding:6px; letter-spacing:.4px; border:1.5px solid #000; border-bottom:none; }
 .subtitle { text-align:center; font-weight:600; padding:4px; font-size:10.5pt; border:1.5px solid #000; border-top:none; }

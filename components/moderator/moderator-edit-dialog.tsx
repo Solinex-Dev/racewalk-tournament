@@ -12,8 +12,30 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
+import {
+  DQ_REASONS,
+  DQ_REASON_OTHER,
+  DQ_CATEGORY_LABEL,
+  dqReasonLabel,
+} from "@/lib/dq-reasons";
 import type { EditAthlete, EditCard, EditFinish, EditLap } from "./moderator-edit-types";
+
+// Searchable reason list for a post-race DQ: catalog rule codes first, then a
+// pinned "อื่น ๆ" (Other) entry that switches the field to free text.
+const DQ_REASON_OPTIONS: ComboboxOption[] = [
+  ...DQ_REASONS.map((r) => ({
+    value: r.code,
+    label: `${r.code} — ${r.th}`,
+    keywords: [r.code, r.th, r.en, DQ_CATEGORY_LABEL[r.category]],
+  })),
+  {
+    value: DQ_REASON_OTHER,
+    label: "อื่น ๆ (ระบุเหตุผลเอง)",
+    keywords: ["other", "อื่นๆ", "อื่น ๆ", "ระบุเอง", "free text"],
+  },
+];
 
 export type ModeratorEditDialogPayload =
   | { kind: "status"; athlete: EditAthlete; newStatus: "OK" | "DQ" | "DNF" }
@@ -35,6 +57,7 @@ type ModeratorEditDialogProps = {
     reason: string;
     timeInput?: string;
     symbolValue?: "LIFTED_FOOT" | "BENT_KNEE";
+    dqReasonCode?: string | null;
   }) => void;
   isPending?: boolean;
   formatMs: (ms: number) => string;
@@ -291,6 +314,8 @@ export function ModeratorEditDialog({
   const [timeInput, setTimeInput] = React.useState("");
   const [symbolValue, setSymbolValue] =
     React.useState<"LIFTED_FOOT" | "BENT_KNEE">("LIFTED_FOOT");
+  // DQ reason picker: "" = none yet, a catalog code, or DQ_REASON_OTHER.
+  const [dqCode, setDqCode] = React.useState("");
 
   React.useEffect(() => {
     if (!open || !payload) return;
@@ -307,6 +332,12 @@ export function ModeratorEditDialog({
     if (payload.kind === "edit-card-symbol") {
       setSymbolValue(payload.card.symbol);
     }
+    // Preselect any existing DQ code when re-DQing the same athlete.
+    if (payload.kind === "status" && payload.newStatus === "DQ") {
+      setDqCode(payload.athlete.dqReasonCode ?? "");
+    } else {
+      setDqCode("");
+    }
   }, [open, payload, formatMs]);
 
   if (!payload) return null;
@@ -315,8 +346,35 @@ export function ModeratorEditDialog({
   const statusUi =
     payload.kind === "status" ? STATUS_UI[payload.newStatus] : null;
 
+  const isDqStatus = payload.kind === "status" && payload.newStatus === "DQ";
+  const isOtherReason = dqCode === DQ_REASON_OTHER;
+  const presetReasonSelected = isDqStatus && dqCode !== "" && !isOtherReason;
+
+  // DQ with a preset code needs no free text; "Other" requires it. Everything
+  // else keeps the original "reason is required" rule.
+  const reasonSatisfied = isDqStatus
+    ? presetReasonSelected || (isOtherReason && reason.trim().length > 0)
+    : reason.trim().length > 0;
+  const canSubmit =
+    reasonSatisfied && !(meta.showTime && !timeInput.trim()) && !isPending;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDqStatus) {
+      const note = reason.trim();
+      if (presetReasonSelected) {
+        onConfirm({
+          reason: note ? `${dqReasonLabel(dqCode)} — ${note}` : dqReasonLabel(dqCode),
+          dqReasonCode: dqCode,
+        });
+        return;
+      }
+      // "Other" → free text is the reason, no stored code.
+      if (!note) return;
+      onConfirm({ reason: note, dqReasonCode: null });
+      return;
+    }
+
     const trimmed = reason.trim();
     if (!trimmed) return;
     onConfirm({
@@ -437,21 +495,57 @@ export function ModeratorEditDialog({
               </div>
             )}
 
+            {isDqStatus && (
+              <div className="space-y-2">
+                <label
+                  htmlFor="moderator-dq-reason"
+                  className="text-sm font-medium text-slate-900"
+                >
+                  เหตุผลการตัดสิทธิ์ (รหัสกติกา) <span className="text-red-600">*</span>
+                </label>
+                <Combobox
+                  id="moderator-dq-reason"
+                  options={DQ_REASON_OPTIONS}
+                  value={dqCode}
+                  onChange={setDqCode}
+                  disabled={isPending}
+                  placeholder="เลือกเหตุผล / รหัสกติกา…"
+                  searchPlaceholder="ค้นหารหัส หรือเหตุผล (เช่น TR54, ใบแดง)…"
+                  emptyText="ไม่พบรหัสที่ค้นหา"
+                />
+                <p className="text-xs text-slate-500">
+                  รหัสที่เลือกจะแสดงในช่อง DQ ของเอกสาร PDF / Excel / CSV — เลือก
+                  “อื่น ๆ” เพื่อระบุเหตุผลเองโดยไม่ใส่รหัส
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <label
                 htmlFor="moderator-edit-reason"
                 className="text-sm font-medium text-slate-900"
               >
-                เหตุผล <span className="text-red-600">*</span>
+                {isDqStatus && presetReasonSelected ? (
+                  "หมายเหตุเพิ่มเติม (ไม่บังคับ)"
+                ) : (
+                  <>
+                    {isDqStatus ? "เหตุผล (ระบุเอง)" : "เหตุผล"}{" "}
+                    <span className="text-red-600">*</span>
+                  </>
+                )}
               </label>
               <textarea
                 id="moderator-edit-reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
-                placeholder="ระบุเหตุผล — จะถูกบันทึกใน activity log"
+                placeholder={
+                  isDqStatus && presetReasonSelected
+                    ? "บันทึกรายละเอียดเพิ่มเติม (ถ้ามี)"
+                    : "ระบุเหตุผล — จะถูกบันทึกใน activity log"
+                }
                 disabled={isPending}
-                required
+                required={!isDqStatus || isOtherReason}
                 className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none rounded-xl border bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
               />
               <p className="text-xs text-slate-500">
@@ -472,7 +566,7 @@ export function ModeratorEditDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isPending || !reason.trim() || (meta.showTime && !timeInput.trim())}
+              disabled={!canSubmit}
               className={cn("rounded-xl", meta.confirmClass)}
             >
               {isPending ? "กำลังบันทึก…" : meta.confirmLabel}

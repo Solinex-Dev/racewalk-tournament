@@ -6,6 +6,8 @@ export type EditAthlete = {
   name: string;
   status: "OK" | "DQ" | "DNF";
   position: number | null;
+  /** Stored WA rule code for a current DQ (null = none / "Other" / auto-DQ). */
+  dqReasonCode: string | null;
 };
 
 export type EditJudge = {

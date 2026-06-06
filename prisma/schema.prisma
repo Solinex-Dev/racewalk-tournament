@@ -367,6 +367,11 @@ model RoundAthlete {
   // round form. Drives the sequential numbering on the Lap Time keeper screen.
   sortOrder Int                @default(0)
   status    AthleteRoundStatus @default(OK)
+  // WA rule code for a post-race DQ (e.g. "TR54.7.5", "TR16.8"). Set by the
+  // moderator when overriding status to DQ with a structured reason; null for an
+  // auto-DQ (4 reds) or a free-text "Other" reason. Shown in exports in place of
+  // the plain "DQ" mark.
+  dqReasonCode String?
   position  Int?
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt

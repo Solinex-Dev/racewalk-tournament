@@ -79,6 +79,9 @@ function queryLeaderboard(eventId: string) {
         include: {
           roundAthletes: {
             where: { deletedAt: null },
+            // Fixed start-list order (athleteId tiebreak so rows never swap
+            // nondeterministically between the 500ms polls).
+            orderBy: [{ sortOrder: "asc" }, { athleteId: "asc" }],
             include: {
               athlete: { include: { affiliation: { select: { name: true } } } },
             },
@@ -238,16 +241,20 @@ export default async function EventLivePage(props: Readonly<Props>) {
       };
     });
 
-    // Finish order — shared with the moderator views (see lib/athlete-sort).
-    athletes.sort(compareAthletesByFinish);
-
-    // Live final ranking: number the in-standing (OK) athletes who have crossed
-    // the line, in finish order. A finisher who is later DQ'd sorts out of this
-    // group, so everyone below moves up automatically — DQ-aware, computed from
-    // the sorted order, no stored position rewrite needed.
+    // Display order is FIXED to the round's start-list (query orders by sortOrder).
+    // Rank still reflects live finish placing (DQ-aware): compute it on a SEPARATE
+    // finish-sorted copy, then stamp it back by athleteId — without reordering the
+    // displayed array (no more motion/reorder on the board).
+    const byFinish = [...athletes].sort(compareAthletesByFinish);
+    const rankByAthleteId = new Map<string, number>();
     let rankCounter = 0;
+    for (const a of byFinish) {
+      if (a.status === "OK" && a.isFinished) {
+        rankByAthleteId.set(a.athleteId, ++rankCounter);
+      }
+    }
     for (const a of athletes) {
-      a.rank = a.status === "OK" && a.isFinished ? ++rankCounter : null;
+      a.rank = rankByAthleteId.get(a.athleteId) ?? null;
     }
   }
 
@@ -347,7 +354,7 @@ export default async function EventLivePage(props: Readonly<Props>) {
           </div>
         </header>
 
-        <section className="grid gap-4 min-h-0">
+        <section className="flex min-h-0 flex-1 flex-col gap-4">
           <div className="flex items-end gap-4 ">
             <div className="flex w-full gap-2 justify-between text-right text-lg">
               {/* {currentRound?.startedAt && (
@@ -388,14 +395,14 @@ export default async function EventLivePage(props: Readonly<Props>) {
               <LastUpdated time={renderedAt} />
             </div> */}
           </div>
-          <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
             {/* <div className="border-b border-slate-800 bg-slate-900/50 px-5 py-4">
               <p className="text font-bold uppercase tracking-wide text-slate-400">
                 กระดานคะแนนสด
               </p>
             </div> */}
 
-            <div className="min-h-0 flex-1 overflow-auto">
+            <div className="min-h-0 flex-1 overflow-auto min-[992px]:overflow-hidden">
               <LeaderboardRows athletes={athletes} lapCount={lapCount} showRank={isCurrentRoundFinished} />
             </div>
           </div>

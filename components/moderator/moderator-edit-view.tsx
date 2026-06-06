@@ -263,10 +263,12 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
   const handleDialogConfirm = ({
     reason,
     timeInput,
+    dqReasonCode,
   }: {
     reason: string;
     timeInput?: string;
     symbolValue?: "LIFTED_FOOT" | "BENT_KNEE";
+    dqReasonCode?: string | null;
   }) => {
     if (!dialogPayload) return;
 
@@ -292,6 +294,7 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
               dialogPayload.athlete.id,
               dialogPayload.newStatus,
               reason,
+              dialogPayload.newStatus === "DQ" ? dqReasonCode ?? null : null,
             ),
           `เปลี่ยนสถานะเป็น ${dialogPayload.newStatus} แล้ว`,
         );
@@ -509,15 +512,25 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
                         <td className="px-4 py-2 font-mono font-semibold">{a.bib}</td>
                         <td className="px-4 py-2">{a.name}</td>
                         <td className="px-4 py-2">
-                          <span
-                            className={`rounded-full px-2 py-0.5 font-medium ${
-                              a.status === "DQ"
-                                ? "bg-red-100 text-red-700"
-                                : nonDqStatusClass
-                            }`}
-                          >
-                            {a.status}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span
+                              className={`rounded-full px-2 py-0.5 font-medium ${
+                                a.status === "DQ"
+                                  ? "bg-red-100 text-red-700"
+                                  : nonDqStatusClass
+                              }`}
+                            >
+                              {a.status}
+                            </span>
+                            {a.status === "DQ" && a.dqReasonCode && (
+                              <span
+                                className="rounded-full bg-red-50 px-2 py-0.5 font-mono text-[10px] font-semibold text-red-600 ring-1 ring-red-200"
+                                title="รหัสกติกาที่ใช้ตัดสิทธิ์ (แสดงในเอกสาร)"
+                              >
+                                {a.dqReasonCode}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-2">
                           <div className="flex gap-1">

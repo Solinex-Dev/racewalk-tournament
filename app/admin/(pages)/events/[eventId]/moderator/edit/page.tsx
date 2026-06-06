@@ -167,6 +167,7 @@ export default async function ModeratorEditPage(props: Readonly<Props>) {
     name: ra.athlete.name,
     status: ra.status,
     position: ra.position,
+    dqReasonCode: ra.dqReasonCode ?? null,
   }));
 
   // Finish-order sort — identical to the public leaderboard (lib/athlete-sort)

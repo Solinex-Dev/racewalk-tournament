@@ -5,6 +5,12 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { compareAthletesByFinish } from "@/lib/athlete-sort";
 import { metersFromKm } from "@/lib/distance";
+import {
+  parseAgeGroupsParam,
+  bibMatchesAgeGroups,
+  bibAgeStart,
+  ageGroupLabel,
+} from "@/lib/bib";
 import { PrintButton } from "@/components/report/print-button";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
@@ -17,7 +23,10 @@ export const metadata: Metadata = {
 // Always reflect the latest moderator edits (finish times, status) — never cache.
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ eventId: string }> };
+type Props = {
+  params: Promise<{ eventId: string }>;
+  searchParams: Promise<{ ageGroups?: string }>;
+};
 
 function formatMs(ms: number | null | undefined): string {
   if (ms === null || ms === undefined) return "—";
@@ -42,6 +51,8 @@ const ROUND_STATUS_LABEL: Record<string, string> = {
 
 export default async function PrintReportPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
+  const { ageGroups: ageGroupsRaw } = await props.searchParams;
+  const ageGroups = parseAgeGroupsParam(ageGroupsRaw);
 
   const me = await getCurrentAdmin();
   if (!hasPermission(me, "reports", "view")) return <NoAccess />;
@@ -51,7 +62,8 @@ export default async function PrintReportPage(props: Readonly<Props>) {
       where: { id: eventId, deletedAt: null },
       include: {
         rounds: {
-          where: { deletedAt: null },
+          // Only FINISHED rounds are exportable — unfinished rounds are excluded.
+          where: { deletedAt: null, status: "FINISHED" },
           orderBy: { scheduledTime: "asc" },
           include: {
             roundAthletes: {
@@ -82,7 +94,9 @@ export default async function PrintReportPage(props: Readonly<Props>) {
   // stored `position` is raw finish order and isn't DQ-adjusted, so we compute it.
   const rankedByRound = new Map(
     event.rounds.map((round) => {
-      const rows = round.roundAthletes.map((ra) => {
+      const rows = round.roundAthletes
+        .filter((ra) => bibMatchesAgeGroups(bibMap.get(ra.athleteId), ageGroups))
+        .map((ra) => {
         const finish = round.finishTimes.find((f) => f.athleteId === ra.athleteId);
         return {
           ra,
@@ -148,10 +162,17 @@ export default async function PrintReportPage(props: Readonly<Props>) {
         <p>สถานที่: {event.location}</p>
         <p>สถานะ Event: {STATUS_LABEL[event.status] ?? event.status}</p>
         <p>ระยะ: {metersFromKm(event.distanceKm)} ม.</p>
+        {ageGroups.length > 0 && (
+          <p className="font-semibold text-emerald-700">
+            กรองเฉพาะรุ่นอายุ: {ageGroups.map((g) => ageGroupLabel(g)).join(", ")} ปี
+          </p>
+        )}
       </div>
 
       {event.rounds.length === 0 && (
-        <p className="mt-8 italic text-slate-500">Event นี้ยังไม่มีรอบการแข่งขัน</p>
+        <p className="mt-8 italic text-slate-500">
+          ยังไม่มีรอบที่แข่งเสร็จสำหรับออกรายงาน (เฉพาะรอบสถานะ “เสร็จสิ้น” เท่านั้นที่ export ได้)
+        </p>
       )}
 
       {event.rounds.map((round) => (
@@ -176,6 +197,7 @@ export default async function PrintReportPage(props: Readonly<Props>) {
                 <tr>
                   <th>อันดับ</th>
                   <th>Bib</th>
+                  <th>รุ่นอายุ</th>
                   <th>นักกีฬา</th>
                   <th>ประเทศ</th>
                   <th>สังกัด</th>
@@ -189,17 +211,24 @@ export default async function PrintReportPage(props: Readonly<Props>) {
                 {(rankedByRound.get(round.id) ?? []).map((r) => {
                   const nonDqRowClass = r.ra.status === "DNF" ? "dnf" : "";
                   const rowClass = r.ra.status === "DQ" ? "dq" : nonDqRowClass;
+                  const bib = bibMap.get(r.ra.athleteId) ?? "?";
+                  const ageStart = bibAgeStart(bib);
+                  const statusCell =
+                    r.ra.status === "DQ" && r.ra.dqReasonCode
+                      ? r.ra.dqReasonCode
+                      : r.ra.status;
                   return (
                     <tr key={r.ra.id} className={rowClass}>
                       <td>{r.rank ?? "—"}</td>
-                      <td className="font-mono">{bibMap.get(r.ra.athleteId) ?? "?"}</td>
+                      <td className="font-mono">{bib}</td>
+                      <td>{ageStart !== null ? ageGroupLabel(ageStart) : "—"}</td>
                       <td>{r.ra.athlete.name}</td>
                       <td>{r.ra.athlete.country}</td>
                       <td>{r.ra.athlete.affiliation?.name ?? "—"}</td>
                       <td className="text-center">{r.yellow}</td>
                       <td className="text-center">{r.confirmedRed}</td>
                       <td className="font-mono">{formatMs(r.finishMs)}</td>
-                      <td>{r.ra.status}</td>
+                      <td>{statusCell}</td>
                     </tr>
                   );
                 })}

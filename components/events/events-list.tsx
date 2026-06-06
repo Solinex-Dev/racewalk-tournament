@@ -395,38 +395,6 @@ export function EventsList({
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex flex-wrap justify-end gap-2">
-                          {/* Prominent live-action buttons — only while the event is ongoing */}
-                          {/* {event.status === "ongoing" && (
-                            <>
-                              <Link
-                                href={`/events/${event.id}`}
-                                target="_blank"
-                              >
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-lg border-emerald-300 bg-emerald-500/5 text-xs font-medium text-emerald-700 hover:bg-emerald-500/15"
-                                >
-                                  <span>เปิดหน้าอีเวนต์</span>
-                                  <ArrowUpRight className="ml-1 h-3 w-3" />
-                                </Button>
-                              </Link>
-                              <Link
-                                href={`/judge/events/${event.id}/join`}
-                                target="_blank"
-                              >
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-lg border-indigo-200 bg-indigo-500/5 text-xs font-medium text-indigo-700 hover:bg-indigo-500/15"
-                                >
-                                  ลิงก์กรรมการ
-                                  <ArrowUpRight className="h-3 w-3" />
-                                </Button>
-                              </Link>
-                            </>
-                          )} */}
-
                           {/* 3-dot menu for scheduled / finished (not draft, not ongoing) */}
                           {event.status !== "draft" && (
                             <DropdownMenu>

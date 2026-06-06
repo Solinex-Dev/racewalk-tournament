@@ -13,6 +13,12 @@ import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission } from "@/lib/permissions";
 import { attachmentContentDisposition } from "@/lib/content-disposition";
 import { metersFromKm } from "@/lib/distance";
+import {
+  parseAgeGroupsParam,
+  bibMatchesAgeGroups,
+  bibAgeStart,
+  ageGroupLabel,
+} from "@/lib/bib";
 
 type Ctx = { params: Promise<{ eventId: string }> };
 
@@ -42,14 +48,17 @@ export async function GET(request: Request, ctx: Ctx) {
   const { eventId } = await ctx.params;
   const url = new URL(request.url);
   const roundFilter = url.searchParams.get("round");
+  const ageGroups = parseAgeGroupsParam(url.searchParams.get("ageGroups"));
 
   const [event, rawEventAthletes] = await Promise.all([
     prisma.event.findUnique({
       where: { id: eventId, deletedAt: null },
       include: {
         rounds: {
+          // Only FINISHED rounds are exportable — skip rounds still in progress.
           where: {
             deletedAt: null,
+            status: "FINISHED",
             ...(roundFilter ? { id: roundFilter } : {}),
           },
           orderBy: { scheduledTime: "asc" },
@@ -73,6 +82,16 @@ export async function GET(request: Request, ctx: Ctx) {
 
   if (!event) return new NextResponse("Not found", { status: 404 });
 
+  // Nothing finished to export (unfinished per-round request, or no finished rounds).
+  if (event.rounds.length === 0) {
+    return new NextResponse(
+      roundFilter
+        ? "รอบนี้ยังแข่งไม่เสร็จ จึงยังไม่สามารถ export รายงานได้"
+        : "ยังไม่มีรอบที่แข่งเสร็จสำหรับออกรายงาน",
+      { status: 403 },
+    );
+  }
+
   const bibMap = new Map(rawEventAthletes.map((ea) => [ea.athleteId, ea.bib]));
 
   const lines: string[] = [];
@@ -83,8 +102,11 @@ export async function GET(request: Request, ctx: Ctx) {
     escapeCsv(`Date,${event.date.toISOString().slice(0, 10)}`),
     escapeCsv(`Location,${event.location}`),
     escapeCsv(`Status,${event.status}`),
-    "",
   );
+  if (ageGroups.length > 0) {
+    lines.push(escapeCsv(`Age Groups,${ageGroups.map(ageGroupLabel).join(" / ")}`));
+  }
+  lines.push("");
 
   for (const round of event.rounds) {
     lines.push(`Round,${escapeCsv(round.name)}`, `Status,${round.status}`);
@@ -96,6 +118,7 @@ export async function GET(request: Request, ctx: Ctx) {
       "",
       [
         "BIB",
+        "Age Group",
         "Name",
         "Country",
         "Affiliation",
@@ -111,6 +134,9 @@ export async function GET(request: Request, ctx: Ctx) {
     );
 
     for (const ra of round.roundAthletes) {
+      const bib = bibMap.get(ra.athleteId) ?? "?";
+      if (!bibMatchesAgeGroups(bib, ageGroups)) continue;
+
       const yellow = round.cards.filter((c) => c.athleteId === ra.athleteId && c.color === "YELLOW").length;
       const confirmedRed = round.cards.filter(
         (c) => c.athleteId === ra.athleteId && c.color === "RED" && c.state === "CONFIRMED",
@@ -119,14 +145,20 @@ export async function GET(request: Request, ctx: Ctx) {
         (c) => c.athleteId === ra.athleteId && c.color === "RED" && c.state === "PENDING",
       ).length;
       const finish = round.finishTimes.find((f) => f.athleteId === ra.athleteId);
+      const ageStart = bibAgeStart(bib);
+      // Show the DQ rule code in the Status column when present; otherwise the
+      // plain status ("Other"/free-text DQ and auto-DQ fall back to "DQ").
+      const statusCell =
+        ra.status === "DQ" && ra.dqReasonCode ? ra.dqReasonCode : ra.status;
 
       lines.push(
         [
-          bibMap.get(ra.athleteId) ?? "?",
+          bib,
+          ageStart !== null ? ageGroupLabel(ageStart) : "",
           ra.athlete.name,
           ra.athlete.country,
           ra.athlete.affiliation?.name ?? "",
-          ra.status,
+          statusCell,
           ra.position ?? "",
           yellow,
           confirmedRed,

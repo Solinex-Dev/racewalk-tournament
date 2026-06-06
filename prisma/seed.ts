@@ -30,6 +30,7 @@ import "./load-env";
 import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma";
 import { normalizePermissions } from "../lib/permissions";
+import { dqReasonLabel } from "../lib/dq-reasons";
 
 const RESET_FLAG = process.argv.includes("--reset");
 
@@ -282,6 +283,10 @@ type AthleteScenario = {
   paceSec: number;       // seconds per lap (= per km)
   cards?: CardSpec[];
   reason?: string;       // DNF reason
+  // DQ rule code (WA reference, e.g. "TR54.13"). For a card-based DQ (4 reds) it
+  // defaults to "TR54.7.5" (fourth red card); pass an explicit code for a
+  // moderator post-race DQ (no 4-red requirement), or null for a plain DQ.
+  dqCode?: string | null;
 };
 
 type Officials = {
@@ -568,8 +573,10 @@ const ROUNDS: RoundConfig[] = [
                 R("F", "jud-01", 4, "CONFIRMED"), R("K", "jud-02", 6, "CONFIRMED"), R("F", "jud-03", 7, "CONFIRMED")] },
       { athleteId: "ath-m04", bib: "4", outcome: "FINISH", laps: 8, paceSec: 270 },
       { athleteId: "ath-m05", bib: "5", outcome: "FINISH", laps: 7, paceSec: 276, cards: [Y("K", "jud-02", 5)] },
-      // DQ mid-race — 4 confirmed reds from 4 distinct zone judges + an early yellow
-      { athleteId: "ath-m08", bib: "8", outcome: "DQ", laps: 6, paceSec: 280,
+      // DQ mid-race — 4 confirmed reds from 4 distinct zone judges + an early yellow.
+      // dqCode:null → plain "DQ" (auto-DQ, no rule code) so the board/exports show
+      // the un-coded case alongside the coded ones below.
+      { athleteId: "ath-m08", bib: "8", outcome: "DQ", laps: 6, paceSec: 280, dqCode: null,
         cards: [Y("F", "jud-01", 1),
                 R("K", "jud-01", 2, "CONFIRMED"), R("F", "jud-02", 3, "CONFIRMED"),
                 R("K", "jud-03", 4, "CONFIRMED"), R("F", "jud-04", 5, "CONFIRMED")] },
@@ -625,7 +632,7 @@ const ROUNDS: RoundConfig[] = [
   {
     id: "rnd-fin-w", eventId: "evt-fin-nat", name: "หญิง 20 กม.", heatName: "Women 20 km — Final",
     status: "FINISHED", distanceKm: 20, startedAt: new Date("2025-03-15T11:00:30Z"), endedAt: new Date("2025-03-15T12:45:00Z"),
-    scheduledTime: new Date("2025-03-15T11:00:00Z"), note: "ผลแชมป์หญิง 2025 — 5 จบ, 1 DNF",
+    scheduledTime: new Date("2025-03-15T11:00:00Z"), note: "ผลแชมป์หญิง 2025 — 5 จบ, 1 ตัดสิทธิ์ภายหลัง (DQ — ลดระยะทาง TR54.13)",
     officials: { zones: ["jud-08", "jud-09", "jud-10", "jud-04"], head: "jud-11", logger: "jud-06" },
     scenarios: [
       { athleteId: "ath-w01", bib: "21", outcome: "FINISH", position: 1, laps: 20, paceSec: 276 },
@@ -633,7 +640,8 @@ const ROUNDS: RoundConfig[] = [
       { athleteId: "ath-w02", bib: "22", outcome: "FINISH", position: 3, laps: 20, paceSec: 283 },
       { athleteId: "ath-w05", bib: "25", outcome: "FINISH", position: 4, laps: 20, paceSec: 287, cards: [Y("K", "jud-09", 6), R("K", "jud-10", 10, "OVERRIDDEN")] },
       { athleteId: "ath-w04", bib: "24", outcome: "FINISH", position: 5, laps: 20, paceSec: 292 },
-      { athleteId: "ath-w06", bib: "26", outcome: "DNF", laps: 9, paceSec: 296, reason: "ถอนตัว — เป็นตะคริว" },
+      // Post-race moderator DQ (rule found on review) — shortening the distance.
+      { athleteId: "ath-w06", bib: "26", outcome: "DQ", laps: 18, paceSec: 296, dqCode: "TR54.13" },
       // bibStart 100 — event-scoped BIB; men's round (rnd-fin-m) fillers use 50+.
       ...genFillers({ ids: womenFill(16), bibStart: 100, startPos: 6, zones: ["jud-08", "jud-09", "jud-10", "jud-04"], lapCount: 20, basePace: 290, mode: "finished", dqAt: [10], dnfAt: [4] }),
     ],
@@ -667,14 +675,15 @@ const ROUNDS: RoundConfig[] = [
   {
     id: "rnd-asia-jw", eventId: "evt-fin-asia", name: "Junior Women 10 km Final", heatName: "Asian Junior Women 10 km",
     status: "FINISHED", distanceKm: 10, startedAt: new Date("2024-09-15T09:30:30Z"), endedAt: new Date("2024-09-15T10:25:00Z"),
-    scheduledTime: new Date("2024-09-15T09:30:00Z"), note: "4 จบ, 1 DNF",
+    scheduledTime: new Date("2024-09-15T09:30:00Z"), note: "4 จบ, 1 ตัดสิทธิ์ภายหลัง (DQ — ใช้อุปกรณ์อิเล็กทรอนิกส์ TR7.1[TR6.3.2])",
     officials: { zones: ["jud-01", "jud-02", "jud-12", "jud-13"], head: "jud-05", logger: "jud-06" },
     scenarios: [
       { athleteId: "ath-jw01", bib: "11", outcome: "FINISH", position: 1, laps: 10, paceSec: 300, cards: [Y("F", "jud-02", 5)] },
       { athleteId: "ath-jw02", bib: "12", outcome: "FINISH", position: 2, laps: 10, paceSec: 305 },
       { athleteId: "ath-jw03", bib: "13", outcome: "FINISH", position: 3, laps: 10, paceSec: 309, cards: [Y("K", "jud-01", 4), Y("F", "jud-12", 8)] },
       { athleteId: "ath-jw05", bib: "15", outcome: "FINISH", position: 4, laps: 10, paceSec: 314 },
-      { athleteId: "ath-jw04", bib: "14", outcome: "DNF", laps: 5, paceSec: 318, reason: "ถอนตัว — อ่อนเพลียจากความร้อน" },
+      // Post-race moderator DQ (rule found on review) — use of an electronic device.
+      { athleteId: "ath-jw04", bib: "14", outcome: "DQ", laps: 9, paceSec: 318, dqCode: "TR7.1[TR6.3.2]" },
       // bibStart 100 — event-scoped BIB; men's round (rnd-asia-jm) fillers use 50+.
       ...genFillers({ ids: womenFill(14), bibStart: 100, startPos: 5, zones: ["jud-01", "jud-02", "jud-12", "jud-13"], lapCount: 10, basePace: 308, mode: "finished", dnfAt: [7] }),
     ],
@@ -728,7 +737,7 @@ type CardRow = {
   color: "YELLOW" | "RED"; symbol: "BENT_KNEE" | "LIFTED_FOOT";
   state: "PENDING" | "CONFIRMED" | "OVERRIDDEN" | null; decidedBy: string | null; decidedAt: Date | null; issuedAt: Date;
 };
-type RoundAthleteRow = { roundId: string; athleteId: string; sortOrder: number; status: "OK" | "DQ" | "DNF"; position: number | null };
+type RoundAthleteRow = { roundId: string; athleteId: string; sortOrder: number; status: "OK" | "DQ" | "DNF"; position: number | null; dqReasonCode: string | null };
 type EventAthleteRow = { eventId: string; athleteId: string; bib: string };
 type OfficialRow = { roundId: string; judgeId: string; position: "JUDGE" | "HEAD_JUDGE" | "EVENT_LOGGER"; secretCode: string; zone: string | null };
 type LogRow = {
@@ -742,12 +751,25 @@ function judgeName(id: string): string {
   return SEED_JUDGES.find((j) => j.id === id)?.name ?? id;
 }
 
+// Masters/senior 5-year age bands. BIBs are generated as [band][3-digit seq], so
+// they always match the required format (5 digits for 35-95, 6 for 100/105) and
+// showcase the age-group feature. Athletes are spread round-robin across bands.
+const AGE_BANDS = [35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105];
+
+function masterBib(nthInEvent: number): string {
+  const band = AGE_BANDS[nthInEvent % AGE_BANDS.length];
+  const seq = Math.floor(nthInEvent / AGE_BANDS.length) + 1;
+  return `${band}${String(seq).padStart(3, "0")}`;
+}
+
 function buildAll() {
   const roundAthletes: RoundAthleteRow[] = [];
   // eventAthlete is keyed by "eventId|athleteId" for dedup across rounds.
   const eventAthleteMap = new Map<string, EventAthleteRow>();
-  // "eventId|bib" → athleteId, to detect BIB collisions within an event.
-  const bibOwner = new Map<string, string>();
+  // "eventId|athleteId" → generated BIB, reused for activity-log targetBib.
+  const bibByEventAthlete = new Map<string, string>();
+  // eventId → count of distinct athletes seen so far (drives BIB generation).
+  const eventAthleteSeq = new Map<string, number>();
   const officials: OfficialRow[] = [];
   const cards: CardRow[] = [];
   const laps: LapRow[] = [];
@@ -793,27 +815,25 @@ function buildAll() {
       // final) and keeps one BIB; we record it once, on first sighting.
       const eaKey = `${rc.eventId}|${sc.athleteId}`;
       if (!eventAthleteMap.has(eaKey)) {
-        // Guard the @@unique([eventId, bib]) constraint at build time so a seed
-        // edit that reuses a BIB across rounds fails with a clear message instead
-        // of a cryptic P2002 mid-insert.
-        const bibKey = `${rc.eventId}|${sc.bib}`;
-        const owner = bibOwner.get(bibKey);
-        if (owner && owner !== sc.athleteId) {
-          throw new Error(
-            `[seed] BIB collision in event ${rc.eventId}: bib "${sc.bib}" is assigned to both ${owner} and ${sc.athleteId}. BIB must be unique per event.`,
-          );
-        }
-        bibOwner.set(bibKey, sc.athleteId);
-        eventAthleteMap.set(eaKey, { eventId: rc.eventId, athleteId: sc.athleteId, bib: sc.bib });
+        // Generate a valid masters BIB: [age band][3-digit seq], unique per event.
+        const n = eventAthleteSeq.get(rc.eventId) ?? 0;
+        const bib = masterBib(n);
+        eventAthleteSeq.set(rc.eventId, n + 1);
+        bibByEventAthlete.set(eaKey, bib);
+        eventAthleteMap.set(eaKey, { eventId: rc.eventId, athleteId: sc.athleteId, bib });
       }
+      const athleteBib = bibByEventAthlete.get(eaKey) ?? "";
 
-      // RoundAthlete row (no bib — bib lives on EventAthlete)
-      roundAthletes.push({
+      // RoundAthlete row (no bib — bib lives on EventAthlete). Keep a reference so
+      // the DQ block below can stamp the resolved dqReasonCode onto it.
+      const raRow: RoundAthleteRow = {
         roundId: rc.id, athleteId: sc.athleteId,
         sortOrder: raSeq++,
         status: sc.outcome === "FINISH" ? "OK" : sc.outcome,
         position: sc.outcome === "FINISH" ? sc.position ?? null : null,
-      });
+        dqReasonCode: null,
+      };
+      roundAthletes.push(raRow);
 
       // No timing/cards for not-yet-started rounds
       if (!rc.startedAt) continue;
@@ -871,7 +891,7 @@ function buildAll() {
           roundId: rc.id, timestamp: issuedAt,
           actorId: card.judge, actorName: judgeName(card.judge), actorRole: "JUDGE",
           actionType: isRed ? "red_card" : "yellow_card",
-          targetAthleteId: sc.athleteId, targetBib: sc.bib,
+          targetAthleteId: sc.athleteId, targetBib: athleteBib,
           details: SYMBOL_TH[card.sym], canOverride: isRed,
         });
 
@@ -881,7 +901,7 @@ function buildAll() {
             roundId: rc.id, timestamp: decidedAt,
             actorId: rc.officials.head, actorName: headName, actorRole: "HEAD_JUDGE",
             actionType: "red_card_override",
-            targetAthleteId: sc.athleteId, targetBib: sc.bib,
+            targetAthleteId: sc.athleteId, targetBib: athleteBib,
             details: `ยกเลิกใบแดง (${SYMBOL_TH[card.sym]})`,
           });
         }
@@ -890,21 +910,39 @@ function buildAll() {
         }
       }
 
-      // Rule check + DQ log: a DQ athlete must have ≥4 confirmed reds from 4 judges
+      // DQ handling — two realistic paths:
+      //   • card-based: ≥4 confirmed reds from 4 distinct judges → auto-DQ. The WA
+      //     code is TR54.7.5 (fourth red card) by default; pass dqCode:null for a
+      //     plain "DQ" (no code).
+      //   • moderator post-race: an explicit dqCode with <4 reds → the new
+      //     "ตัดสิทธิ์ภายหลัง" flow (rule found after the race). No 4-red requirement.
       if (sc.outcome === "DQ") {
         const distinctJudges = new Set(confirmedRedDecisions.map((d) => d.judge));
-        if (distinctJudges.size < 4) {
+        const cardBased = distinctJudges.size >= 4;
+        if (cardBased) {
+          raRow.dqReasonCode = sc.dqCode === undefined ? "TR54.7.5" : sc.dqCode;
+          const fourthAt = confirmedRedDecisions.map((d) => d.at).sort((a, b) => a - b)[3];
+          const codeSuffix = raRow.dqReasonCode ? ` [${dqReasonLabel(raRow.dqReasonCode)}]` : "";
+          logs.push({
+            id: `log-${rc.id}-${sc.athleteId}-dq`, roundId: rc.id, timestamp: new Date(fourthAt),
+            actorId: rc.officials.head, actorName: headName, actorRole: "HEAD_JUDGE",
+            actionType: "athlete_dq", targetAthleteId: sc.athleteId, targetBib: athleteBib,
+            details: `ตัดสิทธิ์ (DQ) — ครบใบแดง 4 ใบ จาก 4 กรรมการ${codeSuffix}`,
+          });
+        } else if (sc.dqCode) {
+          raRow.dqReasonCode = sc.dqCode;
+          const atMs = startMs + lapCum[sc.laps] + seconds(45);
+          logs.push({
+            id: `log-${rc.id}-${sc.athleteId}-dq`, roundId: rc.id, timestamp: new Date(atMs),
+            actorId: "system", actorName: "Moderator", actorRole: "MODERATOR",
+            actionType: "moderator_override_status", targetAthleteId: sc.athleteId, targetBib: athleteBib,
+            details: `ตัดสิทธิ์ภายหลังการแข่งขัน (DQ) — ${dqReasonLabel(sc.dqCode)}`,
+          });
+        } else {
           throw new Error(
-            `[seed] ${rc.id}/${sc.athleteId} is DQ but has ${distinctJudges.size} confirmed reds (need 4 distinct judges)`,
+            `[seed] ${rc.id}/${sc.athleteId} is DQ but has ${distinctJudges.size} confirmed reds and no dqCode (need 4 distinct judges or an explicit dqCode)`,
           );
         }
-        const fourthAt = confirmedRedDecisions.map((d) => d.at).sort((a, b) => a - b)[3];
-        logs.push({
-          id: `log-${rc.id}-${sc.athleteId}-dq`, roundId: rc.id, timestamp: new Date(fourthAt),
-          actorId: rc.officials.head, actorName: headName, actorRole: "HEAD_JUDGE",
-          actionType: "athlete_dq", targetAthleteId: sc.athleteId, targetBib: sc.bib,
-          details: "ตัดสิทธิ์ (DQ) — ครบใบแดง 4 ใบ จาก 4 กรรมการ",
-        });
       }
 
       // DNF log
@@ -914,7 +952,7 @@ function buildAll() {
         logs.push({
           id: `log-${rc.id}-${sc.athleteId}-dnf`, roundId: rc.id, timestamp: new Date(atMs),
           actorId: "system", actorName: "Moderator", actorRole: "MODERATOR",
-          actionType: "athlete_dnf", targetAthleteId: sc.athleteId, targetBib: sc.bib,
+          actionType: "athlete_dnf", targetAthleteId: sc.athleteId, targetBib: athleteBib,
           details: `ไม่จบการแข่งขัน (DNF, รอบที่ ${sc.laps})${dnfReasonSuffix}`,
         });
       }
@@ -1080,7 +1118,8 @@ async function main() {
   for (const ra of GEN.roundAthletes) {
     await prisma.roundAthlete.upsert({
       where: { roundId_athleteId: { roundId: ra.roundId, athleteId: ra.athleteId } },
-      create: ra, update: { sortOrder: ra.sortOrder, status: ra.status, position: ra.position },
+      create: ra,
+      update: { sortOrder: ra.sortOrder, status: ra.status, position: ra.position, dqReasonCode: ra.dqReasonCode },
     });
   }
   console.log(`[seed] roundAthletes:  ${GEN.roundAthletes.length}`);
