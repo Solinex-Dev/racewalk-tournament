@@ -29,6 +29,7 @@ export default async function AthletesPage() {
     id: a.id,
     prefix: a.prefix ?? "",
     first_name: a.firstName ?? a.name,
+    middle_name: a.middleName ?? "",
     last_name: a.lastName ?? "",
     affiliation: a.affiliation?.name ?? "",
     club: a.club ?? "",

@@ -27,7 +27,7 @@ export default async function AdminSettingsPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { name: true, prefix: true, firstName: true, lastName: true, email: true, title: true },
+    select: { name: true, prefix: true, firstName: true, middleName: true, lastName: true, email: true, title: true },
   });
   if (!user) {
     redirect(`/admin/login?callbackUrl=${encodeURIComponent(settingsPath)}`);
@@ -52,6 +52,7 @@ export default async function AdminSettingsPage() {
         <ProfileForm
           defaultPrefix={user.prefix ?? ""}
           defaultFirstName={user.firstName ?? user.name ?? ""}
+          defaultMiddleName={user.middleName ?? ""}
           defaultLastName={user.lastName ?? ""}
           defaultEmail={user.email ?? ""}
           defaultTitle={user.title ?? ""}

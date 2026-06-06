@@ -11,12 +11,16 @@ export const PREFIX_OPTIONS = ["นาย", "นาง", "นางสาว"] a
 export type PersonNameParts = {
   prefix?: string | null;
   firstName?: string | null;
+  middleName?: string | null;
   lastName?: string | null;
 };
 
-/** Build the denormalized display name from structured parts (space-joined). */
+/**
+ * Build the denormalized display name from structured parts (space-joined).
+ * Order: prefix → firstName → middleName → lastName.
+ */
 export function composeName(parts: PersonNameParts): string {
-  return [parts.prefix, parts.firstName, parts.lastName]
+  return [parts.prefix, parts.firstName, parts.middleName, parts.lastName]
     .map((p) => (p ?? "").trim())
     .filter(Boolean)
     .join(" ");

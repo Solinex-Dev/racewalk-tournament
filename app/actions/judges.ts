@@ -9,6 +9,7 @@ import { composeName } from "@/lib/person-name";
 export type JudgeActionData = {
   prefix: string | null;
   firstName: string;
+  middleName: string | null;
   lastName: string | null;
   country: string;
   province: string | null;
@@ -21,6 +22,7 @@ export type JudgeActionData = {
 async function buildJudgeData(data: JudgeActionData) {
   const prefix = data.prefix?.trim() || null;
   const firstName = data.firstName.trim();
+  const middleName = data.middleName?.trim() || null;
   const lastName = data.lastName?.trim() || null;
 
   let organizationId = data.organizationId || null;
@@ -41,9 +43,10 @@ async function buildJudgeData(data: JudgeActionData) {
   }
 
   return {
-    name: composeName({ prefix, firstName, lastName }),
+    name: composeName({ prefix, firstName, middleName, lastName }),
     prefix,
     firstName,
+    middleName,
     lastName,
     country: data.country || "TH",
     province: data.province?.trim() || null,

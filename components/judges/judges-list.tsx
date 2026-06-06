@@ -19,6 +19,7 @@ type Judge = {
   id: string;
   prefix: string;
   first_name: string;
+  middle_name: string;
   last_name: string;
   department: string;
   organization: string;
@@ -73,6 +74,7 @@ export function JudgesList({ judges }: Readonly<JudgesListProps>) {
         !searchQuery ||
         judge.prefix?.toLowerCase().includes(searchLower) ||
         judge.first_name.toLowerCase().includes(searchLower) ||
+        judge.middle_name.toLowerCase().includes(searchLower) ||
         judge.last_name.toLowerCase().includes(searchLower) ||
         judge.department.toLowerCase().includes(searchLower) ||
         judge.organization.toLowerCase().includes(searchLower) ||
@@ -294,7 +296,9 @@ export function JudgesList({ judges }: Readonly<JudgesListProps>) {
                   paginatedJudges.map((judge) => (
                     <tr key={judge.id} className="hover:bg-slate-50/80">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                      {judge.prefix ? `${judge.prefix} ` : ""} {judge.first_name} {judge.last_name}
+                      {[judge.prefix, judge.first_name, judge.middle_name, judge.last_name]
+                        .filter(Boolean)
+                        .join(" ")}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {judge.country || "-"}

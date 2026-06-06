@@ -29,6 +29,7 @@ import {
 export type AdminFormValues = {
   prefix: string;
   firstName: string;
+  middleName: string;
   lastName: string;
   email: string;
   title: string;
@@ -51,6 +52,7 @@ function initValues(d?: Partial<AdminFormValues>): AdminFormValues {
   return {
     prefix: d?.prefix ?? "",
     firstName: d?.firstName ?? "",
+    middleName: d?.middleName ?? "",
     lastName: d?.lastName ?? "",
     email: d?.email ?? "",
     title: d?.title ?? "",
@@ -136,6 +138,7 @@ export function AdminForm({
         const payload = {
           prefix: form.prefix.trim() || null,
           firstName: form.firstName.trim(),
+          middleName: form.middleName.trim() || null,
           lastName: form.lastName.trim() || null,
           email: form.email.trim(),
           title: form.title.trim(),
@@ -201,7 +204,7 @@ export function AdminForm({
       <CardContent className="py-4">
         {editing ? (
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <PersonNameFields prefix={form.prefix} firstName={form.firstName} lastName={form.lastName} onChange={set} disabled={isPending} />
+            <PersonNameFields prefix={form.prefix} firstName={form.firstName} middleName={form.middleName} lastName={form.lastName} onChange={set} disabled={isPending} />
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">

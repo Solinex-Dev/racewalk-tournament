@@ -37,6 +37,7 @@ export default async function JudgesPage() {
     id: j.id,
     prefix: j.prefix ?? "",
     first_name: j.firstName ?? j.name,
+    middle_name: j.middleName ?? "",
     last_name: j.lastName ?? "",
     country: countryLabel(j.country),
     province: j.province ?? "",

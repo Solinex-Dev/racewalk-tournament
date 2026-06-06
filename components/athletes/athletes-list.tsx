@@ -19,6 +19,7 @@ type Athlete = {
   id: string;
   prefix: string;
   first_name: string;
+  middle_name: string;
   last_name: string;
   affiliation: string;
   country: string;
@@ -79,6 +80,7 @@ export function AthletesList({ athletes }: Readonly<AthletesListProps>) {
         !searchQuery ||
         athlete.prefix?.toLowerCase().includes(searchLower) ||
         athlete.first_name.toLowerCase().includes(searchLower) ||
+        athlete.middle_name.toLowerCase().includes(searchLower) ||
         athlete.last_name.toLowerCase().includes(searchLower) ||
         athlete.affiliation.toLowerCase().includes(searchLower) ||
         athlete.country.toLowerCase().includes(searchLower) ||
@@ -300,7 +302,9 @@ export function AthletesList({ athletes }: Readonly<AthletesListProps>) {
                   paginatedAthletes.map((athlete) => (
                     <tr key={athlete.id} className="hover:bg-slate-50/80">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                        {athlete.prefix ? `${athlete.prefix} ` : ""}{athlete.first_name} {athlete.last_name}
+                        {[athlete.prefix, athlete.first_name, athlete.middle_name, athlete.last_name]
+                          .filter(Boolean)
+                          .join(" ")}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {athlete.affiliation || "-"}

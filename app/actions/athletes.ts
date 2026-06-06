@@ -9,6 +9,7 @@ import { composeName } from "@/lib/person-name";
 export type AthleteActionData = {
   prefix: string | null;
   firstName: string;
+  middleName: string | null;
   lastName: string | null;
   country: string;
   affiliationId: string | null;
@@ -20,11 +21,13 @@ export type AthleteActionData = {
 function buildAthleteData(data: AthleteActionData) {
   const prefix = data.prefix?.trim() || null;
   const firstName = data.firstName.trim();
+  const middleName = data.middleName?.trim() || null;
   const lastName = data.lastName?.trim() || null;
   return {
-    name: composeName({ prefix, firstName, lastName }),
+    name: composeName({ prefix, firstName, middleName, lastName }),
     prefix,
     firstName,
+    middleName,
     lastName,
     country: data.country || "TH",
     affiliationId: data.affiliationId || null,

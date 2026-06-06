@@ -12,6 +12,7 @@ import { normalizePermissions, type PermissionMatrix } from "@/lib/permissions";
 export type AdminActionData = {
   prefix: string | null;
   firstName: string;
+  middleName: string | null;
   lastName: string | null;
   email: string;
   title: string;
@@ -50,15 +51,17 @@ export async function createAdmin(data: AdminActionData) {
   // Only a Root Admin may grant Root.
   const isRoot = data.isRoot && me.isRoot;
   const prefix = data.prefix?.trim() || null;
+  const middleName = data.middleName?.trim() || null;
   const lastName = data.lastName?.trim() || null;
   const passwordHash = await bcrypt.hash(data.password, 10);
 
   const user = await prisma.user.create({
     data: {
       email,
-      name: composeName({ prefix, firstName, lastName }),
+      name: composeName({ prefix, firstName, middleName, lastName }),
       prefix,
       firstName,
+      middleName,
       lastName,
       title: data.title.trim(),
       role: "ADMIN",
@@ -109,13 +112,15 @@ export async function updateAdmin(id: string, data: AdminActionData) {
   }
 
   const prefix = data.prefix?.trim() || null;
+  const middleName = data.middleName?.trim() || null;
   const lastName = data.lastName?.trim() || null;
 
   const updates: Parameters<typeof prisma.user.update>[0]["data"] = {
     email,
-    name: composeName({ prefix, firstName, lastName }),
+    name: composeName({ prefix, firstName, middleName, lastName }),
     prefix,
     firstName,
+    middleName,
     lastName,
     title: data.title.trim(),
     status: data.status,

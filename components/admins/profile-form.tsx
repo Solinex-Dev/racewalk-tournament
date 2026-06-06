@@ -14,6 +14,7 @@ import { composeName } from "@/lib/person-name";
 type Props = {
   defaultPrefix: string;
   defaultFirstName: string;
+  defaultMiddleName: string;
   defaultLastName: string;
   defaultEmail: string;
   defaultTitle: string;
@@ -34,6 +35,7 @@ function Field({ label, value }: Readonly<{ label: string; value: string }>) {
 export function ProfileForm({
   defaultPrefix,
   defaultFirstName,
+  defaultMiddleName,
   defaultLastName,
   defaultEmail,
   defaultTitle,
@@ -44,6 +46,7 @@ export function ProfileForm({
   const [profile, setProfile] = React.useState({
     prefix: defaultPrefix,
     firstName: defaultFirstName,
+    middleName: defaultMiddleName,
     lastName: defaultLastName,
     email: defaultEmail,
     title: defaultTitle,
@@ -133,6 +136,7 @@ export function ProfileForm({
               <PersonNameFields
                 prefix={draft.prefix}
                 firstName={draft.firstName}
+                middleName={draft.middleName}
                 lastName={draft.lastName}
                 onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
                 disabled={isPending}

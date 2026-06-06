@@ -73,6 +73,7 @@ export default async function JudgeDetailPage(props: Readonly<Props>) {
           defaultValues={{
             prefix: judge.prefix ?? "",
             firstName: judge.firstName ?? judge.name,
+            middleName: judge.middleName ?? "",
             lastName: judge.lastName ?? "",
             country: judge.country,
             province: judge.province ?? "",

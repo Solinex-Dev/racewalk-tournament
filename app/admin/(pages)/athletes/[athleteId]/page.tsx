@@ -79,6 +79,7 @@ export default async function AthleteDetailPage(props: Readonly<Props>) {
           defaultValues={{
             prefix: athlete.prefix ?? "",
             firstName: athlete.firstName ?? athlete.name,
+            middleName: athlete.middleName ?? "",
             lastName: athlete.lastName ?? "",
             country: athlete.country,
             affiliationId: athlete.affiliationId ?? "",
