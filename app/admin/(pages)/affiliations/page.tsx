@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AffiliationsList } from "@/components/affiliations/affiliations-list";
+import { CsvExportImport } from "@/components/admin/csv-export-import";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 import { countryLabel } from "@/lib/data/countries";
@@ -54,13 +55,18 @@ export default async function AffiliationsPage() {
             </p>
           </div>
 
-          {hasPermission(me, "affiliations", "create") && (
-            <Link href="/admin/affiliations/new">
-              <Button className="rounded-xl px-4 py-2 text-sm font-medium">
-                + เพิ่มสังกัด / สโมสรใหม่
-              </Button>
-            </Link>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {me?.isRoot && (
+              <CsvExportImport entity="affiliation" exportHref="/api/admin/export/affiliations" />
+            )}
+            {hasPermission(me, "affiliations", "create") && (
+              <Link href="/admin/affiliations/new">
+                <Button className="rounded-xl px-4 py-2 text-sm font-medium">
+                  + เพิ่มสังกัด / สโมสรใหม่
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
 
         <AffiliationsList affiliations={affiliations} />
