@@ -210,7 +210,7 @@ export default async function Home() {
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <Logo className="h-9 w-9 shrink-0 invert" />
+            <Logo className="h-9 w-9 shrink-0" />
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold tracking-tight">การแข่งขันเดินทน</span>
               <span className="text-[11px] text-slate-400">
@@ -235,32 +235,39 @@ export default async function Home() {
             <div className="absolute -left-10 top-6 h-40 w-40 rounded-full bg-sky-500/15 blur-3xl" />
             <div className="absolute bottom-0 right-0 h-48 w-48 rounded-full bg-emerald-400/10 blur-3xl" />
           </div>
-          <div className="relative max-w-2xl space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-[11px] font-medium text-sky-100 backdrop-blur">
-              {liveRounds.length > 0 ? (
-                <>
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                  </span>
-                  มี {liveRounds.length} รอบกำลังแข่งขันสด
-                </>
-              ) : (
-                <>
-                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-slate-400" />{" "}
-                  ระบบกระดานคะแนนสด
-                </>
-              )}
+          <div className="relative flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="max-w-2xl space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-[11px] font-medium text-sky-100 backdrop-blur">
+                {liveRounds.length > 0 ? (
+                  <>
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                    </span>
+                    มี {liveRounds.length} รอบกำลังแข่งขันสด
+                  </>
+                ) : (
+                  <>
+                    <span className="inline-flex h-1.5 w-1.5 rounded-full bg-slate-400" />{" "}
+                    ระบบกระดานคะแนนสด
+                  </>
+                )}
+              </div>
+
+              <h1 className="text-balance text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl lg:text-4xl">
+                ติดตามการแข่งขันเดินทนแบบเรียลไทม์
+              </h1>
+
+              <p className="max-w-lg text-sm leading-relaxed text-slate-300">
+                ดูอันดับนักกีฬา เวลา Lap ล่าสุด และใบเตือนของทุกรอบที่กำลังแข่งขัน —
+                รองรับหลายรอบที่แข่งพร้อมกัน เลือกรอบด้านล่างเพื่อเปิดกระดานคะแนนสด
+              </p>
             </div>
 
-            <h1 className="text-balance text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl lg:text-4xl">
-              ติดตามการแข่งขันเดินทนแบบเรียลไทม์
-            </h1>
-
-            <p className="max-w-lg text-sm leading-relaxed text-slate-300">
-              ดูอันดับนักกีฬา เวลา Lap ล่าสุด และใบเตือนของทุกรอบที่กำลังแข่งขัน —
-              รองรับหลายรอบที่แข่งพร้อมกัน เลือกรอบด้านล่างเพื่อเปิดกระดานคะแนนสด
-            </p>
+            <Logo
+              alt="โลโก้การแข่งขันเดินทน"
+              className="h-32 w-32 shrink-0 self-center drop-shadow-[0_4px_24px_rgba(56,189,248,0.25)] sm:h-44 sm:w-44 lg:h-52 lg:w-52"
+            />
           </div>
         </section>
 
