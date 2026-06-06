@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Reorder, useDragControls } from "framer-motion";
-import { Copy, GripVertical } from "lucide-react";
+import { Check, Copy, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -120,19 +120,33 @@ const POSITION_LABEL: Record<OfficialEntry["position"], string> = {
 /**
  * One draggable athlete row in the round's start list. The number (seq) is the
  * athlete's position in the round — this is what the Lap Time keeper screen shows.
+ * Reorder by dragging the grip handle OR by clicking the number, typing a new
+ * position and pressing Enter / ✓ (the list then re-sorts).
  */
 function RoundAthleteReorderRow({
   athleteId,
   seq,
   bib,
   name,
+  isEditingPos,
+  editPosValue,
   onRemove,
+  onStartEditPos,
+  onChangeEditPos,
+  onCommitPos,
+  onCancelPos,
 }: Readonly<{
   athleteId: string;
   seq: number;
   bib: string;
   name: string;
+  isEditingPos: boolean;
+  editPosValue: string;
   onRemove: () => void;
+  onStartEditPos: () => void;
+  onChangeEditPos: (value: string) => void;
+  onCommitPos: () => void;
+  onCancelPos: () => void;
 }>) {
   const controls = useDragControls();
   return (
@@ -151,7 +165,53 @@ function RoundAthleteReorderRow({
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <span className="w-6 shrink-0 text-center text-sm font-bold text-slate-700">{seq}</span>
+
+      {/* Position — click to edit, Enter / ✓ to apply (the list then re-sorts) */}
+      <span className="flex w-16 shrink-0 items-center gap-1">
+        {isEditingPos ? (
+          <>
+            <input
+              type="number"
+              min={1}
+              autoFocus
+              value={editPosValue}
+              onChange={(e) => onChangeEditPos(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onCommitPos();
+                } else if (e.key === "Escape") {
+                  onCancelPos();
+                }
+              }}
+              onBlur={onCommitPos}
+              className="h-7 w-10 rounded-md border border-slate-300 px-1 text-center text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            />
+            <button
+              type="button"
+              aria-label="บันทึกลำดับ"
+              // onMouseDown (not onClick) so it fires before the input's onBlur cancels it
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onCommitPos();
+              }}
+              className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-500"
+            >
+              <Check className="h-3.5 w-3.5" />
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={onStartEditPos}
+            title="คลิกเพื่อแก้ลำดับ"
+            className="h-7 w-7 rounded-md text-sm font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+          >
+            {seq}
+          </button>
+        )}
+      </span>
+
       <span className="w-16 shrink-0 font-mono text-xs font-semibold text-slate-800">{bib}</span>
       <span className="flex-1 truncate text-xs text-slate-800">{name}</span>
       <Button
@@ -256,6 +316,30 @@ export function RoundForm({
 
   const handleRemoveAthlete = (index: number) =>
     setForm((p) => ({ ...p, athletes: p.athletes.filter((_, i) => i !== index) }));
+
+  // Inline position editing — click the number, type a new 1-based position, Enter / ✓.
+  const [editPosId, setEditPosId] = React.useState<string | null>(null);
+  const [editPosValue, setEditPosValue] = React.useState("");
+
+  // Move an athlete to a new 1-based position; the rest shift to fill in.
+  const movePosition = (athleteId: string, newPos1: number) =>
+    setForm((p) => {
+      const from = p.athletes.findIndex((a) => a.athleteId === athleteId);
+      if (from < 0 || Number.isNaN(newPos1)) return p;
+      const to = Math.min(Math.max(0, newPos1 - 1), p.athletes.length - 1);
+      if (to === from) return p;
+      const next = [...p.athletes];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return { ...p, athletes: next };
+    });
+
+  const commitPosEdit = (athleteId: string) => {
+    const n = Number.parseInt(editPosValue, 10);
+    if (!Number.isNaN(n)) movePosition(athleteId, n);
+    setEditPosId(null);
+    setEditPosValue("");
+  };
 
   // Drag-and-drop reorder — Framer Motion returns the reordered athleteIds.
   const handleReorderAthletes = (orderedIds: string[]) =>
@@ -714,7 +798,7 @@ export function RoundForm({
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-medium uppercase text-slate-500">
                   <span className="w-5 shrink-0" aria-hidden />
-                  <span className="w-6 shrink-0 text-center">#</span>
+                  <span className="w-16 shrink-0">ลำดับ</span>
                   <span className="w-16 shrink-0">Bib</span>
                   <span className="flex-1">นักกีฬา</span>
                   <span className="w-12 shrink-0 text-right">ลบ</span>
@@ -734,6 +818,18 @@ export function RoundForm({
                         seq={i + 1}
                         bib={bibByAthleteId.get(row.athleteId) ?? "—"}
                         name={ea?.athleteName ?? row.athleteId}
+                        isEditingPos={editPosId === row.athleteId}
+                        editPosValue={editPosValue}
+                        onStartEditPos={() => {
+                          setEditPosId(row.athleteId);
+                          setEditPosValue(String(i + 1));
+                        }}
+                        onChangeEditPos={setEditPosValue}
+                        onCommitPos={() => commitPosEdit(row.athleteId)}
+                        onCancelPos={() => {
+                          setEditPosId(null);
+                          setEditPosValue("");
+                        }}
                         onRemove={() =>
                           setDeleteTarget({
                             kind: "athlete",

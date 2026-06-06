@@ -16,6 +16,7 @@ const makeAthletes = (n: number) =>
     id: `id-${i}`,
     prefix: "นาย",
     first_name: `Athlete${i}`,
+    middle_name: "",
     last_name: "X",
     affiliation: "Aff",
     country: "Thailand",
