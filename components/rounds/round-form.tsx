@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Reorder, useDragControls } from "framer-motion";
-import { Check, Copy, GripVertical } from "lucide-react";
+import { Check, Copy, GripVertical, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -62,6 +62,8 @@ type RoundFormProps = {
    * run simultaneously; the join resolves a code within the event).
    */
   existingEventCodes?: string[];
+  /** Lock the whole form (read-only) — used while the round is ONGOING. */
+  locked?: boolean;
   defaultValues?: Partial<RoundFormValues>;
 };
 
@@ -235,6 +237,7 @@ export function RoundForm({
   judgeOptions,
   eventDate,
   existingEventCodes,
+  locked = false,
   defaultValues,
 }: Readonly<RoundFormProps>) {
   const router = useRouter();
@@ -629,6 +632,19 @@ export function RoundForm({
     <Card className="rounded-2xl border-slate-200">
       <CardContent className="p-6">
         <form className="space-y-5" onSubmit={handleSubmit}>
+          {locked && (
+            <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <div>
+                <p className="font-semibold">รอบนี้กำลังแข่งขันอยู่ — แก้ไขข้อมูลไม่ได้</p>
+                <p className="mt-0.5 text-xs text-amber-700">
+                  จะแก้ไขได้อีกครั้งเมื่อรอบจบการแข่งขัน • หากต้องแก้ไขระหว่างแข่ง ให้ใช้หน้า “Moderator”
+                </p>
+              </div>
+            </div>
+          )}
+          {/* All controls disable natively when the round is live (locked). */}
+          <fieldset disabled={locked} className="min-w-0 space-y-5">
           {/* Basic info */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
@@ -1036,6 +1052,7 @@ export function RoundForm({
               {isPending ? "กำลังบันทึก..." : submitLabel}
             </Button>
           </div>
+          </fieldset>
         </form>
 
         {/* Athlete Picker Modal */}
