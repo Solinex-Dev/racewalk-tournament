@@ -11,6 +11,7 @@ import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission } from "@/lib/permissions";
 import { resolveAudit } from "@/lib/audit";
 import { AuditInfo } from "@/components/common/audit-info";
+import { metersFromKm } from "@/lib/distance";
 
 export const metadata: Metadata = {
   title: "จัดการกิจกรรม – การแข่งขันเดินทน",
@@ -19,30 +20,43 @@ export const metadata: Metadata = {
 
 type Props = { params: Promise<{ eventId: string }> };
 
-function toDateInput(dt: Date) {
-  return dt.toISOString().slice(0, 10);
+/** Date → "yyyy-mm-ddThh:mm" in local wall-clock, for a datetime-local input. */
+function toDatetimeLocal(dt: Date) {
+  return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
-export default async function EventDetailPage(props: Props) {
+export default async function EventDetailPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
-  const event = await prisma.event.findUnique({
-    where: { id: eventId, deletedAt: null },
-    include: {
-      rounds: {
-        where: { deletedAt: null },
-        orderBy: { scheduledTime: "asc" },
-        include: {
-          _count: {
-            select: {
-              roundAthletes: { where: { deletedAt: null } },
-              roundOfficials: { where: { deletedAt: null } },
+  const [event, globalAthletes] = await Promise.all([
+    prisma.event.findUnique({
+      where: { id: eventId, deletedAt: null },
+      include: {
+        rounds: {
+          where: { deletedAt: null },
+          orderBy: { scheduledTime: "asc" },
+          include: {
+            _count: {
+              select: {
+                roundAthletes: { where: { deletedAt: null } },
+                roundOfficials: { where: { deletedAt: null } },
+              },
             },
           },
         },
+        eventAthletes: {
+          where: { deletedAt: null },
+          orderBy: [{ sortOrder: "asc" }, { bib: "asc" }],
+          include: { athlete: { select: { name: true } } },
+        },
       },
-    },
-  });
+    }),
+    prisma.athlete.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
 
   if (!event) notFound();
 
@@ -53,11 +67,18 @@ export default async function EventDetailPage(props: Props) {
 
   const eventValues: EventFormValues = {
     name: event.name,
-    date: toDateInput(event.date),
+    // Pre-fill start time from the stored startTime; fall back to the event's
+    // calendar day (for events created before start/end times existed).
+    startTime: toDatetimeLocal(event.startTime ?? event.date),
+    endTime: event.endTime ? toDatetimeLocal(event.endTime) : "",
     location: event.location,
-    distanceKm: event.distanceKm,
+    distanceMeters: metersFromKm(event.distanceKm),
     lapCount: event.lapCount,
     status: event.status,
+    athletes: event.eventAthletes.map((ea) => ({
+      athleteId: ea.athleteId,
+      bib: ea.bib,
+    })),
   };
 
   const rounds: Round[] = event.rounds.map((r) => ({
@@ -111,13 +132,18 @@ export default async function EventDetailPage(props: Props) {
             eventId={eventId}
             canEdit={hasPermission(me, "events", "edit")}
             defaultValues={eventValues}
+            globalAthletes={globalAthletes}
           />
           <div className="mt-3">
             <AuditInfo {...audit} />
           </div>
         </div>
 
-        <RoundsList eventId={eventId} rounds={rounds} />
+        <RoundsList
+          eventId={eventId}
+          rounds={rounds}
+          eventFinished={event.status === "FINISHED"}
+        />
       </div>
     </main>
   );

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { metersFromKm } from "@/lib/distance";
 import {
   Select,
   SelectContent,
@@ -21,7 +22,7 @@ import {
   MoreHorizontal,
   Pencil,
   FileText,
-  Radio,
+  MonitorDot,
 } from "lucide-react";
 import { ListFiltersPanel } from "@/components/admin/list-filters-panel";
 import {
@@ -67,10 +68,10 @@ const STATUS_LABEL: Record<AdminEvent["status"], string> = {
 function ActionIconTooltip({
   label,
   children,
-}: {
+}: Readonly<{
   label: string;
   children: ReactNode;
-}) {
+}>) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
@@ -86,7 +87,7 @@ export function EventsList({
   canModerate = false,
   canViewEvents = false,
   canViewReports = false,
-}: EventsListProps) {
+}: Readonly<EventsListProps>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState<string>("all");
@@ -115,8 +116,8 @@ export function EventsList({
   // Extract unique values for filters
   const locations = useMemo(() => {
     const uniqueLocations = Array.from(
-      new Set(events.map((e) => e.location).filter(Boolean) as string[])
-    ).sort();
+      new Set(events.map((e) => e.location).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueLocations;
   }, [events]);
 
@@ -130,7 +131,7 @@ export function EventsList({
         event.name.toLowerCase().includes(searchLower) ||
         event.location.toLowerCase().includes(searchLower) ||
         event.date.includes(searchQuery) ||
-        event.distance_km.includes(searchQuery);
+        metersFromKm(event.distance_km).includes(searchQuery);
 
       // Status filter
       const matchesStatus =
@@ -202,7 +203,7 @@ export function EventsList({
 
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-slate-600">
+                    <label htmlFor="events-status-filter" className="text-[11px] font-medium text-slate-600">
                       สถานะ
                     </label>
                     <Select
@@ -211,7 +212,7 @@ export function EventsList({
                         handleFilterChange(setStatusFilter, value)
                       }
                     >
-                      <SelectTrigger className="h-8 rounded-lg text-sm">
+                      <SelectTrigger id="events-status-filter" className="h-8 rounded-lg text-sm">
                         <SelectValue placeholder="ทั้งหมด" />
                       </SelectTrigger>
                       <SelectContent>
@@ -225,7 +226,7 @@ export function EventsList({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-slate-600">
+                    <label htmlFor="events-location-filter" className="text-[11px] font-medium text-slate-600">
                       สถานที่
                     </label>
                     <Select
@@ -234,7 +235,7 @@ export function EventsList({
                         handleFilterChange(setLocationFilter, value)
                       }
                     >
-                      <SelectTrigger className="h-8 rounded-lg text-sm">
+                      <SelectTrigger id="events-location-filter" className="h-8 rounded-lg text-sm">
                         <SelectValue placeholder="ทั้งหมด" />
                       </SelectTrigger>
                       <SelectContent>
@@ -350,7 +351,7 @@ export function EventsList({
                   <th className="px-4 py-3 text-left">ชื่อ Event</th>
                   <th className="px-4 py-3 text-left">วันที่แข่งขัน</th>
                   <th className="px-4 py-3 text-left">สถานที่</th>
-                  <th className="px-4 py-3 text-left">ระยะทาง (กม.)</th>
+                  <th className="px-4 py-3 text-left">ระยะทาง (ม.)</th>
                   <th className="px-4 py-3 text-left">สถานะ</th>
                   <th className="px-4 py-3 text-right">การจัดการ</th>
                 </tr>
@@ -375,7 +376,7 @@ export function EventsList({
                           {event.status === "ongoing" && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-red-700">
                               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-                              LIVE
+                              {"LIVE"}
                             </span>
                           )}
                         </div>
@@ -387,47 +388,15 @@ export function EventsList({
                         {event.location || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {event.distance_km || "-"}
+                        {metersFromKm(event.distance_km) || "-"}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
+                      <td className="px-4 py-3 text-xs text-slate-600 text-nowrap">
                         {STATUS_LABEL[event.status]}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex flex-wrap justify-end gap-2">
-                          {/* Prominent live-action buttons — only while the event is ongoing */}
-                          {event.status === "ongoing" && (
-                            <>
-                              <Link
-                                href={`/events/${event.id}`}
-                                target="_blank"
-                              >
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-lg border-emerald-300 bg-emerald-500/5 text-xs font-medium text-emerald-700 hover:bg-emerald-500/15"
-                                >
-                                  <span>เปิดหน้าอีเวนต์</span>
-                                  <ArrowUpRight className="ml-1 h-3 w-3" />
-                                </Button>
-                              </Link>
-                              <Link
-                                href={`/judge/events/${event.id}/join`}
-                                target="_blank"
-                              >
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-lg border-indigo-200 bg-indigo-500/5 text-xs font-medium text-indigo-700 hover:bg-indigo-500/15"
-                                >
-                                  ลิงก์กรรมการ
-                                  <ArrowUpRight className="h-3 w-3" />
-                                </Button>
-                              </Link>
-                            </>
-                          )}
-
                           {/* 3-dot menu for scheduled / finished (not draft, not ongoing) */}
-                          {event.status !== "ongoing" && event.status !== "draft" && (
+                          {event.status !== "draft" && (
                             <DropdownMenu>
                               <ActionIconTooltip label="เมนูเพิ่มเติม">
                                 <DropdownMenuTrigger asChild>
@@ -481,7 +450,7 @@ export function EventsList({
                               </Link>
                             </ActionIconTooltip>
                           )}
-                          {canViewReports && (
+                          {canViewReports && event.status != "draft" && (
                             <ActionIconTooltip label="Export Report">
                               <Link href={`/admin/events/${event.id}/report`}>
                                 <Button
@@ -504,7 +473,7 @@ export function EventsList({
                                   className="h-8 w-8 rounded-lg border-emerald-200 p-0 text-emerald-700 hover:bg-emerald-50"
                                   aria-label="Moderator"
                                 >
-                                  <Radio className="h-4 w-4" />
+                                  <MonitorDot className="h-4 w-4" />
                                 </Button>
                               </Link>
                             </ActionIconTooltip>
@@ -533,7 +502,7 @@ export function EventsList({
                   className="h-8 rounded-lg text-xs"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  ก่อนหน้า
+                  
                 </Button>
                 <Button
                   variant="outline"
@@ -544,7 +513,7 @@ export function EventsList({
                   disabled={currentPage === totalPages}
                   className="h-8 rounded-lg text-xs"
                 >
-                  ถัดไป
+                  
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

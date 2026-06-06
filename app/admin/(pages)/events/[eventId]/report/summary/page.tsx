@@ -7,6 +7,9 @@ import { PrintButton } from "@/components/report/print-button";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission } from "@/lib/permissions";
+import { metersFromKm } from "@/lib/distance";
+import { parseAgeGroupsParam, ageGroupLabel } from "@/lib/bib";
+import { bangkokDateThai } from "@/lib/datetime";
 import {
   loadEventSummary,
   type RoundSummary,
@@ -21,7 +24,7 @@ export const metadata: Metadata = {
 
 type Props = {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ round?: string }>;
+  searchParams: Promise<{ round?: string; ageGroups?: string }>;
 };
 
 const JUDGE_SLOTS = 8;
@@ -36,10 +39,10 @@ const ROUND_STATUS_TH: Record<RoundSummary["status"], string> = {
 };
 
 function thaiDate(d: Date): string {
-  return d.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+  return bangkokDateThai(d); // Asia/Bangkok (+07)
 }
 
-function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
+function RoundSheet({ ev, round }: Readonly<{ ev: EventSummary; round: RoundSummary }>) {
   const J = Math.max(JUDGE_SLOTS, round.judges.length);
   const slots = Array.from({ length: J }, (_, i) => round.judges[i] ?? null);
 
@@ -50,7 +53,7 @@ function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
       lift: round.athletes.filter((a) => a.marks[j.id]?.yellowLifted).length,
       bent: round.athletes.filter((a) => a.marks[j.id]?.yellowBent).length,
       rc: round.athletes.filter(
-        (a) => a.marks[j.id]?.red && a.marks[j.id]!.red!.state !== "OVERRIDDEN",
+        (a) => a.marks[j.id]?.red && a.marks[j.id].red!.state !== "OVERRIDDEN",
       ).length,
     };
   });
@@ -86,15 +89,14 @@ function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
             <td>{round.chiefJudge || "—"}</td>
           </tr>
           <tr>
-            <td className="k">EVENT / รายการ</td>
+            <td className="k">รายการ</td>
             <td colSpan={3}>
-              {ev.name} — {round.name}
-              {round.heatName ? ` (${round.heatName})` : ""}
+              {round.name}
             </td>
             <td className="k">STATUS</td>
             <td>
               {ROUND_STATUS_TH[round.status]}
-              {round.distanceKm ? ` • ${round.distanceKm} กม.` : ""}
+              {round.distanceKm ? ` • ${metersFromKm(round.distanceKm)} ม.` : ""}
             </td>
           </tr>
         </tbody>
@@ -187,30 +189,29 @@ function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
             </tr>
           ) : (
             round.athletes.map((a) => {
-              const cls = a.status === "DQ" ? "dq" : a.status === "DNF" ? "dnf" : "";
+              const nonDqCls = a.status === "DNF" ? "dnf" : "";
+              const cls = a.status === "DQ" ? "dq" : nonDqCls;
               return (
                 <tr key={a.bib} className={cls}>
                   <td className="name mono">{a.bib}</td>
                   {slots.map((j, i) => {
                     const m = j ? a.marks[j.id] : undefined;
-                    const rcCls = m?.red
-                      ? m.red.state === "OVERRIDDEN"
-                        ? "rc overridden"
-                        : m.red.state === "PENDING"
-                          ? "rc pending"
-                          : "rc"
-                      : "";
+                    let rcCls = "";
+                    let rcContent = "";
+                    if (m?.red) {
+                      if (m.red.state === "OVERRIDDEN") {
+                        rcCls = "rc overridden";
+                        rcContent = `(${m.red.symbol})`;
+                      } else {
+                        rcCls = m.red.state === "PENDING" ? "rc pending" : "rc";
+                        rcContent = m.red.symbol;
+                      }
+                    }
                     return (
                       <Fragment key={i}>
                         <td>{m?.yellowLifted ? TICK : ""}</td>
                         <td>{m?.yellowBent ? TICK : ""}</td>
-                        <td className={rcCls}>
-                          {m?.red
-                            ? m.red.state === "OVERRIDDEN"
-                              ? `(${m.red.symbol})`
-                              : m.red.symbol
-                            : ""}
-                        </td>
+                        <td className={rcCls}>{rcContent}</td>
                       </Fragment>
                     );
                   })}
@@ -265,17 +266,22 @@ function RoundSheet({ ev, round }: { ev: EventSummary; round: RoundSummary }) {
   );
 }
 
-export default async function SummaryPrintPage(props: Props) {
+export default async function SummaryPrintPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
-  const { round: roundId } = await props.searchParams;
+  const { round: roundId, ageGroups: ageGroupsRaw } = await props.searchParams;
+  const ageGroups = parseAgeGroupsParam(ageGroupsRaw);
 
   const me = await getCurrentAdmin();
   if (!hasPermission(me, "reports", "view")) return <NoAccess />;
 
-  const summary = await loadEventSummary(eventId, roundId);
+  const summary = await loadEventSummary(eventId, roundId, ageGroups);
   if (!summary) notFound();
 
-  const xlsxHref = `/api/events/${eventId}/summary-xlsx${roundId ? `?round=${roundId}` : ""}`;
+  const xlsxParams = new URLSearchParams();
+  if (roundId) xlsxParams.set("round", roundId);
+  if (ageGroups.length > 0) xlsxParams.set("ageGroups", ageGroups.join(","));
+  const xlsxQuery = xlsxParams.toString();
+  const xlsxHref = `/api/events/${eventId}/summary-xlsx${xlsxQuery ? `?${xlsxQuery}` : ""}`;
 
   return (
     <div id="summary-print" className="summary-root flex min-h-full w-full flex-1 flex-col">
@@ -297,6 +303,11 @@ export default async function SummaryPrintPage(props: Props) {
           กลับไปหน้า Report
         </Link>
         <span className="thint">เคล็ดลับ: ในกล่อง Print เลือกแนวกระดาษ “แนวนอน” (Landscape) เพื่อให้ตารางเต็มหน้า</span>
+        {ageGroups.length > 0 && (
+          <span className="tfilter">
+            กรองรุ่นอายุ: {ageGroups.map((g) => ageGroupLabel(g)).join(", ")} ปี
+          </span>
+        )}
       </div>
 
       {summary.rounds.map((round) => (
@@ -307,7 +318,9 @@ export default async function SummaryPrintPage(props: Props) {
         <section className="sheet">
           <div className="title">RACE WALKING JUDGES SUMMARY SHEET</div>
           <p className="empty" style={{ padding: 24 }}>
-            {summary.name} — ยังไม่มีรอบการแข่งขัน
+            {roundId
+              ? `${summary.name} — รอบนี้ยังแข่งไม่เสร็จ จึงยังไม่สามารถออกรายงานได้`
+              : `${summary.name} — ยังไม่มีรอบที่แข่งเสร็จสำหรับออกรายงาน`}
           </p>
         </section>
       )}
@@ -323,6 +336,7 @@ const CSS = `
 .toolbar .tlink { display:inline-flex; align-items:center; gap:6px; color:#475569; font-size:13px; text-decoration:none; }
 .toolbar .tlink:hover { text-decoration:underline; }
 .toolbar .thint { color:#64748b; font-size:12px; }
+.toolbar .tfilter { display:inline-flex; align-items:center; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; border-radius:9999px; padding:3px 10px; font-size:12px; font-weight:600; }
 
 .title { text-align:center; font-weight:700; font-size:15pt; padding:6px; letter-spacing:.4px; border:1.5px solid #000; border-bottom:none; }
 .subtitle { text-align:center; font-weight:600; padding:4px; font-size:10.5pt; border:1.5px solid #000; border-top:none; }

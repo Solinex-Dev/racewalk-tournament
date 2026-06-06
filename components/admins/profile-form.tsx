@@ -14,18 +14,19 @@ import { composeName } from "@/lib/person-name";
 type Props = {
   defaultPrefix: string;
   defaultFirstName: string;
+  defaultMiddleName: string;
   defaultLastName: string;
   defaultEmail: string;
   defaultTitle: string;
 };
 
 /** One label → value row for the read-only (display) view. */
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div className="flex flex-col gap-0.5 border-b border-slate-100 py-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-4">
       <dt className="w-44 shrink-0 text-xs font-medium text-slate-500">{label}</dt>
       <dd className="text-sm text-slate-900">
-        {value ? value : <span className="text-slate-400">—</span>}
+        {value || <span className="text-slate-400">—</span>}
       </dd>
     </div>
   );
@@ -34,16 +35,18 @@ function Field({ label, value }: { label: string; value: string }) {
 export function ProfileForm({
   defaultPrefix,
   defaultFirstName,
+  defaultMiddleName,
   defaultLastName,
   defaultEmail,
   defaultTitle,
-}: Props) {
+}: Readonly<Props>) {
   const router = useRouter();
 
   // Committed profile (what the display shows). Edit happens in a draft buffer.
   const [profile, setProfile] = React.useState({
     prefix: defaultPrefix,
     firstName: defaultFirstName,
+    middleName: defaultMiddleName,
     lastName: defaultLastName,
     email: defaultEmail,
     title: defaultTitle,
@@ -128,25 +131,21 @@ export function ProfileForm({
             )}
           </div>
 
-          {!editing ? (
-            <dl className="mt-4">
-              <Field label="ชื่อ-นามสกุล" value={composeName(profile)} />
-              <Field label="บทบาท" value={profile.title} />
-              <Field label="อีเมลสำหรับล็อกอิน" value={profile.email} />
-            </dl>
-          ) : (
+          {editing ? (
             <form className="mt-4 space-y-4" onSubmit={handleProfileSubmit}>
               <PersonNameFields
                 prefix={draft.prefix}
                 firstName={draft.firstName}
+                middleName={draft.middleName}
                 lastName={draft.lastName}
                 onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
                 disabled={isPending}
               />
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">บทบาท (label)</label>
+                <label htmlFor="profile-title" className="text-xs font-medium text-slate-700">บทบาท (label)</label>
                 <Input
+                  id="profile-title"
                   value={draft.title}
                   onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
                   className="rounded-xl border-slate-200 text-sm"
@@ -155,8 +154,9 @@ export function ProfileForm({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">อีเมลสำหรับล็อกอิน</label>
+                <label htmlFor="profile-email" className="text-xs font-medium text-slate-700">อีเมลสำหรับล็อกอิน</label>
                 <Input
+                  id="profile-email"
                   required
                   type="email"
                   value={draft.email}
@@ -184,6 +184,12 @@ export function ProfileForm({
                 </Button>
               </div>
             </form>
+          ) : (
+            <dl className="mt-4">
+              <Field label="ชื่อ-นามสกุล" value={composeName(profile)} />
+              <Field label="บทบาท" value={profile.title} />
+              <Field label="อีเมลสำหรับล็อกอิน" value={profile.email} />
+            </dl>
           )}
         </CardContent>
       </Card>
@@ -209,14 +215,13 @@ export function ProfileForm({
             )}
           </div>
 
-          {!pwOpen ? (
-            <p className="mt-4 font-mono text-base tracking-[0.3em] text-slate-400">••••••••••</p>
-          ) : (
+          {pwOpen ? (
             <form className="mt-4 space-y-4" onSubmit={handlePasswordSubmit}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-700">รหัสผ่านปัจจุบัน</label>
+                  <label htmlFor="profile-current-password" className="text-xs font-medium text-slate-700">รหัสผ่านปัจจุบัน</label>
                   <Input
+                    id="profile-current-password"
                     type="password"
                     autoComplete="current-password"
                     value={currentPassword}
@@ -225,8 +230,9 @@ export function ProfileForm({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-700">รหัสผ่านใหม่</label>
+                  <label htmlFor="profile-new-password" className="text-xs font-medium text-slate-700">รหัสผ่านใหม่</label>
                   <Input
+                    id="profile-new-password"
                     type="password"
                     autoComplete="new-password"
                     value={newPassword}
@@ -256,6 +262,8 @@ export function ProfileForm({
                 </Button>
               </div>
             </form>
+          ) : (
+            <p className="mt-4 font-mono text-base tracking-[0.3em] text-slate-400">••••••••••</p>
           )}
         </CardContent>
       </Card>

@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
+type EventSyncResult = "ONGOING" | "FINISHED" | null;
+
 /**
  * Keep Event.status in sync with the aggregate state of its rounds:
  *   - any round ONGOING            → Event ONGOING
@@ -9,7 +11,7 @@ import { prisma } from "@/lib/prisma";
  */
 export async function syncEventStatus(
   eventId: string,
-): Promise<"ONGOING" | "FINISHED" | null> {
+): Promise<EventSyncResult> {
   const rounds = await prisma.round.findMany({
     where: { eventId, deletedAt: null },
     select: { status: true },
@@ -19,7 +21,7 @@ export async function syncEventStatus(
   const anyOngoing = rounds.some((r) => r.status === "ONGOING");
   const allFinished = rounds.every((r) => r.status === "FINISHED");
 
-  let next: "ONGOING" | "FINISHED" | null = null;
+  let next: EventSyncResult = null;
   if (anyOngoing) next = "ONGOING";
   else if (allFinished) next = "FINISHED";
 
@@ -97,4 +99,26 @@ export async function allActiveAthletesFinished(roundId: string): Promise<boolea
   if (okAthletes.length === 0) return false;
   const finished = new Set(finishes.map((f) => f.athleteId));
   return okAthletes.every((a) => finished.has(a.athleteId));
+}
+
+/**
+ * Number of OK athletes who have NOT yet crossed the line — i.e. still racing.
+ * Returns 0 when everyone has either finished or been DQ'd/DNF'd, which means the
+ * race is over even if the last athlete left the field via a DQ (not a finish).
+ * Distinct from allActiveAthletesFinished, which is the "last finisher" trigger
+ * and ignores rounds with no OK athletes.
+ */
+export async function racersStillOnField(roundId: string): Promise<number> {
+  const [okAthletes, finishes] = await Promise.all([
+    prisma.roundAthlete.findMany({
+      where: { roundId, deletedAt: null, status: "OK" },
+      select: { athleteId: true },
+    }),
+    prisma.finishTime.findMany({
+      where: { roundId, deletedAt: null },
+      select: { athleteId: true },
+    }),
+  ]);
+  const finished = new Set(finishes.map((f) => f.athleteId));
+  return okAthletes.filter((a) => !finished.has(a.athleteId)).length;
 }

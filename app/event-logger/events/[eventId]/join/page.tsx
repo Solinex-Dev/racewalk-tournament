@@ -15,7 +15,7 @@ const STATUS_LABEL: Record<string, string> = {
   FINISHED: "จบการแข่งขันแล้ว",
 };
 
-export default async function EventLoggerJoinPage(props: Props) {
+export default async function EventLoggerJoinPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
   const event = await prisma.event.findUnique({
@@ -33,7 +33,6 @@ export default async function EventLoggerJoinPage(props: Props) {
     ? {
         id: event.id,
         name: event.name,
-        heat_name: event.rounds[0]?.heatName ?? event.rounds[0]?.name ?? "",
         statusLabel: STATUS_LABEL[event.status] ?? event.status,
       }
     : null;

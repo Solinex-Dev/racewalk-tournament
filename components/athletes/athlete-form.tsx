@@ -19,6 +19,7 @@ export type AffiliationOption = { id: string; name: string };
 export type AthleteFormValues = {
   prefix: string;
   firstName: string;
+  middleName: string;
   lastName: string;
   country: string;
   affiliationId: string;
@@ -41,6 +42,7 @@ type AthleteFormProps = {
 const EMPTY: AthleteFormValues = {
   prefix: "",
   firstName: "",
+  middleName: "",
   lastName: "",
   country: "TH",
   affiliationId: "",
@@ -58,7 +60,7 @@ export function AthleteForm({
   canEdit = false,
   canDelete = false,
   defaultValues,
-}: AthleteFormProps) {
+}: Readonly<AthleteFormProps>) {
   const router = useRouter();
   const isEdit = mode === "edit";
 
@@ -71,6 +73,7 @@ export function AthleteForm({
   const isThai = form.country === "TH";
   const affiliationOptions: ComboboxOption[] = affiliations.map((a) => ({ value: a.id, label: a.name }));
   const set = (patch: Partial<AthleteFormValues>) => setForm((p) => ({ ...p, ...patch }));
+  const submitLabel = isEdit ? "บันทึกการแก้ไข" : "เพิ่มนักกีฬา";
 
   const labelOf = (opts: ComboboxOption[], value: string) =>
     opts.find((o) => o.value === value)?.label ?? value;
@@ -95,6 +98,7 @@ export function AthleteForm({
         const payload = {
           prefix: form.prefix.trim() || null,
           firstName: form.firstName.trim(),
+          middleName: form.middleName.trim() || null,
           lastName: form.lastName.trim() || null,
           country: form.country || "TH",
           affiliationId: form.affiliationId || null,
@@ -175,20 +179,12 @@ export function AthleteForm({
         )}
       </CardHeader>
       <CardContent className="py-4">
-        {!editing ? (
-          <dl>
-            <DetailField label="ชื่อ-นามสกุล" value={composeName(saved)} />
-            <DetailField label="สังกัด / สโมสรหลัก" value={labelOf(affiliationOptions, saved.affiliationId)} />
-            <DetailField label="ประเทศ" value={labelOf(countryOptions, saved.country)} />
-            <DetailField label="จังหวัด" value={saved.province} />
-            <DetailField label="สโมสร / ทีมย่อย" value={saved.club} />
-            <DetailField label="หมายเหตุ" value={saved.note} />
-          </dl>
-        ) : (
+        {editing ? (
           <form className="space-y-4" onSubmit={handleSubmit}>
             <PersonNameFields
               prefix={form.prefix}
               firstName={form.firstName}
+              middleName={form.middleName}
               lastName={form.lastName}
               onChange={set}
               disabled={isPending}
@@ -196,22 +192,24 @@ export function AthleteForm({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-800">สังกัด / สโมสรหลัก</label>
+                <label htmlFor="athlete-affiliation" className="block text-xs font-medium text-slate-800">สังกัด / สโมสรหลัก</label>
                 <Combobox
+                  id="athlete-affiliation"
                   options={affiliationOptions}
                   value={form.affiliationId}
                   onChange={(v) => set({ affiliationId: v })}
                   clearable
                   disabled={isPending}
-                  placeholder="— ไม่ระบุ —"
+                  placeholder="ไม่ระบุ"
                   searchPlaceholder="ค้นหาสังกัด…"
                   emptyText="ไม่พบสังกัด"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-800">ประเทศ</label>
+                <label htmlFor="athlete-country" className="block text-xs font-medium text-slate-800">ประเทศ</label>
                 <Combobox
+                  id="athlete-country"
                   options={countryOptions}
                   value={form.country}
                   onChange={(v) => set({ country: v, province: v === "TH" ? form.province : "" })}
@@ -225,26 +223,28 @@ export function AthleteForm({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-800">จังหวัด</label>
+                <label htmlFor="athlete-province" className="block text-xs font-medium text-slate-800">จังหวัด</label>
                 {isThai ? (
                   <Combobox
+                    id="athlete-province"
                     options={provinceOptions}
                     value={form.province}
                     onChange={(v) => set({ province: v })}
                     clearable
                     disabled={isPending}
-                    placeholder="— ไม่ระบุ —"
+                    placeholder="ไม่ระบุ"
                     searchPlaceholder="ค้นหาจังหวัด…"
                     emptyText="ไม่พบจังหวัด"
                   />
                 ) : (
-                  <Input value="" disabled placeholder="(เฉพาะนักกีฬาในประเทศไทย)" className="rounded-xl text-sm" />
+                  <Input id="athlete-province" value="" disabled placeholder="(เฉพาะนักกีฬาในประเทศไทย)" className="rounded-xl text-sm" />
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-800">สโมสร / ทีมย่อย (Club)</label>
+                <label htmlFor="athlete-club" className="block text-xs font-medium text-slate-800">สโมสร / ทีมย่อย (Club)</label>
                 <Input
+                  id="athlete-club"
                   value={form.club}
                   onChange={(e) => set({ club: e.target.value })}
                   placeholder="ระบุชื่อสโมสรย่อยหรือทีมต้นสังกัด"
@@ -255,8 +255,9 @@ export function AthleteForm({
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-800">หมายเหตุ (Note)</label>
+              <label htmlFor="athlete-note" className="block text-xs font-medium text-slate-800">หมายเหตุ (Note)</label>
               <textarea
+                id="athlete-note"
                 value={form.note}
                 onChange={(e) => set({ note: e.target.value })}
                 placeholder="ข้อมูลเพิ่มเติม เช่น หมายเลขเสื้อถาวร, ข้อจำกัดด้านสุขภาพ ฯลฯ"
@@ -279,10 +280,19 @@ export function AthleteForm({
                 </Button>
               )}
               <Button type="submit" disabled={isPending} className="rounded-xl px-4 py-2 text-sm font-medium">
-                {isPending ? "กำลังบันทึก..." : isEdit ? "บันทึกการแก้ไข" : "เพิ่มนักกีฬา"}
+                {isPending ? "กำลังบันทึก..." : submitLabel}
               </Button>
             </div>
           </form>
+        ) : (
+          <dl>
+            <DetailField label="ชื่อ-นามสกุล" value={composeName(saved)} />
+            <DetailField label="สังกัด / สโมสรหลัก" value={labelOf(affiliationOptions, saved.affiliationId)} />
+            <DetailField label="ประเทศ" value={labelOf(countryOptions, saved.country)} />
+            <DetailField label="จังหวัด" value={saved.province} />
+            <DetailField label="สโมสร / ทีมย่อย" value={saved.club} />
+            <DetailField label="หมายเหตุ" value={saved.note} />
+          </dl>
         )}
       </CardContent>
 

@@ -20,6 +20,7 @@ import {
   Building2,
   History,
   ShieldAlert,
+  Info,
   LogOut,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -48,6 +49,7 @@ const dashboardRoutes: Route[] = [
   { id: "activity", title: "ประวัติการใช้งาน", icon: <History className="size-4" />, link: "/admin/activity" },
   { id: "system", title: "System Monitor", icon: <ShieldAlert className="size-4" />, link: "/admin/system" },
   { id: "settings", title: "การตั้งค่า", icon: <Settings className="size-4" />, link: "/admin/settings" },
+  { id: "about", title: "About", icon: <Info className="size-4" />, link: "/admin/about" },
 ];
 
 const RESOURCE_IDS = new Set<string>(RESOURCES);
@@ -70,8 +72,8 @@ export function DashboardSidebar({
   // Hide nav sections the admin cannot access.
   const user = { isRoot, permissions: permissions ?? emptyPermissions() };
   const routes = dashboardRoutes.filter((r) => {
-    // The system monitor is Root-admin only.
-    if (r.id === "system") return user.isRoot;
+    // The system monitor and About page are Root-admin only.
+    if (r.id === "system" || r.id === "about") return user.isRoot;
     // The audit log sits under the "admins" permission.
     if (r.id === "activity") return canAccessResource(user, "admins");
     if (!RESOURCE_IDS.has(r.id)) return true;
@@ -103,7 +105,7 @@ export function DashboardSidebar({
             : "flex-row items-center justify-between"
         )}
       >
-        <a href="#" className="flex items-center gap-2">
+        <a href="/admin" className="flex items-center gap-2">
           <Logo className="h-8 w-8" />
           {!isCollapsed && (
             <span className="font-semibold text-black dark:text-white">

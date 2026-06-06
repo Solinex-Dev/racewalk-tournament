@@ -13,6 +13,7 @@ import { hasPermission } from "@/lib/permissions";
 import { loadEventSummary } from "@/lib/report/summary-sheet";
 import { buildSummaryWorkbook } from "@/lib/report/summary-xlsx";
 import { attachmentContentDisposition } from "@/lib/content-disposition";
+import { parseAgeGroupsParam } from "@/lib/bib";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,10 +27,23 @@ export async function GET(request: Request, ctx: Ctx) {
   }
 
   const { eventId } = await ctx.params;
-  const roundFilter = new URL(request.url).searchParams.get("round") ?? undefined;
+  const params = new URL(request.url).searchParams;
+  const roundFilter = params.get("round") ?? undefined;
+  const ageGroups = parseAgeGroupsParam(params.get("ageGroups"));
 
-  const summary = await loadEventSummary(eventId, roundFilter);
+  const summary = await loadEventSummary(eventId, roundFilter, ageGroups);
   if (!summary) return new NextResponse("Not found", { status: 404 });
+
+  // Block export when there is nothing finished to export (per-round request for an
+  // unfinished round, or a whole-event request with no finished rounds yet).
+  if (summary.rounds.length === 0) {
+    return new NextResponse(
+      roundFilter
+        ? "รอบนี้ยังแข่งไม่เสร็จ จึงยังไม่สามารถ export รายงานได้"
+        : "ยังไม่มีรอบที่แข่งเสร็จสำหรับออกรายงาน",
+      { status: 403 },
+    );
+  }
 
   const wb = await buildSummaryWorkbook(summary);
 

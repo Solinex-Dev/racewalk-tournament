@@ -18,13 +18,12 @@ type JudgeJoinFormProps = {
     | {
         id: string;
         name: string;
-        heat_name: string;
         statusLabel: string;
       }
     | null;
 };
 
-export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
+export function JudgeJoinForm({ eventId, event }: Readonly<JudgeJoinFormProps>) {
   const router = useRouter();
   const [code, setCode] = React.useState("");
   const [isPending, startTransition] = React.useTransition();
@@ -63,7 +62,6 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
                   Event
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-100">{event.name}</p>
-                <p className="text-xs text-slate-300">{event.heat_name}</p>
                 <p className="mt-1 text-[11px] text-emerald-400">สถานะ: {event.statusLabel}</p>
               </>
             ) : (
@@ -73,12 +71,13 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-slate-200">
-                รหัสลับของกรรมการใน Event นี้
+              <label htmlFor="judge-join-code" className="block text-sm font-medium text-slate-200">
+                รหัสกรรมการของกรรมการใน Event นี้
               </label>
 
               <div className="flex justify-center">
                 <InputOTP
+                  id="judge-join-code"
                   maxLength={6}
                   pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
                   value={code}
@@ -97,7 +96,7 @@ export function JudgeJoinForm({ eventId, event }: JudgeJoinFormProps) {
               </div>
 
               <p className="text-center text-[11px] text-slate-400">
-                ใช้รหัสลับ 6 ตัวที่ได้รับจาก Admin ของ Event
+                ใช้รหัสกรรมการ 6 ตัวที่ได้รับจาก Admin ของ Event
               </p>
             </div>
 

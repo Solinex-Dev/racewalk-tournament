@@ -59,7 +59,7 @@ const ACTOR_ROLE_LABEL: Record<string, string> = {
   ADMIN: "ผู้ดูแลระบบ",
 };
 
-export default async function ModeratorEditPage(props: Props) {
+export default async function ModeratorEditPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
   const search = await props.searchParams;
 
@@ -111,14 +111,15 @@ export default async function ModeratorEditPage(props: Props) {
     );
   }
 
-  const round = await prisma.round.findUnique({
-    where: { id: selectedRoundId },
-    include: {
-      roundAthletes: {
-        where: { deletedAt: null },
-        include: { athlete: { select: { id: true, name: true } } },
-        orderBy: [{ position: "asc" }, { bib: "asc" }],
-      },
+  const [round, rawEventAthletes] = await Promise.all([
+    prisma.round.findUnique({
+      where: { id: selectedRoundId },
+      include: {
+        roundAthletes: {
+          where: { deletedAt: null },
+          include: { athlete: { select: { id: true, name: true } } },
+          orderBy: [{ position: "asc" }, { athleteId: "asc" }],
+        },
       roundOfficials: {
         where: { deletedAt: null },
         include: { judge: { select: { name: true } } },
@@ -147,20 +148,26 @@ export default async function ModeratorEditPage(props: Props) {
         take: 100,
       },
     },
-  });
+  }),
+    prisma.eventAthlete.findMany({
+      where: { eventId, deletedAt: null },
+      select: { athleteId: true, bib: true },
+    }),
+  ]);
 
   if (!round) notFound();
 
-  // Map for fast bib lookup
-  const bibByAthleteId = new Map(round.roundAthletes.map((ra) => [ra.athleteId, ra.bib]));
+  // BIB is stored at Event level — build lookup maps for use throughout this page.
+  const bibByAthleteId = new Map(rawEventAthletes.map((ea) => [ea.athleteId, ea.bib]));
   const zoneByJudgeId = new Map(round.roundOfficials.map((ro) => [ro.judgeId, ro.zone ?? ""]));
 
   const athletes: EditAthlete[] = round.roundAthletes.map((ra) => ({
     id: ra.athleteId,
-    bib: ra.bib,
+    bib: bibByAthleteId.get(ra.athleteId) ?? "?",
     name: ra.athlete.name,
     status: ra.status,
     position: ra.position,
+    dqReasonCode: ra.dqReasonCode ?? null,
   }));
 
   // Finish-order sort — identical to the public leaderboard (lib/athlete-sort)
@@ -176,14 +183,14 @@ export default async function ModeratorEditPage(props: Props) {
         position: a.position,
         isFinished: finishedAthleteIds.has(a.id),
         currentLap: (lapsByAthlete.get(a.id) ?? 0) + (finishedAthleteIds.has(a.id) ? 1 : 0),
-        bib: a.bib,
+        bib: a.bib,  // already resolved from bibByAthleteId above
       },
       {
         status: b.status,
         position: b.position,
         isFinished: finishedAthleteIds.has(b.id),
         currentLap: (lapsByAthlete.get(b.id) ?? 0) + (finishedAthleteIds.has(b.id) ? 1 : 0),
-        bib: b.bib,
+        bib: b.bib,  // already resolved from bibByAthleteId above
       },
     ),
   );

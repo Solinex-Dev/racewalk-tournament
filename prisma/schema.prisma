@@ -99,10 +99,11 @@ model Account {
 
 model User {
   id            String     @id @default(cuid())
-  // Denormalized display name (maintained from prefix/firstName/lastName).
+  // Denormalized display name (maintained from prefix/firstName/middleName/lastName).
   name          String?
   prefix        String?
   firstName     String?
+  middleName    String?
   lastName      String?
   email         String?    @unique
   emailVerified DateTime?
@@ -210,10 +211,11 @@ model Affiliation {
 
 model Athlete {
   id            String    @id @default(cuid())
-  // Denormalized display name (maintained from prefix/firstName/lastName).
+  // Denormalized display name (maintained from prefix/firstName/middleName/lastName).
   name          String
   prefix        String?
   firstName     String?
+  middleName    String?
   lastName      String?
   country       String    @default("TH")
   province      String?
@@ -228,6 +230,7 @@ model Athlete {
 
   affiliation   Affiliation?   @relation(fields: [affiliationId], references: [id])
   roundAthletes RoundAthlete[]
+  eventAthletes EventAthlete[]
   cards         Card[]
   lapTimes      LapTime[]
   finishTimes   FinishTime[]
@@ -235,10 +238,11 @@ model Athlete {
 
 model Judge {
   id           String      @id @default(cuid())
-  // Denormalized display name (maintained from prefix/firstName/lastName).
+  // Denormalized display name (maintained from prefix/firstName/middleName/lastName).
   name         String
   prefix       String?
   firstName    String?
+  middleName   String?
   lastName     String?
   country      String      @default("TH")
   province     String?
@@ -300,7 +304,12 @@ model Department {
 model Event {
   id         String      @id @default(cuid())
   name       String
+  // `date` is the event's calendar day (date-only, midnight). It is derived from
+  // `startTime` on save and kept for day-based scheduling/display logic.
   date       DateTime
+  // Actual start/end timestamps of the whole event (admin-entered in the form).
+  startTime  DateTime?
+  endTime    DateTime?
   location   String
   distanceKm String
   // Number of laps that make up the full race distance for this venue.
@@ -314,7 +323,8 @@ model Event {
   createdById String?
   updatedById String?
 
-  rounds Round[]
+  rounds        Round[]
+  eventAthletes EventAthlete[]
 }
 
 model Round {
@@ -349,13 +359,22 @@ model Round {
   @@index([eventId])
 }
 
-// Join: Athlete in a Round. bib uniqueness is per round (enforced by @@unique).
+// Join: Athlete in a Round. BIB is stored at the Event level (EventAthlete) —
+// not here. RoundAthlete only records which event-registered athlete participates
+// in this specific round, plus their race result (status, position).
 model RoundAthlete {
   id        String             @id @default(cuid())
   roundId   String
   athleteId String
-  bib       String
+  // Start-list order within the round, set by the admin via drag-and-drop in the
+  // round form. Drives the sequential numbering on the Lap Time keeper screen.
+  sortOrder Int                @default(0)
   status    AthleteRoundStatus @default(OK)
+  // WA rule code for a post-race DQ (e.g. "TR54.7.5", "TR16.8"). Set by the
+  // moderator when overriding status to DQ with a structured reason; null for an
+  // auto-DQ (4 reds) or a free-text "Other" reason. Shown in exports in place of
+  // the plain "DQ" mark.
+  dqReasonCode String?
   position  Int?
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
@@ -365,8 +384,31 @@ model RoundAthlete {
   athlete Athlete @relation(fields: [athleteId], references: [id])
 
   @@unique([roundId, athleteId])
-  @@unique([roundId, bib])
   @@index([roundId])
+}
+
+// Join: Athlete registered for an Event, with their BIB number.
+// BIB is event-scoped — the same BIB is reused across all rounds within an event.
+model EventAthlete {
+  id          String    @id @default(cuid())
+  eventId     String
+  athleteId   String
+  bib         String
+  // Display order within the event, set by the admin via drag-and-drop in the
+  // event form. Lower sorts first; ties fall back to bib.
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  event   Event   @relation(fields: [eventId], references: [id])
+  athlete Athlete @relation(fields: [athleteId], references: [id])
+
+  @@unique([eventId, athleteId])
+  @@unique([eventId, bib])
+  @@index([eventId])
 }
 
 // Join: Official in a Round. Each judge may serve in only one position per round.

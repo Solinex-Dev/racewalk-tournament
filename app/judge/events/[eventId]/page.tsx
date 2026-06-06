@@ -12,11 +12,14 @@ export const metadata: Metadata = {
 
 type Props = { params: Promise<{ eventId: string }> };
 
-export default async function JudgePage(props: Props) {
+export default async function JudgePage(props: Readonly<Props>) {
   const { eventId } = await props.params;
   const session = await getOfficialSession();
 
-  if (!session || session.eventId !== eventId) {
+  if (!session) {
+    redirect(`/judge/events/${eventId}/join`);
+  }
+  if (session.eventId !== eventId) {
     redirect(`/judge/events/${eventId}/join`);
   }
   if (session.position !== "JUDGE" && session.position !== "HEAD_JUDGE") {
@@ -24,26 +27,44 @@ export default async function JudgePage(props: Props) {
     redirect(`/judge/events/${eventId}/join`);
   }
 
-  const round = await prisma.round.findUnique({
-    where: { id: session.roundId, deletedAt: null },
-    include: {
-      event: { select: { id: true, name: true } },
-      roundAthletes: {
-        where: { deletedAt: null },
-        include: { athlete: { select: { name: true } } },
-        orderBy: [{ position: "asc" }, { bib: "asc" }],
-      },
+  const [round, eventAthletes] = await Promise.all([
+    prisma.round.findUnique({
+      where: { id: session.roundId, deletedAt: null },
+      include: {
+        event: { select: { id: true, name: true } },
+        roundAthletes: {
+          where: { deletedAt: null },
+          // Start-list order configured in the round form (drag-reorder).
+          orderBy: [{ sortOrder: "asc" }, { athleteId: "asc" }],
+          include: { athlete: { select: { name: true } } },
+        },
       cards: {
         where: { deletedAt: null },
       },
+      finishTimes: {
+        where: { deletedAt: null },
+        select: { athleteId: true },
+      },
+      // This official's own zone/table assignment for the round.
+      roundOfficials: {
+        where: { judgeId: session.judgeId, deletedAt: null },
+        select: { zone: true },
+      },
     },
-  });
+  }),
+    prisma.eventAthlete.findMany({
+      where: { eventId: session.eventId, deletedAt: null },
+      select: { athleteId: true, bib: true },
+    }),
+  ]);
 
   if (!round) {
     redirect(`/judge/events/${eventId}/join`);
   }
 
+  const bibMap = new Map(eventAthletes.map((ea) => [ea.athleteId, ea.bib]));
   const myJudgeId = session.judgeId;
+  const finishedAthleteIds = new Set(round.finishTimes.map((f) => f.athleteId));
 
   const rows: JudgeAthleteRow[] = round.roundAthletes.map((ra) => {
     const myCards = round.cards.filter(
@@ -55,21 +76,24 @@ export default async function JudgePage(props: Props) {
     const totalRed = round.cards.filter(
       (c) => c.athleteId === ra.athleteId && c.color === "RED" && c.state === "CONFIRMED",
     ).length;
+    const myRedSymbolChar = myRed?.symbol === "BENT_KNEE" ? ">" : "~";
+    const myRedSymbol = myRed ? myRedSymbolChar : null;
     return {
-      bib: ra.bib,
+      bib: bibMap.get(ra.athleteId) ?? "?",
       athleteId: ra.athleteId,
       name: ra.athlete.name,
       status: ra.status,
+      isFinished: finishedAthleteIds.has(ra.athleteId),
       myYellowKnee,
       myYellowFoot,
-      myRedSymbol: myRed ? (myRed.symbol === "BENT_KNEE" ? ">" : "~") : null,
+      myRedSymbol,
       totalRed,
     };
   });
 
   return (
     <>
-      <AutoRefresh intervalMs={2000} />
+      <AutoRefresh intervalMs={round.status === "SCHEDULED" ? 500 : 1500} />
       <OfficialEndedDialog
         open={round.status === "FINISHED"}
         roundName={round.name}
@@ -78,11 +102,12 @@ export default async function JudgePage(props: Props) {
       <JudgeWorkspace
         eventId={eventId}
         judgeName={session.judgeName}
+        judgeZone={round.roundOfficials[0]?.zone ?? ""}
+        roundStatus={round.status}
         event={{
           id: round.event.id,
           name: round.event.name,
           roundName: round.name,
-          heatName: round.heatName ?? "",
           distanceKm: round.distanceKm ?? "",
           lapCount: round.lapCount ?? 0,
           currentLap: round.currentLap,

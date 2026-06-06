@@ -7,8 +7,22 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { startRound, endRound } from "@/app/actions/round-timing";
+import { metersFromKm } from "@/lib/distance";
 import { SectionToc, type TocItem } from "@/components/common/section-toc";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
+import {
+  usePaginatedList,
+  ListSearch,
+  ListPager,
+} from "@/components/common/list-pagination";
+import {
+  Play,
+  Goal,
+  CheckCircle2,
+  CalendarClock,
+  ArrowLeft,
+  ArrowUpRight,
+} from "lucide-react";
 
 const MAIN_TOC: TocItem[] = [
   { id: "m-control", label: "ควบคุมการแข่งขัน" },
@@ -30,7 +44,6 @@ export type RoundInfo = {
   started_at?: string;
   ended_at?: string;
   note?: string;
-  heat_name?: string;
   lapCount?: number;
   currentLap?: number;
 };
@@ -120,11 +133,19 @@ type ModeratorViewProps = {
   rounds: RoundData[];
 };
 
-export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
+export function ModeratorView({
+  eventId,
+  event,
+  rounds,
+}: Readonly<ModeratorViewProps>) {
   const router = useRouter();
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
-  const [expandedJudgeIds, setExpandedJudgeIds] = useState<Set<string>>(new Set());
-  const [expandedAthleteBibs, setExpandedAthleteBibs] = useState<Set<string>>(new Set());
+  const [expandedJudgeIds, setExpandedJudgeIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [expandedAthleteBibs, setExpandedAthleteBibs] = useState<Set<string>>(
+    new Set(),
+  );
   const [showEditConfirm, setShowEditConfirm] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -195,18 +216,33 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
     finished: "เสร็จสิ้น",
   };
 
+  // Default round on entry: the first round that's LIVE; otherwise the very
+  // first round (previously this fell back to the last round).
   const currentRound =
-    rounds.find((r) => r.info.id === event.currentRoundId) ||
-    rounds.find((r) => r.info.status === "ongoing") ||
-    rounds[rounds.length - 1];
+    rounds.find((r) => r.info.status === "ongoing") ?? rounds[0];
 
-  const displayRoundId = selectedRoundId || currentRound?.info.id || rounds[0]?.info.id || null;
+  const displayRoundId = selectedRoundId || currentRound?.info.id || null;
   const displayData = rounds.find((r) => r.info.id === displayRoundId);
   const displayRound = displayData?.info;
+
+  // Status-chip class for the edit-confirm modal when the round is not "finished"
+  // (rendered only while displayRound is truthy, so the value is unchanged there).
+  const editConfirmOngoingOrScheduledClass =
+    displayRound?.status === "ongoing"
+      ? "bg-emerald-100 text-emerald-700"
+      : "bg-sky-100 text-sky-700";
 
   const roundAthletes = displayData?.athletes ?? [];
   const roundJudges = displayData?.judges ?? [];
   const roundPendingCards = displayData?.pendingRedCards ?? [];
+
+  // Search + pagination (20/page) for the long per-round lists.
+  const athleteList = usePaginatedList(roundAthletes, (a, q) =>
+    `${a.bib} ${a.name} ${a.affiliation ?? ""}`.toLowerCase().includes(q),
+  );
+  const judgeList = usePaginatedList(roundJudges, (j, q) =>
+    `${j.name} ${j.position} ${j.zone ?? ""}`.toLowerCase().includes(q),
+  );
 
   // Athletes still on the course — no finish position yet, and not DQ/DNF.
   // `position` is set when an athlete crosses the line; DQ/DNF are resolved
@@ -218,7 +254,10 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
 
   const roundLogs = (displayData?.logs ?? [])
     .slice()
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    .sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
 
   const logsByDate = roundLogs.reduce(
     (acc, log) => {
@@ -233,7 +272,10 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
   const getJudgeLogs = (judgeId: string) => {
     const logs = roundLogs
       .filter((log) => log.actorId === judgeId)
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      .sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      );
     return {
       yellowCards: logs.filter((log) => log.actionType === "yellow_card"),
       redCards: logs.filter((log) => log.actionType === "red_card"),
@@ -277,11 +319,11 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                 <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
                   Event Activity Log
                 </h1>
-                <span
+                {/* <span
                   className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusClassName[event.status]}`}
                 >
                   ● {statusLabel[event.status]}
-                </span>
+                </span> */}
               </div>
               <p className="mt-0.5 text-sm text-slate-600">
                 ดู Log โดยละเอียดของการแข่งขัน:{" "}
@@ -294,42 +336,86 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
 
             <div className="flex items-center gap-2">
               <Link href={`/admin/events/${eventId}`}>
-                <Button variant="outline" size="sm" className="rounded-lg border-slate-200 text-xs">
-                  กลับไปหน้า Event
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg border-slate-200 text-xs"
+                >
+                  <ArrowLeft className="h-4 w-4" /> กลับไปหน้า Event
                 </Button>
               </Link>
-              <Link href={`/events/${eventId}`}>
-                <Button variant="outline" size="sm" className="rounded-lg border-slate-200 text-xs">
-                  เปิดหน้า Event Leaderboard
+              {/* <Link href={`/events/${eventId}`}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg border-slate-200 text-xs"
+                >
+                  <ArrowUpRight className="h-3 w-3" /> Leaderboard
                 </Button>
-              </Link>
+              </Link> */}
             </div>
           </div>
 
           {rounds.length > 0 && (
             <Card className="rounded-2xl border-slate-200">
-              <CardContent className="p-5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-700">เลือกรอบ:</span>
-                  {rounds.map((r) => (
-                    <button
-                      key={r.info.id}
-                      onClick={() => setSelectedRoundId(r.info.id)}
-                      className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition-colors ${
-                        r.info.id === displayRoundId
-                          ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                          : r.info.status === "finished"
-                            ? "bg-slate-100 text-slate-600 ring-slate-200 hover:bg-slate-200"
-                            : "bg-sky-50 text-sky-700 ring-sky-200 hover:bg-sky-100"
-                      }`}
-                    >
-                      {r.info.name}
-                      {r.info.distance_km && ` (${r.info.distance_km} กม.)`}
-                      <span className="ml-1.5 text-[10px]">
-                        • {roundStatusLabel[r.info.status]}
-                      </span>
-                    </button>
-                  ))}
+              <CardContent className="p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  เลือกรอบการแข่งขัน
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {rounds.map((r) => {
+                    const status = r.info.status;
+                    const isActive = r.info.id === displayRoundId;
+                    const activeRing =
+                      status === "ongoing"
+                        ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200"
+                        : status === "finished"
+                          ? "border-slate-400 bg-slate-100 ring-2 ring-slate-200"
+                          : "border-sky-500 bg-sky-50 ring-2 ring-sky-200";
+                    return (
+                      <button
+                        key={r.info.id}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => setSelectedRoundId(r.info.id)}
+                        className={`flex min-w-[210px] flex-col gap-2 rounded-xl border px-4 py-3 text-left transition ${
+                          isActive
+                            ? activeRing
+                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        {status === "ongoing" ? (
+                          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700">
+                            <span className="relative flex h-2 w-2">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                            </span>
+                            LIVE
+                          </span>
+                        ) : status === "finished" ? (
+                          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-600">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            เสร็จสิ้น
+                          </span>
+                        ) : (
+                          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-700">
+                            <CalendarClock className="h-3.5 w-3.5" />
+                            กำหนดการ
+                          </span>
+                        )}
+                        <span className="text-sm font-semibold text-slate-900">
+                          {r.info.name}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {r.info.distance_km && `${metersFromKm(r.info.distance_km)} ม.`}
+                          {status === "ongoing" &&
+                            r.info.lapCount &&
+                            r.info.currentLap !== undefined &&
+                            ` • Lap ${r.info.currentLap}/${r.info.lapCount}`}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -341,141 +427,359 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                 <SectionToc items={MAIN_TOC} />
               </aside>
               <div className="flex min-w-0 flex-1 flex-col gap-8">
-              <Card id="m-control" className="scroll-mt-4 rounded-2xl border-slate-200">
-                <CardContent className="p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">{displayRound.name}</h2>
-                      <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-600">
-                        {displayRound.distance_km && <span>ระยะ {displayRound.distance_km} กม.</span>}
-                        {displayRound.heat_name && <span>• {displayRound.heat_name}</span>}
-                        {displayRound.lapCount && displayRound.currentLap !== undefined && (
-                          <span>
-                            • Lap {displayRound.currentLap} / {displayRound.lapCount}
-                          </span>
+                <Card
+                  id="m-control"
+                  className="scroll-mt-4 rounded-2xl border-slate-200"
+                >
+                  <CardContent className="p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <h2 className="text-lg font-semibold text-slate-900">
+                          {displayRound.name}
+                        </h2>
+                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                          {displayRound.distance_km && (
+                            <span>ระยะ {metersFromKm(displayRound.distance_km)} ม.</span>
+                          )}
+                          {displayRound.lapCount &&
+                            displayRound.currentLap !== undefined && (
+                              <span>
+                                • Lap {displayRound.currentLap} /{" "}
+                                {displayRound.lapCount}
+                              </span>
+                            )}
+                        </div>
+                        {displayRound.note && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            note : {displayRound.note}
+                          </p>
                         )}
                       </div>
-                      {displayRound.note && (
-                        <p className="mt-1 text-xs text-slate-500">note : {displayRound.note}</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-2 text-xs">
-                      {/* Live elapsed timer — single source of truth */}
-                      {displayRound.started_at && (
-                        <p className="text-slate-600">
-                          เวลาที่ใช้:{" "}
-                          <span className="font-mono font-semibold text-emerald-700">
-                            {formatElapsed(displayRound.started_at, displayRound.ended_at)}
-                          </span>
-                        </p>
-                      )}
-                      {displayRound.scheduled_time && (
-                        <p className="text-slate-600">
-                          กำหนดเริ่ม:{" "}
-                          <span className="font-medium">
-                            {new Date(displayRound.scheduled_time).toLocaleString("th-TH", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </p>
-                      )}
-                      {displayRound.status === "scheduled" && (
-                        <button
-                          type="button"
-                          disabled={isPending}
-                          onClick={() => handleStartRound(displayRound.id)}
-                          className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                        >
-                          ▶ เริ่มจับเวลาการแข่งขัน
-                        </button>
-                      )}
-                      {displayRound.status === "ongoing" && (
-                        <button
-                          type="button"
-                          disabled={isPending}
-                          onClick={() => setShowEndConfirm(true)}
-                          className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                          ■ จบการแข่งขัน
-                        </button>
-                      )}
-                      {displayRound.status === "finished" && (
-                        <button
-                          type="button"
-                          onClick={() => setShowEditConfirm(true)}
-                          className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                          แก้ไขข้อมูลรอบนี้
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Athletes summary */}
-              <Card id="m-athletes" className="scroll-mt-4 rounded-2xl border-slate-200">
-                <CardContent className="p-0">
-                  <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
-                    <div>
-                      <h2 className="text-sm font-semibold text-slate-900">นักกีฬาในรอบนี้</h2>
-                      <p className="text-xs text-slate-500">
-                        กดที่แถวเพื่อดูใบเหลือง / ใบแดง ที่ได้รับ และกรรมการที่ให้
-                        (ขยายได้หลายคนพร้อมกันเพื่อเทียบ)
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                      {roundAthletes.length} คน
-                    </span>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse text-xs">
-                      <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
-                        <tr>
-                          <th className="w-8 px-4 py-3" />
-                          <th className="px-4 py-3 text-left">Bib</th>
-                          <th className="px-4 py-3 text-left">นักกีฬา</th>
-                          <th className="px-4 py-3 text-left">สังกัด</th>
-                          <th className="px-4 py-3 text-center text-amber-600" title="ใบเหลืองทั้งหมด">
-                            Y
-                          </th>
-                          <th
-                            className="px-4 py-3 text-center text-red-600"
-                            title="ใบแดงที่ยืนยันแล้ว (รอยืนยันแสดงเป็น chip ส้ม)"
+                      <div className="flex flex-col items-end gap-2 text-xs">
+                        {/* Live elapsed timer — single source of truth */}
+                        {displayRound.started_at && (
+                          <p className="text-slate-600">
+                            เวลาที่ใช้:{" "}
+                            <span className="font-mono font-semibold text-emerald-700">
+                              {formatElapsed(
+                                displayRound.started_at,
+                                displayRound.ended_at,
+                              )}
+                            </span>
+                          </p>
+                        )}
+                        {displayRound.scheduled_time && (
+                          <p className="text-slate-600">
+                            กำหนดเริ่ม:{" "}
+                            <span className="font-medium">
+                              {new Date(
+                                displayRound.scheduled_time,
+                              ).toLocaleString("th-TH", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </p>
+                        )}
+                        {displayRound.status === "scheduled" && (
+                          <button
+                            type="button"
+                            disabled={isPending}
+                            onClick={() => handleStartRound(displayRound.id)}
+                            className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                           >
-                            R
-                          </th>
-                          <th className="px-4 py-3 text-left">สถานะ</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 bg-white">
-                        {roundAthletes.length === 0 ? (
+                            <Play className="h-4 w-4" />
+                            เริ่มจับเวลาการแข่งขัน
+                          </button>
+                        )}
+                        {displayRound.status === "ongoing" && (
+                          <button
+                            type="button"
+                            disabled={isPending}
+                            onClick={() => setShowEndConfirm(true)}
+                            className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                          >
+                            <Goal className="h-4 w-4" /> จบการแข่งขัน
+                          </button>
+                        )}
+                        {displayRound.status === "finished" && (
+                          <button
+                            type="button"
+                            onClick={() => setShowEditConfirm(true)}
+                            className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            แก้ไขข้อมูลรอบนี้
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Athletes summary */}
+                <Card
+                  id="m-athletes"
+                  className="scroll-mt-4 rounded-2xl border-slate-200"
+                >
+                  <CardContent className="p-0">
+                    <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                      <div>
+                        <h2 className="text-sm font-semibold text-slate-900">
+                          นักกีฬาในรอบนี้
+                        </h2>
+                        <p className="text-xs text-slate-500">
+                          กดที่แถวเพื่อดูใบเหลือง / ใบแดง ที่ได้รับ
+                          และกรรมการที่ให้ (ขยายได้หลายคนพร้อมกันเพื่อเทียบ)
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                        {roundAthletes.length} คน
+                      </span>
+                    </div>
+                    <div className="border-b border-slate-200 px-6 py-3">
+                      <ListSearch
+                        value={athleteList.query}
+                        onChange={athleteList.setQuery}
+                        placeholder="ค้นหานักกีฬา (Bib, ชื่อ, สังกัด)..."
+                      />
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border-collapse text-xs">
+                        <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
                           <tr>
-                            <td colSpan={7} className="px-4 py-6 text-center text-xs text-slate-500">
-                              ยังไม่มีนักกีฬาในรอบนี้
-                            </td>
+                            <th className="w-8 px-4 py-3" />
+                            <th className="px-4 py-3 text-left">Bib</th>
+                            <th className="px-4 py-3 text-left">นักกีฬา</th>
+                            <th className="px-4 py-3 text-left">สังกัด</th>
+                            <th
+                              className="px-4 py-3 text-center text-amber-600"
+                              title="ใบเหลืองทั้งหมด"
+                            >
+                              Y
+                            </th>
+                            <th
+                              className="px-4 py-3 text-center text-red-600"
+                              title="ใบแดงที่ยืนยันแล้ว (รอยืนยันแสดงเป็น chip ส้ม)"
+                            >
+                              R
+                            </th>
+                            <th className="px-4 py-3 text-left">สถานะ</th>
                           </tr>
-                        ) : (
-                          roundAthletes.map((a) => {
-                            const isExpanded = expandedAthleteBibs.has(a.bib);
-                            const hasCards = a.cardDetails.length > 0;
-                            // Reds awaiting Head Judge decision — not yet counted toward R/DQ
-                            const pendingRed = a.cardDetails.filter(
-                              (c) => c.color === "RED" && c.state === "PENDING",
-                            ).length;
-                            return (
-                              <Fragment key={a.bib}>
-                                <tr
-                                  className={`transition-colors ${
-                                    hasCards ? "cursor-pointer hover:bg-slate-50/80" : ""
-                                  } ${isExpanded ? "bg-slate-50" : ""}`}
-                                  onClick={() => hasCards && toggleAthlete(a.bib)}
-                                >
-                                  <td className="px-4 py-3 text-center">
-                                    {hasCards && (
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 bg-white">
+                          {athleteList.pageItems.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan={7}
+                                className="px-4 py-6 text-center text-xs text-slate-500"
+                              >
+                                {roundAthletes.length === 0
+                                  ? "ยังไม่มีนักกีฬาในรอบนี้"
+                                  : "ไม่พบนักกีฬาตามคำค้นหา"}
+                              </td>
+                            </tr>
+                          ) : (
+                            athleteList.pageItems.map((a) => {
+                              const isExpanded = expandedAthleteBibs.has(a.bib);
+                              const hasCards = a.cardDetails.length > 0;
+                              // Reds awaiting Head Judge decision — not yet counted toward R/DQ
+                              const pendingRed = a.cardDetails.filter(
+                                (c) =>
+                                  c.color === "RED" && c.state === "PENDING",
+                              ).length;
+                              const nonDqAthleteClass =
+                                a.status === "DNF"
+                                  ? "bg-slate-100 text-slate-600"
+                                  : "bg-emerald-50 text-emerald-700";
+                              return (
+                                <Fragment key={a.bib}>
+                                  <tr
+                                    className={`transition-colors ${
+                                      hasCards
+                                        ? "cursor-pointer hover:bg-slate-50/80"
+                                        : ""
+                                    } ${isExpanded ? "bg-slate-50" : ""}`}
+                                    onClick={() =>
+                                      hasCards && toggleAthlete(a.bib)
+                                    }
+                                  >
+                                    <td className="px-4 py-3 text-center">
+                                      {hasCards && (
+                                        <svg
+                                          className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                                          fill="none"
+                                          viewBox="0 0 24 24"
+                                          stroke="currentColor"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 5l7 7-7 7"
+                                          />
+                                        </svg>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 font-mono font-semibold text-slate-900">
+                                      {a.bib}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-800">
+                                      {a.name}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-600">
+                                      {a.affiliation || "-"}
+                                    </td>
+                                    <td className="px-4 py-3 text-center font-semibold text-amber-700">
+                                      {a.yellowCards}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <div className="flex items-center justify-center gap-1">
+                                        <span className="font-semibold text-red-700">
+                                          {a.redCards}
+                                        </span>
+                                        {pendingRed > 0 && (
+                                          <span
+                                            title="ใบแดงที่รอ Head Judge ยืนยัน (ยังไม่นับเป็น R)"
+                                            className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-medium text-orange-700"
+                                          >
+                                            +{pendingRed} รอ
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-xs">
+                                      <span
+                                        className={`rounded-full px-2 py-0.5 font-medium ${
+                                          a.status === "DQ"
+                                            ? "bg-red-50 text-red-700"
+                                            : nonDqAthleteClass
+                                        }`}
+                                      >
+                                        {a.status ?? "OK"}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                  {isExpanded && (
+                                    <tr>
+                                      <td
+                                        colSpan={7}
+                                        className="bg-slate-50/60 px-6 py-4"
+                                      >
+                                        <AthleteCardBreakdown
+                                          details={a.cardDetails}
+                                        />
+                                      </td>
+                                    </tr>
+                                  )}
+                                </Fragment>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="border-t border-slate-200 px-6 py-3">
+                      <ListPager
+                        page={athleteList.page}
+                        totalPages={athleteList.totalPages}
+                        onPage={athleteList.setPage}
+                        rangeStart={athleteList.rangeStart}
+                        rangeEnd={athleteList.rangeEnd}
+                        filteredTotal={athleteList.filteredTotal}
+                        total={athleteList.total}
+                        isFiltered={athleteList.isFiltered}
+                        unit="คน"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Judges overview */}
+                <Card
+                  id="m-judges"
+                  className="scroll-mt-4 rounded-2xl border-slate-200"
+                >
+                  <CardContent className="p-0">
+                    <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                      <div>
+                        <h2 className="text-sm font-semibold text-slate-900">
+                          กรรมการในรอบนี้
+                        </h2>
+                        <p className="text-xs text-slate-500">
+                          กดที่ชื่อกรรมการเพื่อดูใบที่ให้
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {roundPendingCards.length > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-300">
+                            ● {roundPendingCards.length} ใบแดงรอยืนยัน
+                          </span>
+                        )}
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                          {roundJudges.length} คน
+                        </span>
+                      </div>
+                    </div>
+                    <div className="border-b border-slate-200 px-6 py-3">
+                      <ListSearch
+                        value={judgeList.query}
+                        onChange={judgeList.setQuery}
+                        placeholder="ค้นหากรรมการ (ชื่อ, ตำแหน่ง, โซน)..."
+                      />
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border-collapse text-xs">
+                        <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
+                          <tr>
+                            <th className="w-10 px-4 py-4" />
+                            <th className="px-4 py-4 text-left">ชื่อกรรมการ</th>
+                            <th className="px-4 py-4 text-left">ตำแหน่ง</th>
+                            <th className="px-4 py-4 text-center text-amber-600">
+                              ใบเหลือง
+                            </th>
+                            <th className="px-4 py-4 text-center text-red-600">
+                              ใบแดง
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 bg-white">
+                          {judgeList.pageItems.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan={5}
+                                className="px-3 py-4 text-center text-xs text-slate-500"
+                              >
+                                {roundJudges.length === 0
+                                  ? "ยังไม่มีข้อมูลกรรมการในรอบนี้"
+                                  : "ไม่พบกรรมการตามคำค้นหา"}
+                              </td>
+                            </tr>
+                          ) : (
+                            judgeList.pageItems.map((judge) => {
+                              const isExpanded = expandedJudgeIds.has(judge.id);
+                              const { yellowCards, redCards } = getJudgeLogs(
+                                judge.id,
+                              );
+                              const judgePending = roundPendingCards.filter(
+                                (p) => p.judgeId === judge.id,
+                              );
+                              const hasPending = judgePending.length > 0;
+                              const judgeRowExpandedClass = isExpanded
+                                ? "bg-slate-50"
+                                : "hover:bg-slate-50/70";
+                              return (
+                                <Fragment key={judge.id}>
+                                  <tr
+                                    className={`cursor-pointer transition-colors ${
+                                      hasPending
+                                        ? "bg-red-50 hover:bg-red-100/70"
+                                        : judgeRowExpandedClass
+                                    }`}
+                                    onClick={() => toggleJudge(judge.id)}
+                                  >
+                                    <td className="w-10 px-4 py-4 text-center">
                                       <svg
                                         className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
                                         fill="none"
@@ -489,284 +793,191 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                                           d="M9 5l7 7-7 7"
                                         />
                                       </svg>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-3 font-mono font-semibold text-slate-900">
-                                    {a.bib}
-                                  </td>
-                                  <td className="px-4 py-3 text-slate-800">{a.name}</td>
-                                  <td className="px-4 py-3 text-slate-600">{a.affiliation || "-"}</td>
-                                  <td className="px-4 py-3 text-center font-semibold text-amber-700">
-                                    {a.yellowCards}
-                                  </td>
-                                  <td className="px-4 py-3 text-center">
-                                    <div className="flex items-center justify-center gap-1">
-                                      <span className="font-semibold text-red-700">{a.redCards}</span>
-                                      {pendingRed > 0 && (
-                                        <span
-                                          title="ใบแดงที่รอ Head Judge ยืนยัน (ยังไม่นับเป็น R)"
-                                          className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-medium text-orange-700"
-                                        >
-                                          +{pendingRed} รอ
-                                        </span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 text-xs">
-                                    <span
-                                      className={`rounded-full px-2 py-0.5 font-medium ${
-                                        a.status === "DQ"
-                                          ? "bg-red-50 text-red-700"
-                                          : a.status === "DNF"
-                                            ? "bg-slate-100 text-slate-600"
-                                            : "bg-emerald-50 text-emerald-700"
-                                      }`}
-                                    >
-                                      {a.status ?? "OK"}
-                                    </span>
-                                  </td>
-                                </tr>
-                                {isExpanded && (
-                                  <tr>
-                                    <td colSpan={7} className="bg-slate-50/60 px-6 py-4">
-                                      <AthleteCardBreakdown details={a.cardDetails} />
                                     </td>
-                                  </tr>
-                                )}
-                              </Fragment>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Judges overview */}
-              <Card id="m-judges" className="scroll-mt-4 rounded-2xl border-slate-200">
-                <CardContent className="p-0">
-                  <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
-                    <div>
-                      <h2 className="text-sm font-semibold text-slate-900">กรรมการในรอบนี้</h2>
-                      <p className="text-xs text-slate-500">
-                        กดที่ชื่อกรรมการเพื่อดูใบที่ให้
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {roundPendingCards.length > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-300">
-                          ● {roundPendingCards.length} ใบแดงรอยืนยัน
-                        </span>
-                      )}
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                        {roundJudges.length} คน
-                      </span>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse text-xs">
-                      <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
-                        <tr>
-                          <th className="w-10 px-4 py-4" />
-                          <th className="px-4 py-4 text-left">ชื่อกรรมการ</th>
-                          <th className="px-4 py-4 text-left">ตำแหน่ง</th>
-                          <th className="px-4 py-4 text-center text-amber-600">ใบเหลือง</th>
-                          <th className="px-4 py-4 text-center text-red-600">ใบแดง</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 bg-white">
-                        {roundJudges.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="px-3 py-4 text-center text-xs text-slate-500">
-                              ยังไม่มีข้อมูลกรรมการในรอบนี้
-                            </td>
-                          </tr>
-                        ) : (
-                          roundJudges.map((judge) => {
-                            const isExpanded = expandedJudgeIds.has(judge.id);
-                            const { yellowCards, redCards } = getJudgeLogs(judge.id);
-                            const judgePending = roundPendingCards.filter(
-                              (p) => p.judgeId === judge.id,
-                            );
-                            const hasPending = judgePending.length > 0;
-                            return (
-                              <Fragment key={judge.id}>
-                                <tr
-                                  className={`cursor-pointer transition-colors ${
-                                    hasPending
-                                      ? "bg-red-50 hover:bg-red-100/70"
-                                      : isExpanded
-                                        ? "bg-slate-50"
-                                        : "hover:bg-slate-50/70"
-                                  }`}
-                                  onClick={() => toggleJudge(judge.id)}
-                                >
-                                  <td className="w-10 px-4 py-4 text-center">
-                                    <svg
-                                      className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 5l7 7-7 7"
-                                      />
-                                    </svg>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-semibold text-slate-900">
-                                        {judge.name}
-                                      </span>
-                                      {hasPending && (
-                                        <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                          {judgePending.length} รอยืนยัน
+                                    <td className="px-4 py-4">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-slate-900">
+                                          {judge.name}
                                         </span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-4 text-slate-600">{judge.position}</td>
-                                  <td className="px-4 py-4 text-center font-semibold text-amber-700">
-                                    {yellowCards.length}
-                                  </td>
-                                  <td className="px-4 py-4 text-center font-semibold text-red-700">
-                                    {redCards.length}
-                                  </td>
-                                </tr>
-                                {isExpanded && (
-                                  <tr>
-                                    <td colSpan={5} className="bg-slate-50/60 px-8 py-6">
-                                      <div className="space-y-5">
-                                        {judgePending.length > 0 && (
-                                          <PendingRedCardSection
-                                            cards={judgePending}
-                                            eventId={eventId}
-                                          />
+                                        {hasPending && (
+                                          <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                            {judgePending.length} รอยืนยัน
+                                          </span>
                                         )}
-                                        <CardListSection
-                                          color="amber"
-                                          title="ใบเหลืองที่ให้"
-                                          logs={yellowCards}
-                                        />
-                                        <CardListSection
-                                          color="red"
-                                          title="ใบแดงที่ให้"
-                                          logs={redCards}
-                                        />
                                       </div>
                                     </td>
+                                    <td className="px-4 py-4 text-slate-600">
+                                      {judge.position}
+                                    </td>
+                                    <td className="px-4 py-4 text-center font-semibold text-amber-700">
+                                      {yellowCards.length}
+                                    </td>
+                                    <td className="px-4 py-4 text-center font-semibold text-red-700">
+                                      {redCards.length}
+                                    </td>
                                   </tr>
-                                )}
-                              </Fragment>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Activity log */}
-              <Card id="m-log" className="scroll-mt-4 rounded-2xl border-slate-200">
-                <CardContent className="p-0">
-                  <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
-                    <div>
-                      <h2 className="text-sm font-semibold text-slate-900">
-                        Activity Log - {displayRound.name}
-                      </h2>
-                      <p className="text-xs text-slate-500">
-                        บันทึกว่าใครทำอะไร เวลาไหน และเกี่ยวข้องกับนักกีฬาคนใด
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                      {roundLogs.length} เหตุการณ์
-                    </span>
-                  </div>
-                  <div className="max-h-[600px] overflow-auto">
-                    {roundLogs.length > 0 ? (
-                      Object.entries(logsByDate).map(([date, logs]) => (
-                        <div key={date} className="border-b border-slate-200 last:border-b-0">
-                          <div className="sticky top-0 z-10 bg-slate-50 px-6 py-3.5">
-                            <p className="text-xs font-semibold text-slate-700">{date}</p>
-                          </div>
-                          <ul className="divide-y divide-slate-200 bg-white text-xs text-slate-700">
-                            {logs.map((log) => (
-                              <li
-                                key={log.id}
-                                className="flex gap-4 px-6 py-5 hover:bg-slate-50/50"
-                              >
-                                <div className="mt-0.5 w-20 shrink-0">
-                                  <div className="font-mono text-[11px] font-semibold text-slate-900">
-                                    {log.time}
-                                  </div>
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-xs font-semibold text-slate-900">
-                                      {log.actor}
-                                    </span>
-                                    <span
-                                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                                        log.role === "judge"
-                                          ? "bg-sky-50 text-sky-700"
-                                          : "bg-emerald-50 text-emerald-700"
-                                      }`}
-                                    >
-                                      {log.role === "judge" ? "Judge" : "Moderator"}
-                                    </span>
-                                    {log.actionType && (
-                                      <ActionBadge actionType={log.actionType} />
-                                    )}
-                                  </div>
-                                  <p className="mt-1 text-[11px] text-slate-700">
-                                    {log.action}
-                                    {log.targetAthlete && (
-                                      <>
-                                        {" "}
-                                        –{" "}
-                                        <span className="font-medium text-slate-900">
-                                          {log.targetBib && `Bib ${log.targetBib} `}
-                                          {log.targetAthlete}
-                                        </span>
-                                      </>
-                                    )}
-                                  </p>
-                                  {log.details && (
-                                    <p className="mt-0.5 text-[10px] text-slate-500">
-                                      {log.details}
-                                    </p>
+                                  {isExpanded && (
+                                    <tr>
+                                      <td
+                                        colSpan={5}
+                                        className="bg-slate-50/60 px-8 py-6"
+                                      >
+                                        <div className="space-y-5">
+                                          {judgePending.length > 0 && (
+                                            <PendingRedCardSection
+                                              cards={judgePending}
+                                              eventId={eventId}
+                                            />
+                                          )}
+                                          <CardListSection
+                                            color="amber"
+                                            title="ใบเหลืองที่ให้"
+                                            logs={yellowCards}
+                                          />
+                                          <CardListSection
+                                            color="red"
+                                            title="ใบแดงที่ให้"
+                                            logs={redCards}
+                                          />
+                                        </div>
+                                      </td>
+                                    </tr>
                                   )}
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="px-4 py-8 text-center">
-                        <p className="text-xs text-slate-500">ยังไม่มี Activity Log ในรอบนี้</p>
+                                </Fragment>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="border-t border-slate-200 px-6 py-3">
+                      <ListPager
+                        page={judgeList.page}
+                        totalPages={judgeList.totalPages}
+                        onPage={judgeList.setPage}
+                        rangeStart={judgeList.rangeStart}
+                        rangeEnd={judgeList.rangeEnd}
+                        filteredTotal={judgeList.filteredTotal}
+                        total={judgeList.total}
+                        isFiltered={judgeList.isFiltered}
+                        unit="คน"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Activity log */}
+                <Card
+                  id="m-log"
+                  className="scroll-mt-4 rounded-2xl border-slate-200"
+                >
+                  <CardContent className="p-0">
+                    <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                      <div>
+                        <h2 className="text-sm font-semibold text-slate-900">
+                          Activity Log - {displayRound.name}
+                        </h2>
+                        <p className="text-xs text-slate-500">
+                          บันทึกว่าใครทำอะไร เวลาไหน และเกี่ยวข้องกับนักกีฬาคนใด
+                        </p>
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                        {roundLogs.length} เหตุการณ์
+                      </span>
+                    </div>
+                    <div className="max-h-[600px] overflow-auto">
+                      {roundLogs.length > 0 ? (
+                        Object.entries(logsByDate).map(([date, logs]) => (
+                          <div
+                            key={date}
+                            className="border-b border-slate-200 last:border-b-0"
+                          >
+                            <div className="sticky top-0 z-10 bg-slate-50 px-6 py-3.5">
+                              <p className="text-xs font-semibold text-slate-700">
+                                {date}
+                              </p>
+                            </div>
+                            <ul className="divide-y divide-slate-200 bg-white text-xs text-slate-700">
+                              {logs.map((log) => (
+                                <li
+                                  key={log.id}
+                                  className="flex gap-4 px-6 py-5 hover:bg-slate-50/50"
+                                >
+                                  <div className="mt-0.5 w-20 shrink-0">
+                                    <div className="font-mono text-[11px] font-semibold text-slate-900">
+                                      {log.time}
+                                    </div>
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="text-xs font-semibold text-slate-900">
+                                        {log.actor}
+                                      </span>
+                                      <span
+                                        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                                          log.role === "judge"
+                                            ? "bg-sky-50 text-sky-700"
+                                            : "bg-emerald-50 text-emerald-700"
+                                        }`}
+                                      >
+                                        {log.role === "judge"
+                                          ? "Judge"
+                                          : "Moderator"}
+                                      </span>
+                                      {log.actionType && (
+                                        <ActionBadge
+                                          actionType={log.actionType}
+                                        />
+                                      )}
+                                    </div>
+                                    <p className="mt-1 text-[11px] text-slate-700">
+                                      {log.action}
+                                      {log.targetAthlete && (
+                                        <>
+                                          {" "}
+                                          –{" "}
+                                          <span className="font-medium text-slate-900">
+                                            {log.targetBib &&
+                                              `Bib ${log.targetBib} `}
+                                            {log.targetAthlete}
+                                          </span>
+                                        </>
+                                      )}
+                                    </p>
+                                    {log.details && (
+                                      <p className="mt-0.5 text-[10px] text-slate-500">
+                                        {log.details}
+                                      </p>
+                                    )}
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-4 py-8 text-center">
+                          <p className="text-xs text-slate-500">
+                            ยังไม่มี Activity Log ในรอบนี้
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           )}
         </div>
-
       </main>
 
       {showEditConfirm && displayRound && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="mx-4 max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">ยืนยันการแก้ไขข้อมูล</h2>
+              <h2 className="text-lg font-semibold text-slate-900">
+                ยืนยันการแก้ไขข้อมูล
+              </h2>
               <button
                 type="button"
                 onClick={() => setShowEditConfirm(false)}
@@ -777,27 +988,24 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
             </div>
             <div className="mt-4 space-y-4">
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <p className="text-[11px] font-medium text-slate-500">รอบที่จะแก้ไข</p>
-                <p className="mt-0.5 text-sm font-semibold text-slate-900">{displayRound.name}</p>
+                <p className="text-[11px] font-medium text-slate-500">
+                  รอบที่จะแก้ไข
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-900">
+                  {displayRound.name}
+                </p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
                   <span className="text-slate-500">{event.name}</span>
                   {displayRound.distance_km && (
                     <span className="rounded-full bg-slate-200 px-2 py-0.5 font-medium text-slate-700">
-                      {displayRound.distance_km} กม.
-                    </span>
-                  )}
-                  {displayRound.heat_name && (
-                    <span className="rounded-full bg-slate-200 px-2 py-0.5 font-medium text-slate-700">
-                      {displayRound.heat_name}
+                      {metersFromKm(displayRound.distance_km)} ม.
                     </span>
                   )}
                   <span
                     className={`rounded-full px-2 py-0.5 font-medium ${
                       displayRound.status === "finished"
                         ? "bg-slate-200 text-slate-700"
-                        : displayRound.status === "ongoing"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-sky-100 text-sky-700"
+                        : editConfirmOngoingOrScheduledClass
                     }`}
                   >
                     {roundStatusLabel[displayRound.status]}
@@ -805,7 +1013,8 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                 </div>
               </div>
               <p className="text-xs text-slate-600">
-                คุณกำลังจะเข้าสู่โหมดแก้ไขข้อมูลรอบนี้ การเปลี่ยนแปลงจะถูกบันทึกเป็น audit log
+                คุณกำลังจะเข้าสู่โหมดแก้ไขข้อมูลรอบนี้
+                การเปลี่ยนแปลงจะถูกบันทึกเป็น audit log
               </p>
               <div className="flex justify-end gap-2 pt-2">
                 <button
@@ -841,14 +1050,23 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                 ■
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-semibold text-slate-900">ยืนยันจบการแข่งขัน</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  ยืนยันจบการแข่งขัน
+                </h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  รอบ <span className="font-medium text-slate-900">{displayRound.name}</span>
+                  รอบ{" "}
+                  <span className="font-medium text-slate-900">
+                    {displayRound.name}
+                  </span>
                   {displayRound.started_at && (
                     <>
-                      {" "}• เวลาที่ใช้{" "}
+                      {" "}
+                      • เวลาที่ใช้{" "}
                       <span className="font-mono font-semibold text-emerald-700">
-                        {formatElapsed(displayRound.started_at, displayRound.ended_at)}
+                        {formatElapsed(
+                          displayRound.started_at,
+                          displayRound.ended_at,
+                        )}
                       </span>
                     </>
                   )}
@@ -869,13 +1087,17 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
               <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3">
                 <p className="flex flex-wrap items-center gap-x-1.5 text-xs font-semibold text-red-700">
                   <span aria-hidden>⚠</span>
-                  ยังมีนักกีฬาที่ยังไม่เข้าเส้นชัย {unfinishedAthletes.length} คน
+                  ยังมีนักกีฬาที่ยังไม่เข้าเส้นชัย {
+                    unfinishedAthletes.length
+                  }{" "}
+                  คน
                   <span className="font-normal text-red-500">
                     (เข้าเส้นแล้ว {finishedCount}/{roundAthletes.length})
                   </span>
                 </p>
                 <p className="mt-0.5 text-[11px] text-red-600/80">
-                  หากจบตอนนี้ นักกีฬาเหล่านี้จะไม่มีเวลาเข้าเส้นชัย/อันดับ — ตรวจสอบรายชื่อก่อนยืนยัน
+                  หากจบตอนนี้ นักกีฬาเหล่านี้จะไม่มีเวลาเข้าเส้นชัย/อันดับ —
+                  ตรวจสอบรายชื่อก่อนยืนยัน
                 </p>
                 <ul className="mt-2 max-h-48 space-y-1 overflow-auto pr-0.5">
                   {unfinishedAthletes.map((a) => (
@@ -886,7 +1108,9 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
                       <span className="w-9 shrink-0 font-mono font-semibold text-slate-900">
                         #{a.bib}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-slate-700">{a.name}</span>
+                      <span className="min-w-0 flex-1 truncate text-slate-700">
+                        {a.name}
+                      </span>
                       {a.affiliation && (
                         <span className="hidden max-w-[40%] truncate text-[10px] text-slate-400 sm:block">
                           {a.affiliation}
@@ -945,18 +1169,25 @@ export function ModeratorView({ eventId, event, rounds }: ModeratorViewProps) {
   );
 }
 
-function AthleteCardBreakdown({ details }: { details: AthleteCardDetail[] }) {
+function AthleteCardBreakdown({
+  details,
+}: Readonly<{ details: AthleteCardDetail[] }>) {
   const yellows = details.filter((c) => c.color === "YELLOW");
   const reds = details.filter((c) => c.color === "RED");
 
-  const stateLabel = (state: AthleteCardDetail["state"]): { label: string; cls: string } => {
+  const stateLabel = (
+    state: AthleteCardDetail["state"],
+  ): { label: string; cls: string } => {
     switch (state) {
       case "CONFIRMED":
         return { label: "ยืนยันแล้ว", cls: "bg-red-100 text-red-700" };
       case "PENDING":
         return { label: "รอยืนยัน", cls: "bg-orange-100 text-orange-700" };
       case "OVERRIDDEN":
-        return { label: "ยกเลิกแล้ว", cls: "bg-slate-200 text-slate-500 line-through" };
+        return {
+          label: "ยกเลิกแล้ว",
+          cls: "bg-slate-200 text-slate-500 line-through",
+        };
       default:
         return { label: "", cls: "" };
     }
@@ -968,7 +1199,9 @@ function AthleteCardBreakdown({ details }: { details: AthleteCardDetail[] }) {
     return (
       <div
         className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
-          isYellow ? "border-amber-200 bg-amber-50/50" : "border-red-200 bg-red-50/50"
+          isYellow
+            ? "border-amber-200 bg-amber-50/50"
+            : "border-red-200 bg-red-50/50"
         }`}
       >
         <div className="flex items-center gap-2.5">
@@ -983,13 +1216,16 @@ function AthleteCardBreakdown({ details }: { details: AthleteCardDetail[] }) {
             <p className="text-[11px] font-medium text-slate-800">
               {c.symbolLabel}
               {!isYellow && st.label && (
-                <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium ${st.cls}`}>
+                <span
+                  className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium ${st.cls}`}
+                >
                   {st.label}
                 </span>
               )}
             </p>
             <p className="text-[10px] text-slate-500">
-              โดย <span className="font-medium text-slate-700">{c.judgeName}</span>
+              โดย{" "}
+              <span className="font-medium text-slate-700">{c.judgeName}</span>
               {c.judgeZone && ` (${c.judgeZone})`} • {c.time}
             </p>
           </div>
@@ -1005,7 +1241,7 @@ function AthleteCardBreakdown({ details }: { details: AthleteCardDetail[] }) {
           <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-[9px] font-bold">
             {yellows.length}
           </span>
-          ใบเหลืองที่ได้รับ
+          {"ใบเหลืองที่ได้รับ"}
         </h4>
         {yellows.length > 0 ? (
           <div className="space-y-1.5">
@@ -1023,7 +1259,7 @@ function AthleteCardBreakdown({ details }: { details: AthleteCardDetail[] }) {
           <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-100 text-[9px] font-bold">
             {reds.length}
           </span>
-          ใบแดงที่ได้รับ
+          {"ใบแดงที่ได้รับ"}
         </h4>
         {reds.length > 0 ? (
           <div className="space-y-1.5">
@@ -1039,50 +1275,99 @@ function AthleteCardBreakdown({ details }: { details: AthleteCardDetail[] }) {
   );
 }
 
-function ActionBadge({ actionType }: { actionType: ActivityLogItem["actionType"] }) {
+function ActionBadge({
+  actionType,
+}: Readonly<{ actionType: ActivityLogItem["actionType"] }>) {
   if (!actionType) return null;
   // Known action types — defensive lookup with sensible fallback for unknown values
   // (RoundActivityLog.actionType is a free-form string, so new types may appear)
   const labels: Record<string, { label: string; cls: string }> = {
-    yellow_card:         { label: "ใบเหลือง",       cls: "bg-amber-50 text-amber-700" },
-    red_card:            { label: "ใบแดง",          cls: "bg-red-50 text-red-700" },
-    red_card_confirm:    { label: "ยืนยันใบแดง",     cls: "bg-red-50 text-red-700" },
-    red_card_override:   { label: "ยกเลิกใบแดง",    cls: "bg-slate-100 text-slate-700" },
-    athlete_dq:          { label: "DQ",             cls: "bg-red-100 text-red-800" },
-    athlete_dnf:         { label: "DNF",            cls: "bg-amber-100 text-amber-800" },
-    round_start:         { label: "เริ่มรอบ",        cls: "bg-emerald-50 text-emerald-700" },
-    round_end:           { label: "จบรอบ",          cls: "bg-slate-100 text-slate-700" },
-    lap_time:            { label: "Lap",            cls: "bg-sky-50 text-sky-700" },
-    finish_time:         { label: "เข้าเส้นชัย",     cls: "bg-emerald-100 text-emerald-800" },
-    moderator_delete_card:    { label: "Mod: ลบใบ",     cls: "bg-violet-50 text-violet-700" },
-    moderator_confirm_red:    { label: "Mod: ยืนยันแดง", cls: "bg-violet-50 text-violet-700" },
-    moderator_reject_red:     { label: "Mod: ยกเลิกแดง", cls: "bg-violet-50 text-violet-700" },
-    moderator_edit_card:      { label: "Mod: แก้ใบ",    cls: "bg-violet-50 text-violet-700" },
-    moderator_edit_finish_position: { label: "Mod: แก้อันดับ", cls: "bg-violet-50 text-violet-700" },
-    moderator_edit_round:     { label: "Mod: แก้รอบ",   cls: "bg-violet-50 text-violet-700" },
-    moderator_override_status:{ label: "Mod: สถานะ",    cls: "bg-violet-50 text-violet-700" },
-    moderator_edit_lap:       { label: "Mod: แก้ Lap",  cls: "bg-violet-50 text-violet-700" },
-    moderator_delete_lap:     { label: "Mod: ลบ Lap",   cls: "bg-violet-50 text-violet-700" },
-    moderator_edit_finish:    { label: "Mod: แก้ Finish",cls: "bg-violet-50 text-violet-700" },
-    moderator_delete_finish:  { label: "Mod: ลบ Finish", cls: "bg-violet-50 text-violet-700" },
-    other:               { label: "อื่นๆ",          cls: "bg-slate-50 text-slate-600" },
+    yellow_card: { label: "ใบเหลือง", cls: "bg-amber-50 text-amber-700" },
+    red_card: { label: "ใบแดง", cls: "bg-red-50 text-red-700" },
+    red_card_confirm: { label: "ยืนยันใบแดง", cls: "bg-red-50 text-red-700" },
+    red_card_override: {
+      label: "ยกเลิกใบแดง",
+      cls: "bg-slate-100 text-slate-700",
+    },
+    athlete_dq: { label: "DQ", cls: "bg-red-100 text-red-800" },
+    athlete_dnf: { label: "DNF", cls: "bg-amber-100 text-amber-800" },
+    round_start: { label: "เริ่มรอบ", cls: "bg-emerald-50 text-emerald-700" },
+    round_end: { label: "จบรอบ", cls: "bg-slate-100 text-slate-700" },
+    lap_time: { label: "Lap", cls: "bg-sky-50 text-sky-700" },
+    finish_time: {
+      label: "เข้าเส้นชัย",
+      cls: "bg-emerald-100 text-emerald-800",
+    },
+    moderator_delete_card: {
+      label: "Mod: ลบใบ",
+      cls: "bg-violet-50 text-violet-700",
+    },
+    moderator_confirm_red: {
+      label: "Mod: ยืนยันแดง",
+      cls: "bg-violet-50 text-violet-700",
+    },
+    moderator_reject_red: {
+      label: "Mod: ยกเลิกแดง",
+      cls: "bg-violet-50 text-violet-700",
+    },
+    moderator_edit_card: {
+      label: "Mod: แก้ใบ",
+      cls: "bg-violet-50 text-violet-700",
+    },
+    moderator_edit_finish_position: {
+      label: "Mod: แก้อันดับ",
+      cls: "bg-violet-50 text-violet-700",
+    },
+    moderator_edit_round: {
+      label: "Mod: แก้รอบ",
+      cls: "bg-violet-50 text-violet-700",
+    },
+    moderator_override_status: {
+      label: "Mod: สถานะ",
+      cls: "bg-violet-50 text-violet-700",
+    },
+    moderator_edit_lap: {
+      label: "Mod: แก้ Lap",
+      cls: "bg-violet-50 text-violet-700",
+    },
+    moderator_delete_lap: {
+      label: "Mod: ลบ Lap",
+      cls: "bg-violet-50 text-violet-700",
+    },
+    moderator_edit_finish: {
+      label: "Mod: แก้ Finish",
+      cls: "bg-violet-50 text-violet-700",
+    },
+    moderator_delete_finish: {
+      label: "Mod: ลบ Finish",
+      cls: "bg-violet-50 text-violet-700",
+    },
+    other: { label: "อื่นๆ", cls: "bg-slate-50 text-slate-600" },
   };
-  const meta = labels[actionType] ?? { label: actionType, cls: "bg-slate-50 text-slate-600" };
+  const meta = labels[actionType] ?? {
+    label: actionType,
+    cls: "bg-slate-50 text-slate-600",
+  };
   return (
-    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}>
+    <span
+      className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}
+    >
       {meta.label}
     </span>
   );
 }
 
-function PendingRedCardSection({ cards, eventId: _eventId }: { cards: PendingRedCard[]; eventId: string }) {
+function PendingRedCardSection({
+  cards,
+  eventId: _eventId,
+}: Readonly<{ cards: PendingRedCard[]; eventId: string }>) {
   return (
     <div className="space-y-2">
       <h4 className="flex items-center gap-2 text-xs font-semibold text-red-700">
         <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
           {cards.length}
         </span>
-        ใบแดงรอยืนยัน
+        {"ใบแดงรอยืนยัน"}
       </h4>
       <div className="space-y-3">
         {cards.map((pending) => (
@@ -1099,7 +1384,8 @@ function PendingRedCardSection({ cards, eventId: _eventId }: { cards: PendingRed
                   Bib {pending.targetBib} – {pending.targetAthlete}
                 </p>
                 <p className="text-[10px] text-slate-500">
-                  {pending.symbol === ">" ? "งอเข่า" : "ยกเท้า"} • {pending.time}
+                  {pending.symbol === ">" ? "งอเข่า" : "ยกเท้า"} •{" "}
+                  {pending.time}
                 </p>
               </div>
             </div>
@@ -1117,18 +1403,33 @@ function CardListSection({
   color,
   title,
   logs,
-}: {
+}: Readonly<{
   color: "amber" | "red";
   title: string;
   logs: ActivityLogItem[];
-}) {
-  const cls = color === "amber"
-    ? { ring: "border-amber-200", header: "bg-amber-50 text-amber-700", divider: "divide-amber-100", chip: "bg-amber-400" }
-    : { ring: "border-red-200", header: "bg-red-50 text-red-700", divider: "divide-red-100", chip: "bg-red-500" };
+}>) {
+  const cls =
+    color === "amber"
+      ? {
+          ring: "border-amber-200",
+          header: "bg-amber-50 text-amber-700",
+          divider: "divide-amber-100",
+          chip: "bg-amber-400",
+        }
+      : {
+          ring: "border-red-200",
+          header: "bg-red-50 text-red-700",
+          divider: "divide-red-100",
+          chip: "bg-red-500",
+        };
   return (
     <div className="space-y-3">
-      <h4 className={`flex items-center gap-2 text-xs font-semibold ${color === "amber" ? "text-amber-700" : "text-red-700"}`}>
-        <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${color === "amber" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"} text-[10px] font-bold`}>
+      <h4
+        className={`flex items-center gap-2 text-xs font-semibold ${color === "amber" ? "text-amber-700" : "text-red-700"}`}
+      >
+        <span
+          className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${color === "amber" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"} text-[10px] font-bold`}
+        >
           {logs.length}
         </span>
         {title}
@@ -1136,7 +1437,9 @@ function CardListSection({
       {logs.length > 0 ? (
         <div className={`overflow-hidden rounded-lg border ${cls.ring}`}>
           <table className="min-w-full text-[11px]">
-            <thead className={`${cls.header} text-[10px] font-medium uppercase`}>
+            <thead
+              className={`${cls.header} text-[10px] font-medium uppercase`}
+            >
               <tr>
                 <th className="px-4 py-3 text-left">Bib</th>
                 <th className="px-4 py-3 text-left">นักกีฬา</th>
@@ -1150,16 +1453,24 @@ function CardListSection({
                   <td className="px-4 py-3 font-mono font-semibold text-slate-900">
                     {log.targetBib ?? "-"}
                   </td>
-                  <td className="px-4 py-3 text-slate-800">{log.targetAthlete ?? "-"}</td>
-                  <td className="px-4 py-3 font-mono text-slate-500">{log.time}</td>
+                  <td className="px-4 py-3 text-slate-800">
+                    {log.targetAthlete ?? "-"}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-slate-500">
+                    {log.time}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {log.symbol && (
-                        <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${cls.chip} font-mono text-[10px] font-bold text-white`}>
+                        <span
+                          className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${cls.chip} font-mono text-[10px] font-bold text-white`}
+                        >
                           {log.symbol}
                         </span>
                       )}
-                      <span className="text-slate-700">{log.details ?? "-"}</span>
+                      <span className="text-slate-700">
+                        {log.details ?? "-"}
+                      </span>
                     </div>
                   </td>
                 </tr>
@@ -1168,7 +1479,9 @@ function CardListSection({
           </table>
         </div>
       ) : (
-        <p className="text-xs text-slate-400">ยังไม่ได้ให้{title.includes("เหลือง") ? "ใบเหลือง" : "ใบแดง"}</p>
+        <p className="text-xs text-slate-400">
+          ยังไม่ได้ให้{title.includes("เหลือง") ? "ใบเหลือง" : "ใบแดง"}
+        </p>
       )}
     </div>
   );

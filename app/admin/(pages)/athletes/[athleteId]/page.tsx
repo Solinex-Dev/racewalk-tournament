@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 
 type Props = { params: Promise<{ athleteId: string }> };
 
-export default async function AthleteDetailPage(props: Props) {
+export default async function AthleteDetailPage(props: Readonly<Props>) {
   const { athleteId } = await props.params;
 
   const [athlete, affiliations] = await Promise.all([
@@ -79,6 +79,7 @@ export default async function AthleteDetailPage(props: Props) {
           defaultValues={{
             prefix: athlete.prefix ?? "",
             firstName: athlete.firstName ?? athlete.name,
+            middleName: athlete.middleName ?? "",
             lastName: athlete.lastName ?? "",
             country: athlete.country,
             affiliationId: athlete.affiliationId ?? "",

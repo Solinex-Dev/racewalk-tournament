@@ -1,7 +1,7 @@
 import { ShieldAlert } from "lucide-react";
 
 /** Shown by admin pages when the signed-in admin lacks the required permission. */
-export function NoAccess({ message }: { message?: string }) {
+export function NoAccess({ message }: Readonly<{ message?: string }>) {
   return (
     <main className="flex flex-1 items-center justify-center p-8">
       <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">

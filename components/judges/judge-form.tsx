@@ -27,6 +27,7 @@ type OrgNode = { id: string; name: string; departments: { id: string; name: stri
 export type JudgeFormValues = {
   prefix: string;
   firstName: string;
+  middleName: string;
   lastName: string;
   country: string;
   province: string;
@@ -50,6 +51,7 @@ type JudgeFormProps = {
 const EMPTY: JudgeFormValues = {
   prefix: "",
   firstName: "",
+  middleName: "",
   lastName: "",
   country: "TH",
   province: "",
@@ -68,7 +70,7 @@ export function JudgeForm({
   canEdit = false,
   canDelete = false,
   defaultValues,
-}: JudgeFormProps) {
+}: Readonly<JudgeFormProps>) {
   const router = useRouter();
   const isEdit = mode === "edit";
 
@@ -85,6 +87,7 @@ export function JudgeForm({
 
   const isThai = form.country === "TH";
   const set = (patch: Partial<JudgeFormValues>) => setForm((p) => ({ ...p, ...patch }));
+  const submitLabel = isEdit ? "บันทึกการแก้ไข" : "เพิ่มกรรมการ";
 
   const orgOptions: ComboboxOption[] = orgs.map((o) => ({ value: o.id, label: o.name }));
   const selectedOrg = orgs.find((o) => o.id === form.organizationId);
@@ -150,6 +153,7 @@ export function JudgeForm({
         const payload = {
           prefix: form.prefix.trim() || null,
           firstName: form.firstName.trim(),
+          middleName: form.middleName.trim() || null,
           lastName: form.lastName.trim() || null,
           country: form.country || "TH",
           province: isThai ? form.province.trim() || null : null,
@@ -199,7 +203,7 @@ export function JudgeForm({
             {isEdit ? "ข้อมูลกรรมการ" : "เพิ่มกรรมการใหม่"}
           </CardTitle>
           <p className="text-xs text-slate-600">
-            ระบุข้อมูลของกรรมการ เพื่อใช้กำหนดเข้ารอบแข่งและออกรหัสลับสำหรับ login ในวันแข่ง
+            ระบุข้อมูลของกรรมการ เพื่อใช้กำหนดเข้ารอบแข่งและออกรหัสกรรมการสำหรับ login ในวันแข่ง
           </p>
         </div>
         {isEdit && !editing && (
@@ -218,21 +222,12 @@ export function JudgeForm({
         )}
       </CardHeader>
       <CardContent className="py-4">
-        {!editing ? (
-          <dl>
-            <DetailField label="ชื่อ-นามสกุล" value={composeName(saved)} />
-            <DetailField label="ประเทศ" value={labelOf(countryOptions, saved.country)} />
-            <DetailField label="จังหวัด" value={saved.province} />
-            <DetailField label="องค์กร / สังกัด" value={orgName(saved.organizationId)} />
-            <DetailField label="แผนก / หน่วยงาน" value={deptName(saved.organizationId, saved.departmentId)} />
-            <DetailField label="สถานะการใช้งาน" value={saved.status === "ACTIVE" ? "ใช้งานอยู่" : "ปิดการใช้งาน"} />
-            <DetailField label="หมายเหตุ" value={saved.note} />
-          </dl>
-        ) : (
+        {editing ? (
           <form className="space-y-4" onSubmit={handleSubmit}>
             <PersonNameFields
               prefix={form.prefix}
               firstName={form.firstName}
+              middleName={form.middleName}
               lastName={form.lastName}
               onChange={set}
               disabled={isPending}
@@ -240,8 +235,9 @@ export function JudgeForm({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-800">ประเทศ</label>
+                <label htmlFor="judge-country" className="block text-xs font-medium text-slate-800">ประเทศ</label>
                 <Combobox
+                  id="judge-country"
                   options={countryOptions}
                   value={form.country}
                   onChange={(v) => set({ country: v, province: v === "TH" ? form.province : "" })}
@@ -253,53 +249,56 @@ export function JudgeForm({
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-800">จังหวัด</label>
+                <label htmlFor="judge-province" className="block text-xs font-medium text-slate-800">จังหวัด</label>
                 {isThai ? (
                   <Combobox
+                    id="judge-province"
                     options={provinceOptions}
                     value={form.province}
                     onChange={(v) => set({ province: v })}
                     clearable
                     disabled={isPending}
-                    placeholder="— ไม่ระบุ —"
+                    placeholder="ไม่ระบุ"
                     searchPlaceholder="ค้นหาจังหวัด…"
                     emptyText="ไม่พบจังหวัด"
                   />
                 ) : (
-                  <Input value="" disabled placeholder="(เฉพาะกรรมการในประเทศไทย)" className="rounded-xl text-sm" />
+                  <Input id="judge-province" value="" disabled placeholder="(เฉพาะกรรมการในประเทศไทย)" className="rounded-xl text-sm" />
                 )}
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-800">องค์กร / สังกัด</label>
+                <label htmlFor="judge-organization" className="block text-xs font-medium text-slate-800">องค์กร / สังกัด</label>
                 <Combobox
+                  id="judge-organization"
                   options={orgOptions}
                   value={form.organizationId}
                   onChange={onSelectOrg}
                   clearable
                   disabled={isPending}
-                  placeholder="— ไม่ระบุ —"
+                  placeholder="ไม่ระบุ"
                   searchPlaceholder="ค้นหาองค์กร…"
                   emptyText="ไม่พบองค์กร"
                   onCreateNew={() => {
                     setCreateName("");
                     setCreating("org");
                   }}
-                  createNewLabel="+ สร้างองค์กรใหม่"
+                  createNewLabel="สร้างองค์กรใหม่"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-800">แผนก / หน่วยงาน</label>
+                <label htmlFor="judge-department" className="block text-xs font-medium text-slate-800">แผนก / หน่วยงาน</label>
                 <Combobox
+                  id="judge-department"
                   options={deptOptions}
                   value={form.departmentId}
                   onChange={(v) => set({ departmentId: v })}
                   clearable
                   disabled={isPending || !form.organizationId}
-                  placeholder={form.organizationId ? "— ไม่ระบุ —" : "เลือกองค์กรก่อน"}
+                  placeholder={form.organizationId ? "ไม่ระบุ" : "เลือกองค์กรก่อน"}
                   searchPlaceholder="ค้นหาแผนก…"
                   emptyText="ยังไม่มีแผนกในองค์กรนี้"
                   onCreateNew={
@@ -334,8 +333,9 @@ export function JudgeForm({
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-800">หมายเหตุ (Note)</label>
+              <label htmlFor="judge-note" className="block text-xs font-medium text-slate-800">หมายเหตุ (Note)</label>
               <textarea
+                id="judge-note"
                 value={form.note}
                 onChange={(e) => set({ note: e.target.value })}
                 placeholder="ข้อมูลเพิ่มเติม เช่น ความเชี่ยวชาญ, ประสบการณ์, ข้อจำกัดเฉพาะ"
@@ -352,10 +352,20 @@ export function JudgeForm({
                 </Button>
               )}
               <Button type="submit" disabled={isPending} className="rounded-xl px-4 py-2 text-sm font-medium">
-                {isPending ? "กำลังบันทึก..." : isEdit ? "บันทึกการแก้ไข" : "เพิ่มกรรมการ"}
+                {isPending ? "กำลังบันทึก..." : submitLabel}
               </Button>
             </div>
           </form>
+        ) : (
+          <dl>
+            <DetailField label="ชื่อ-นามสกุล" value={composeName(saved)} />
+            <DetailField label="ประเทศ" value={labelOf(countryOptions, saved.country)} />
+            <DetailField label="จังหวัด" value={saved.province} />
+            <DetailField label="องค์กร / สังกัด" value={orgName(saved.organizationId)} />
+            <DetailField label="แผนก / หน่วยงาน" value={deptName(saved.organizationId, saved.departmentId)} />
+            <DetailField label="สถานะการใช้งาน" value={saved.status === "ACTIVE" ? "ใช้งานอยู่" : "ปิดการใช้งาน"} />
+            <DetailField label="หมายเหตุ" value={saved.note} />
+          </dl>
         )}
       </CardContent>
 

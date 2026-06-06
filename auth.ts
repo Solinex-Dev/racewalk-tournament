@@ -12,7 +12,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcrypt";
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { createActivityLog, ActivityLogAction } from "@/lib/activity-log";
 import { resolveUserStatus, finalizeDeletion } from "@/lib/user-status";
@@ -228,7 +228,7 @@ export const authOptions: AuthOptions = {
         t.sub = row.userId;
         t.role = dbUser.role;
       }
-      return token as typeof token;
+      return token;
     },
     async session({ session, token }) {
       const t = token as JWTWithId;

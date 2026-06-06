@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { JudgesList } from "@/components/judges/judges-list";
 import { OrgDepartmentManager } from "@/components/judges/org-department-manager";
+import { CsvExportImport } from "@/components/admin/csv-export-import";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
 import { countryLabel } from "@/lib/data/countries";
@@ -35,7 +36,9 @@ export default async function JudgesPage() {
 
   const judges = rows.map((j) => ({
     id: j.id,
+    prefix: j.prefix ?? "",
     first_name: j.firstName ?? j.name,
+    middle_name: j.middleName ?? "",
     last_name: j.lastName ?? "",
     country: countryLabel(j.country),
     province: j.province ?? "",
@@ -65,7 +68,10 @@ export default async function JudgesPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {me?.isRoot && (
+              <CsvExportImport entity="judge" exportHref="/api/admin/export/judges" />
+            )}
             {(hasPermission(me, "judges", "create") ||
               hasPermission(me, "judges", "edit") ||
               hasPermission(me, "judges", "delete")) && (

@@ -1,7 +1,7 @@
 import * as React from "react";
 
 /** One label → value row for the read-only (display) view of a detail page. */
-export function DetailField({ label, value }: { label: string; value?: React.ReactNode }) {
+export function DetailField({ label, value }: Readonly<{ label: string; value?: React.ReactNode }>) {
   const isEmpty =
     value === null || value === undefined || value === "" || value === false;
   return (

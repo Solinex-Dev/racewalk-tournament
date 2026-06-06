@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "เข้าร่วมเป็นกรรมการ – การแข่งขันเดินทน",
-  description: "หน้าให้กรรมการกรอกรหัสลับเพื่อเข้าร่วม Event บน Racewalk Tournament",
+  description: "หน้าให้กรรมการกรอกรหัสกรรมการเพื่อเข้าร่วม Event บน Racewalk Tournament",
 };
 
 type Props = { params: Promise<{ eventId: string }> };
@@ -16,7 +16,7 @@ const STATUS_LABEL: Record<string, string> = {
   FINISHED: "จบการแข่งขันแล้ว",
 };
 
-export default async function JudgeJoinPage(props: Props) {
+export default async function JudgeJoinPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
   const event = await prisma.event.findUnique({
@@ -34,7 +34,6 @@ export default async function JudgeJoinPage(props: Props) {
     ? {
         id: event.id,
         name: event.name,
-        heat_name: event.rounds[0]?.heatName ?? event.rounds[0]?.name ?? "",
         statusLabel: STATUS_LABEL[event.status] ?? event.status,
       }
     : null;

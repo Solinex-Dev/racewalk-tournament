@@ -52,7 +52,7 @@ function endOfDay(date: Date): Date {
 }
 
 function estimatedDurationMs(distanceKm: string | null): number {
-  const km = distanceKm ? Number(distanceKm) : NaN;
+  const km = distanceKm ? Number(distanceKm) : Number.NaN;
   if (Number.isFinite(km) && km > 0) return km * PACE_MIN_PER_KM * MS_PER_MIN;
   return DEFAULT_DURATION_MS;
 }

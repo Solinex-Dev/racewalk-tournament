@@ -39,7 +39,7 @@ export async function getCurrentAdmin(): Promise<CurrentAdmin | null> {
       status: true,
     },
   });
-  if (!user || user.role !== "ADMIN" || user.status !== "ACTIVE") return null;
+  if (user?.role !== "ADMIN" || user.status !== "ACTIVE") return null;
   return user;
 }
 

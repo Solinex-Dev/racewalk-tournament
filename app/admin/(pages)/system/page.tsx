@@ -59,7 +59,7 @@ function fmt(dt: Date): string {
 const inputCls =
   "h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5";
 
-export default async function SystemMonitorPage(props: Props) {
+export default async function SystemMonitorPage(props: Readonly<Props>) {
   const me = await getCurrentAdmin();
   if (!me?.isRoot) return <NoAccess />;
 
@@ -129,8 +129,9 @@ export default async function SystemMonitorPage(props: Props) {
           <CardContent className="p-4">
             <form method="get" className="flex flex-wrap items-end gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-600">ค้นหา (หน้า / action)</label>
+                <label htmlFor="system-filter-q" className="text-xs font-medium text-slate-600">ค้นหา (หน้า / action)</label>
                 <input
+                  id="system-filter-q"
                   name="q"
                   defaultValue={q}
                   placeholder="เช่น /admin/events, ATHLETE"
@@ -138,8 +139,8 @@ export default async function SystemMonitorPage(props: Props) {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-600">ประเภท</label>
-                <select name="op" defaultValue={op} className={inputCls}>
+                <label htmlFor="system-filter-op" className="text-xs font-medium text-slate-600">ประเภท</label>
+                <select id="system-filter-op" name="op" defaultValue={op} className={inputCls}>
                   <option value="">ทั้งหมด</option>
                   {OPERATIONS.map((o) => (
                     <option key={o} value={o}>
@@ -149,8 +150,8 @@ export default async function SystemMonitorPage(props: Props) {
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-600">ผู้ใช้</label>
-                <select name="user" defaultValue={userId} className={`${inputCls} max-w-52`}>
+                <label htmlFor="system-filter-user" className="text-xs font-medium text-slate-600">ผู้ใช้</label>
+                <select id="system-filter-user" name="user" defaultValue={userId} className={`${inputCls} max-w-52`}>
                   <option value="">ทุกคน</option>
                   {admins.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -160,8 +161,8 @@ export default async function SystemMonitorPage(props: Props) {
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-600">ช่วงเวลา</label>
-                <select name="days" defaultValue={days} className={inputCls}>
+                <label htmlFor="system-filter-days" className="text-xs font-medium text-slate-600">ช่วงเวลา</label>
+                <select id="system-filter-days" name="days" defaultValue={days} className={inputCls}>
                   <option value="1">24 ชม. ล่าสุด</option>
                   <option value="7">7 วันล่าสุด</option>
                   <option value="30">30 วันล่าสุด</option>
@@ -214,7 +215,7 @@ export default async function SystemMonitorPage(props: Props) {
                           <td className="whitespace-nowrap px-3 py-2.5 font-mono text-[11px] text-slate-500">
                             {fmt(r.createdAt)}
                           </td>
-                          <td className="px-3 py-2.5 text-xs">
+                          <td className="px-3 py-2.5 text-xs flex gap-3 text-nowrap">
                             <div className="font-medium text-slate-800">
                               {r.user?.name?.trim() || r.user?.email || "—"}
                             </div>
@@ -235,14 +236,14 @@ export default async function SystemMonitorPage(props: Props) {
                           </td>
                           <td className="px-3 py-2.5">
                             <span
-                              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium text-nowrap ${
                                 OP_BADGE[r.operation ?? ""] ?? "border-slate-200 bg-slate-100 text-slate-600"
                               }`}
                             >
                               {operationLabel(r.operation) || "—"}
                             </span>
                           </td>
-                          <td className="px-3 py-2.5 text-xs text-slate-700">
+                          <td className="px-3 py-2.5 text-xs text-slate-700 text-nowrap">
                             {activityActionLabel(r.action)}
                             {entity ? (
                               <span className="ml-1 text-[10px] text-slate-400">· {entity}</span>
@@ -254,11 +255,11 @@ export default async function SystemMonitorPage(props: Props) {
                           <td className="whitespace-nowrap px-3 py-2.5 font-mono text-[11px] text-slate-500">
                             {r.ipAddress ?? "—"}
                           </td>
-                          <td className="px-3 py-2.5 text-[11px] text-slate-500" title={r.userAgent ?? ""}>
+                          <td className="px-3 py-2.5 text-[11px] text-slate-500 text-nowrap" title={r.userAgent ?? ""}>
                             {formatUserAgent(r.userAgent) || "—"}
                           </td>
                           <td
-                            className="max-w-[16rem] truncate px-3 py-2.5 text-[11px] text-slate-500"
+                            className="max-w-[16rem] truncate px-3 py-2.5 text-[11px] text-slate-500 text-wrap"
                             title={r.details ? JSON.stringify(r.details) : ""}
                           >
                             {detail || "—"}
@@ -279,7 +280,7 @@ export default async function SystemMonitorPage(props: Props) {
                 <div className="flex gap-2">
                   <Link href={pageHref(Math.max(1, page - 1))} aria-disabled={page <= 1}>
                     <Button variant="outline" size="sm" disabled={page <= 1} className="h-8 rounded-lg text-xs">
-                      <ChevronLeft className="h-4 w-4" /> ก่อนหน้า
+                      <ChevronLeft className="h-4 w-4" /> 
                     </Button>
                   </Link>
                   <Link href={pageHref(Math.min(totalPages, page + 1))} aria-disabled={page >= totalPages}>
@@ -289,7 +290,7 @@ export default async function SystemMonitorPage(props: Props) {
                       disabled={page >= totalPages}
                       className="h-8 rounded-lg text-xs"
                     >
-                      ถัดไป <ChevronRight className="h-4 w-4" />
+                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </Link>
                 </div>

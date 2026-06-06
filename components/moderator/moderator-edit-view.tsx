@@ -8,6 +8,7 @@ import { ChevronDown, Gavel, Timer, Flag, History, ClipboardList } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { metersFromKm } from "@/lib/distance";
 import {
   moderatorDeleteCard,
   moderatorConfirmRedCard,
@@ -29,6 +30,11 @@ import { CardEditDialog } from "@/components/moderator/card-edit-dialog";
 import { RoundInfoDialog } from "@/components/moderator/round-info-dialog";
 import { SectionToc, type TocItem } from "@/components/common/section-toc";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
+import {
+  usePaginatedList,
+  ListSearch,
+  ListPager,
+} from "@/components/common/list-pagination";
 
 const EDIT_TOC: TocItem[] = [
   { id: "sec-round", label: "ข้อมูลรอบ / เวลา" },
@@ -84,11 +90,11 @@ function formatMs(ms: number): string {
 }
 
 function parseTimeString(str: string): number | null {
-  const parts = str.trim().split(":").map((p) => Number(p));
+  const parts = str.trim().split(":").map(Number);
   if (parts.some((p) => Number.isNaN(p))) return null;
-  if (parts.length === 1) return parts[0]! * 1000;
-  if (parts.length === 2) return (parts[0]! * 60 + parts[1]!) * 1000;
-  if (parts.length === 3) return (parts[0]! * 3600 + parts[1]! * 60 + parts[2]!) * 1000;
+  if (parts.length === 1) return parts[0] * 1000;
+  if (parts.length === 2) return (parts[0] * 60 + parts[1]) * 1000;
+  if (parts.length === 3) return (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000;
   return null;
 }
 
@@ -130,7 +136,7 @@ function redStateBadge(state: EditCard["state"]): { label: string; cls: string }
   }
 }
 
-export function ModeratorEditView(props: ModeratorEditViewProps) {
+export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
   const [dialogPayload, setDialogPayload] =
@@ -242,6 +248,20 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
     (a) => lapsByAthlete.has(a.id) || finishByAthleteId.has(a.id),
   );
 
+  // Search + pagination (20/page) for the long sections.
+  const athleteList = usePaginatedList(props.athletes, (a, q) =>
+    `${a.bib} ${a.name}`.toLowerCase().includes(q),
+  );
+  const judgeList = usePaginatedList(props.judges, (j, q) =>
+    `${j.name} ${j.zone ?? ""} ${POSITION_LABEL[j.position]}`.toLowerCase().includes(q),
+  );
+  const lapList = usePaginatedList(lapAthletes, (a, q) =>
+    `${a.bib} ${a.name}`.toLowerCase().includes(q),
+  );
+  const finishList = usePaginatedList(props.finishes, (f, q) =>
+    `${f.bib} ${f.athleteName}`.toLowerCase().includes(q),
+  );
+
   // ── expand helpers ────────────────────────────────────────────────────────────
   const toggleJudge = (id: string) =>
     setExpandedJudges((prev) => {
@@ -262,10 +282,12 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
   const handleDialogConfirm = ({
     reason,
     timeInput,
+    dqReasonCode,
   }: {
     reason: string;
     timeInput?: string;
     symbolValue?: "LIFTED_FOOT" | "BENT_KNEE";
+    dqReasonCode?: string | null;
   }) => {
     if (!dialogPayload) return;
 
@@ -291,6 +313,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
               dialogPayload.athlete.id,
               dialogPayload.newStatus,
               reason,
+              dialogPayload.newStatus === "DQ" ? dqReasonCode ?? null : null,
             ),
           `เปลี่ยนสถานะเป็น ${dialogPayload.newStatus} แล้ว`,
         );
@@ -455,7 +478,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                 <div className="min-w-0 space-y-1">
                   <p className="text-sm font-semibold text-slate-900">{props.roundInfo.name}</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-                    <span>ระยะ {props.roundInfo.distanceKm || "—"} กม.</span>
+                    <span>ระยะ {metersFromKm(props.roundInfo.distanceKm) || "—"} ม.</span>
                     <span>Lap {props.roundInfo.lapCount ?? "—"}</span>
                     <span>เริ่ม {fmtDateTime(props.roundInfo.startedAt)}</span>
                     <span>จบ {fmtDateTime(props.roundInfo.endedAt)}</span>
@@ -487,6 +510,13 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                 </h2>
                 <p className="text-xs text-slate-500">คลิกปุ่มเพื่อ override สถานะ</p>
               </div>
+              <div className="border-b border-slate-200 px-6 py-3">
+                <ListSearch
+                  value={athleteList.query}
+                  onChange={athleteList.setQuery}
+                  placeholder="ค้นหานักกีฬา (Bib, ชื่อ)..."
+                />
+              </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-xs">
                   <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
@@ -498,22 +528,43 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {props.athletes.map((a) => (
+                    {athleteList.pageItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
+                          {props.athletes.length === 0
+                            ? "ไม่มีนักกีฬาในรอบนี้"
+                            : "ไม่พบนักกีฬาตามคำค้นหา"}
+                        </td>
+                      </tr>
+                    ) : athleteList.pageItems.map((a) => {
+                      const nonDqStatusClass =
+                        a.status === "DNF"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-emerald-100 text-emerald-700";
+                      return (
                       <tr key={a.id} className="hover:bg-slate-50/50">
                         <td className="px-4 py-2 font-mono font-semibold">{a.bib}</td>
                         <td className="px-4 py-2">{a.name}</td>
                         <td className="px-4 py-2">
-                          <span
-                            className={`rounded-full px-2 py-0.5 font-medium ${
-                              a.status === "DQ"
-                                ? "bg-red-100 text-red-700"
-                                : a.status === "DNF"
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-emerald-100 text-emerald-700"
-                            }`}
-                          >
-                            {a.status}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span
+                              className={`rounded-full px-2 py-0.5 font-medium ${
+                                a.status === "DQ"
+                                  ? "bg-red-100 text-red-700"
+                                  : nonDqStatusClass
+                              }`}
+                            >
+                              {a.status}
+                            </span>
+                            {a.status === "DQ" && a.dqReasonCode && (
+                              <span
+                                className="rounded-full bg-red-50 px-2 py-0.5 font-mono text-[10px] font-semibold text-red-600 ring-1 ring-red-200"
+                                title="รหัสกติกาที่ใช้ตัดสิทธิ์ (แสดงในเอกสาร)"
+                              >
+                                {a.dqReasonCode}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-2">
                           <div className="flex gap-1">
@@ -538,9 +589,23 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
+              </div>
+              <div className="border-t border-slate-200 px-6 py-3">
+                <ListPager
+                  page={athleteList.page}
+                  totalPages={athleteList.totalPages}
+                  onPage={athleteList.setPage}
+                  rangeStart={athleteList.rangeStart}
+                  rangeEnd={athleteList.rangeEnd}
+                  filteredTotal={athleteList.filteredTotal}
+                  total={athleteList.total}
+                  isFiltered={athleteList.isFiltered}
+                  unit="คน"
+                />
               </div>
             </CardContent>
           </Card>
@@ -558,11 +623,23 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                 </div>
               </div>
 
-              {props.judges.length === 0 ? (
-                <p className="px-6 py-6 text-center text-xs text-slate-500">ไม่มีกรรมการในรอบนี้</p>
+              <div className="border-b border-slate-200 px-6 py-3">
+                <ListSearch
+                  value={judgeList.query}
+                  onChange={judgeList.setQuery}
+                  placeholder="ค้นหากรรมการ (ชื่อ, โซน)..."
+                />
+              </div>
+
+              {judgeList.pageItems.length === 0 ? (
+                <p className="px-6 py-6 text-center text-xs text-slate-500">
+                  {props.judges.length === 0
+                    ? "ไม่มีกรรมการในรอบนี้"
+                    : "ไม่พบกรรมการตามคำค้นหา"}
+                </p>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {props.judges.map((j) => {
+                  {judgeList.pageItems.map((j) => {
                     const myCards = cardsByJudge.get(j.id) ?? [];
                     const yellow = myCards.filter((c) => c.color === "YELLOW").length;
                     const red = myCards.filter(
@@ -630,6 +707,12 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                                 const st = redStateBadge(c.state);
                                 const isPendingRed =
                                   c.color === "RED" && c.state === "PENDING";
+                                const redBorderClass = isOverriddenRed
+                                  ? "border-slate-200 bg-slate-50/80"
+                                  : "border-red-200 bg-red-50/60";
+                                const redSymbolBgClass = isOverriddenRed
+                                  ? "bg-slate-400"
+                                  : "bg-red-500";
                                 return (
                                   <div
                                     key={c.id}
@@ -637,9 +720,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                                       "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2",
                                       isYellow
                                         ? "border-amber-200 bg-amber-50/60"
-                                        : isOverriddenRed
-                                          ? "border-slate-200 bg-slate-50/80"
-                                          : "border-red-200 bg-red-50/60",
+                                        : redBorderClass,
                                     )}
                                   >
                                     <div className="flex items-center gap-2.5">
@@ -648,9 +729,7 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                                           "flex h-7 w-7 items-center justify-center rounded-full font-mono text-sm font-bold text-white",
                                           isYellow
                                             ? "bg-amber-400"
-                                            : isOverriddenRed
-                                              ? "bg-slate-400"
-                                              : "bg-red-500",
+                                            : redSymbolBgClass,
                                         )}
                                       >
                                         {SYMBOL_CHAR[c.symbol]}
@@ -732,6 +811,19 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                   })}
                 </div>
               )}
+              <div className="border-t border-slate-200 px-6 py-3">
+                <ListPager
+                  page={judgeList.page}
+                  totalPages={judgeList.totalPages}
+                  onPage={judgeList.setPage}
+                  rangeStart={judgeList.rangeStart}
+                  rangeEnd={judgeList.rangeEnd}
+                  filteredTotal={judgeList.filteredTotal}
+                  total={judgeList.total}
+                  isFiltered={judgeList.isFiltered}
+                  unit="คน"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -748,13 +840,23 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                 </div>
               </div>
 
-              {lapAthletes.length === 0 ? (
+              <div className="border-b border-slate-200 px-6 py-3">
+                <ListSearch
+                  value={lapList.query}
+                  onChange={lapList.setQuery}
+                  placeholder="ค้นหานักกีฬา (Bib, ชื่อ)..."
+                />
+              </div>
+
+              {lapList.pageItems.length === 0 ? (
                 <p className="px-6 py-6 text-center text-xs text-slate-500">
-                  ยังไม่มีการบันทึกเวลา Lap ในรอบนี้
+                  {lapAthletes.length === 0
+                    ? "ยังไม่มีการบันทึกเวลา Lap ในรอบนี้"
+                    : "ไม่พบนักกีฬาตามคำค้นหา"}
                 </p>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {lapAthletes.map((a) => {
+                  {lapList.pageItems.map((a) => {
                     const laps = lapsByAthlete.get(a.id) ?? [];
                     const finish = finishByAthleteId.get(a.id);
                     const expanded = expandedLapAthletes.has(a.id);
@@ -854,6 +956,19 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                   })}
                 </div>
               )}
+              <div className="border-t border-slate-200 px-6 py-3">
+                <ListPager
+                  page={lapList.page}
+                  totalPages={lapList.totalPages}
+                  onPage={lapList.setPage}
+                  rangeStart={lapList.rangeStart}
+                  rangeEnd={lapList.rangeEnd}
+                  filteredTotal={lapList.filteredTotal}
+                  total={lapList.total}
+                  isFiltered={lapList.isFiltered}
+                  unit="คน"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -869,6 +984,13 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                   <p className="text-xs text-slate-500">แก้เวลา / อันดับ หรือลบ (ลบแล้วบันทึกใหม่ได้)</p>
                 </div>
               </div>
+              <div className="border-b border-slate-200 px-6 py-3">
+                <ListSearch
+                  value={finishList.query}
+                  onChange={finishList.setQuery}
+                  placeholder="ค้นหานักกีฬา (Bib, ชื่อ)..."
+                />
+              </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-xs">
                   <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
@@ -881,14 +1003,16 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {props.finishes.length === 0 ? (
+                    {finishList.pageItems.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-4 py-4 text-center text-slate-500">
-                          ยังไม่มีเวลาเข้าเส้นชัย
+                          {props.finishes.length === 0
+                            ? "ยังไม่มีเวลาเข้าเส้นชัย"
+                            : "ไม่พบนักกีฬาตามคำค้นหา"}
                         </td>
                       </tr>
                     ) : (
-                      props.finishes.map((ft) => (
+                      finishList.pageItems.map((ft) => (
                         <tr key={ft.id} className="hover:bg-slate-50/50">
                           <td className="px-4 py-2 font-bold">{ft.position}</td>
                           <td className="px-4 py-2 font-mono">{ft.bib}</td>
@@ -935,6 +1059,19 @@ export function ModeratorEditView(props: ModeratorEditViewProps) {
                     )}
                   </tbody>
                 </table>
+              </div>
+              <div className="border-t border-slate-200 px-6 py-3">
+                <ListPager
+                  page={finishList.page}
+                  totalPages={finishList.totalPages}
+                  onPage={finishList.setPage}
+                  rangeStart={finishList.rangeStart}
+                  rangeEnd={finishList.rangeEnd}
+                  filteredTotal={finishList.filteredTotal}
+                  total={finishList.total}
+                  isFiltered={finishList.isFiltered}
+                  unit="รายการ"
+                />
               </div>
             </CardContent>
           </Card>

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
 import { requirePermission } from "@/lib/authz";
 import { formatRaceTime } from "@/lib/time-format";
+import { dqReasonLabel, isKnownDqCode } from "@/lib/dq-reasons";
 
 /**
  * Admin/Moderator corrections — soft-deletes & edits with full audit trail.
@@ -307,32 +308,54 @@ export async function moderatorOverrideAthleteStatus(
   athleteId: string,
   newStatus: "OK" | "DQ" | "DNF",
   reason: string,
+  // WA rule code for a structured DQ reason (e.g. "TR54.7.5"). Only meaningful
+  // when newStatus === "DQ"; pass null/undefined for a free-text "Other" reason.
+  dqReasonCode?: string | null,
 ) {
   const user = await requireAdmin();
-  const ra = await prisma.roundAthlete.findFirst({
-    where: { roundId, athleteId },
-    include: { athlete: { select: { name: true } } },
-  });
+  const [ra, round] = await Promise.all([
+    prisma.roundAthlete.findFirst({
+      where: { roundId, athleteId },
+      include: { athlete: { select: { name: true } } },
+    }),
+    prisma.round.findUnique({ where: { id: roundId }, select: { eventId: true } }),
+  ]);
   if (!ra) throw new Error("ไม่พบนักกีฬาในรอบ");
+
+  const ea = round
+    ? await prisma.eventAthlete.findFirst({
+        where: { eventId: round.eventId, athleteId, deletedAt: null },
+        select: { bib: true },
+      })
+    : null;
+  const athleteBib = ea?.bib ?? "?";
+
+  // Only persist a code for DQ, and only if it's a recognised catalog code
+  // ("Other"/free-text leaves it null → exports show a plain "DQ"). Any other
+  // status clears a previously stored code.
+  const codeToStore =
+    newStatus === "DQ" && isKnownDqCode(dqReasonCode) ? dqReasonCode! : null;
 
   await prisma.roundAthlete.update({
     where: { id: ra.id },
-    data: { status: newStatus },
+    data: { status: newStatus, dqReasonCode: codeToStore },
   });
 
+  const codeNote = codeToStore ? ` [${dqReasonLabel(codeToStore)}]` : "";
   await logModeratorAction(
     roundId,
     user,
     "moderator_override_status",
-    `เปลี่ยนสถานะ ${ra.athlete.name} (Bib ${ra.bib}) จาก ${ra.status} เป็น ${newStatus} — เหตุผล: ${reason}`,
+    `เปลี่ยนสถานะ ${ra.athlete.name} (Bib ${athleteBib}) จาก ${ra.status} เป็น ${newStatus}${codeNote} — เหตุผล: ${reason}`,
     athleteId,
-    ra.bib,
+    athleteBib,
   );
   await logCurrentAdmin(ActivityLogAction.MODERATOR_OVERRIDE_STATUS, "RoundAthlete", ra.id, {
     roundId,
     athleteId,
     from: ra.status,
     to: newStatus,
+    dqReasonCode: codeToStore,
     reason,
   });
 
@@ -508,13 +531,12 @@ export async function moderatorEditCard(
   if (!card) throw new Error("ไม่พบใบที่ระบุ");
 
   const wasConfirmedRed = card.color === "RED" && card.state === "CONFIRMED";
+  // State to use when the (possibly) changed colour is RED.
+  const redState: "PENDING" | "CONFIRMED" | "OVERRIDDEN" =
+    card.color === "RED" ? (card.state ?? "PENDING") : "PENDING";
   // New state for the (possibly) changed colour.
   const newState: "PENDING" | "CONFIRMED" | "OVERRIDDEN" | null =
-    data.color === "YELLOW"
-      ? null
-      : card.color === "RED"
-        ? (card.state ?? "PENDING")
-        : "PENDING";
+    data.color === "YELLOW" ? null : redState;
 
   await prisma.card.update({
     where: { id: cardId },

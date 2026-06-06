@@ -47,8 +47,7 @@ export async function finalizeDeletion(userId: string): Promise<void> {
   if (!user) return;
 
   // Skip only when deletion was fully applied (email freed for re-registration).
-  const emailAlreadyFreed =
-    user.email != null && user.email.startsWith(`deleted_${userId}_`);
+  const emailAlreadyFreed = user.email?.startsWith(`deleted_${userId}_`);
   if (user.status === "DELETED" && emailAlreadyFreed) return;
 
   const mutatedEmail = buildDeletedUserEmail(userId, user.email);

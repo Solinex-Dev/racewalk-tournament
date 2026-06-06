@@ -18,6 +18,12 @@ async function requireAdmin() {
  * Also bumps the parent Event to ONGOING.
  */
 export async function startRound(roundId: string) {
+  // Capture the start instant FIRST — before auth + the DB checks below — so
+  // startedAt is as close as possible to the moment the moderator pressed start
+  // (≈ gun time). Capturing it after the queries would shift every elapsed time
+  // later by the query latency.
+  const now = new Date();
+
   const user = await requireAdmin();
 
   const round = await prisma.round.findUnique({ where: { id: roundId } });
@@ -38,7 +44,6 @@ export async function startRound(roundId: string) {
     );
   }
 
-  const now = new Date();
   await prisma.round.update({
     where: { id: roundId },
     data: {

@@ -29,6 +29,7 @@ import {
 export type AdminFormValues = {
   prefix: string;
   firstName: string;
+  middleName: string;
   lastName: string;
   email: string;
   title: string;
@@ -51,6 +52,7 @@ function initValues(d?: Partial<AdminFormValues>): AdminFormValues {
   return {
     prefix: d?.prefix ?? "",
     firstName: d?.firstName ?? "",
+    middleName: d?.middleName ?? "",
     lastName: d?.lastName ?? "",
     email: d?.email ?? "",
     title: d?.title ?? "",
@@ -68,7 +70,7 @@ export function AdminForm({
   canEdit = false,
   canDelete = false,
   defaultValues,
-}: AdminFormProps) {
+}: Readonly<AdminFormProps>) {
   const router = useRouter();
   const isEdit = mode === "edit";
 
@@ -109,6 +111,20 @@ export function AdminForm({
   const setAll = (value: boolean) => setForm((p) => ({ ...p, permissions: value ? fullPermissions() : emptyPermissions() }));
 
   const grantedResources = RESOURCES.filter((r) => ACTIONS.some((a) => saved.permissions[r][a]));
+  const submitLabel = isEdit ? "บันทึกการแก้ไข" : "สร้าง Admin";
+  const grantedPermissionsDisplay =
+    grantedResources.length === 0 ? (
+      "— ไม่มีสิทธิ์ —"
+    ) : (
+      <ul className="space-y-0.5">
+        {grantedResources.map((r) => (
+          <li key={r} className="text-xs">
+            <span className="font-medium text-slate-700">{RESOURCE_LABELS[r]}:</span>{" "}
+            {ACTIONS.filter((a) => saved.permissions[r][a]).map((a) => ACTION_LABELS[a]).join(", ")}
+          </li>
+        ))}
+      </ul>
+    );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +138,7 @@ export function AdminForm({
         const payload = {
           prefix: form.prefix.trim() || null,
           firstName: form.firstName.trim(),
+          middleName: form.middleName.trim() || null,
           lastName: form.lastName.trim() || null,
           email: form.email.trim(),
           title: form.title.trim(),
@@ -185,52 +202,25 @@ export function AdminForm({
         )}
       </CardHeader>
       <CardContent className="py-4">
-        {!editing ? (
-          <dl>
-            <DetailField label="ชื่อ-นามสกุล" value={composeName(saved)} />
-            <DetailField label="อีเมล" value={saved.email} />
-            <DetailField label="บทบาท (ป้าย)" value={saved.title} />
-            <DetailField label="สถานะ" value={saved.status === "ACTIVE" ? "ใช้งานอยู่" : "ระงับการใช้งาน"} />
-            <DetailField
-              label="สิทธิ์การเข้าถึง"
-              value={
-                saved.isRoot ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
-                    <ShieldCheck className="h-3.5 w-3.5" /> Root Admin — เข้าถึงทุกอย่าง
-                  </span>
-                ) : grantedResources.length === 0 ? (
-                  "— ไม่มีสิทธิ์ —"
-                ) : (
-                  <ul className="space-y-0.5">
-                    {grantedResources.map((r) => (
-                      <li key={r} className="text-xs">
-                        <span className="font-medium text-slate-700">{RESOURCE_LABELS[r]}:</span>{" "}
-                        {ACTIONS.filter((a) => saved.permissions[r][a]).map((a) => ACTION_LABELS[a]).join(", ")}
-                      </li>
-                    ))}
-                  </ul>
-                )
-              }
-            />
-          </dl>
-        ) : (
+        {editing ? (
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <PersonNameFields prefix={form.prefix} firstName={form.firstName} lastName={form.lastName} onChange={set} disabled={isPending} />
+            <PersonNameFields prefix={form.prefix} firstName={form.firstName} middleName={form.middleName} lastName={form.lastName} onChange={set} disabled={isPending} />
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-800">อีเมล</label>
-                <Input required type="email" value={form.email} onChange={(e) => set({ email: e.target.value })} placeholder="admin@example.com" className="rounded-xl text-sm" disabled={isPending} />
+                <label htmlFor="admin-email" className="block text-xs font-medium text-slate-800">อีเมล</label>
+                <Input id="admin-email" required type="email" value={form.email} onChange={(e) => set({ email: e.target.value })} placeholder="admin@example.com" className="rounded-xl text-sm" disabled={isPending} />
               </div>
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-800">บทบาท (ป้ายแสดงผล)</label>
-                <Input value={form.title} onChange={(e) => set({ title: e.target.value })} placeholder="เช่น Owner, Event Manager, Score Officer" className="rounded-xl text-sm" disabled={isPending} />
+                <label htmlFor="admin-title" className="block text-xs font-medium text-slate-800">บทบาท (ป้ายแสดงผล)</label>
+                <Input id="admin-title" value={form.title} onChange={(e) => set({ title: e.target.value })} placeholder="เช่น Owner, Event Manager, Score Officer" className="rounded-xl text-sm" disabled={isPending} />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-800">รหัสผ่าน</label>
+              <label htmlFor="admin-password" className="block text-xs font-medium text-slate-800">รหัสผ่าน</label>
               <Input
+                id="admin-password"
                 required={!isEdit}
                 type="password"
                 value={form.password}
@@ -325,10 +315,29 @@ export function AdminForm({
                 </Button>
               )}
               <Button type="submit" disabled={isPending} className="rounded-xl px-4 py-2 text-sm font-medium">
-                {isPending ? "กำลังบันทึก..." : isEdit ? "บันทึกการแก้ไข" : "สร้าง Admin"}
+                {isPending ? "กำลังบันทึก..." : submitLabel}
               </Button>
             </div>
           </form>
+        ) : (
+          <dl>
+            <DetailField label="ชื่อ-นามสกุล" value={composeName(saved)} />
+            <DetailField label="อีเมล" value={saved.email} />
+            <DetailField label="บทบาท (ป้าย)" value={saved.title} />
+            <DetailField label="สถานะ" value={saved.status === "ACTIVE" ? "ใช้งานอยู่" : "ระงับการใช้งาน"} />
+            <DetailField
+              label="สิทธิ์การเข้าถึง"
+              value={
+                saved.isRoot ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
+                    <ShieldCheck className="h-3.5 w-3.5" /> Root Admin — เข้าถึงทุกอย่าง
+                  </span>
+                ) : (
+                  grantedPermissionsDisplay
+                )
+              }
+            />
+          </dl>
         )}
       </CardContent>
 

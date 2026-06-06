@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
 import { requirePermission } from "@/lib/authz";
 import { assertNoScheduleConflict, assertRoundWithinEvent } from "@/lib/scheduling";
 
-type AthleteInput = { athleteId: string; bib: string };
+type AthleteInput = { athleteId: string };
 type OfficialInput = {
   judgeId: string;
   zone?: string;
@@ -28,7 +29,53 @@ export type RoundActionData = {
 
 function normalizeNote(note?: string): string | null {
   const trimmed = note?.trim();
-  return trimmed ? trimmed : null;
+  return trimmed || null;
+}
+
+/**
+ * Secret codes must be unique across the WHOLE event, not just within a round —
+ * rounds can run simultaneously and the join (joinAsOfficial) matches a code
+ * within the event (findFirst), so a code shared by two rounds would route an
+ * official to the wrong round. The DB only enforces @@unique([roundId, secretCode]),
+ * so we guard event-wide here. Checks both the submitted batch against itself and
+ * against every other (non-deleted) round in the event.
+ */
+async function assertEventUniqueSecretCodes(
+  eventId: string,
+  officials: OfficialInput[],
+  excludeRoundId?: string,
+) {
+  const used = new Set<string>();
+  // Within this submission.
+  for (const o of officials) {
+    const code = o.secretCode.trim().toUpperCase();
+    if (used.has(code)) {
+      throw new Error(
+        "มีรหัสกรรมการซ้ำกันภายในรอบนี้ — กรุณากดสุ่มรหัสใหม่ให้ไม่ซ้ำกันแล้วบันทึกอีกครั้ง",
+      );
+    }
+    used.add(code);
+  }
+
+  // Against other rounds in the same event.
+  const others = await prisma.roundOfficial.findMany({
+    where: {
+      deletedAt: null,
+      round: {
+        eventId,
+        deletedAt: null,
+        ...(excludeRoundId ? { id: { not: excludeRoundId } } : {}),
+      },
+    },
+    select: { secretCode: true },
+  });
+  const otherCodes = new Set(others.map((o) => o.secretCode.trim().toUpperCase()));
+  const clash = officials.find((o) => otherCodes.has(o.secretCode.trim().toUpperCase()));
+  if (clash) {
+    throw new Error(
+      "รหัสกรรมการซ้ำกับรอบอื่นในกิจกรรมเดียวกัน — เนื่องจากรอบต่าง ๆ อาจแข่งพร้อมกัน รหัสต้องไม่ซ้ำทั้งกิจกรรม กรุณากดสุ่มรหัสใหม่แล้วบันทึกอีกครั้ง",
+    );
+  }
 }
 
 /** Per-round official caps — 8 judges + 1 head judge + 1 event logger = 10 max. */
@@ -80,7 +127,7 @@ function rethrowFriendly(err: unknown): never {
     (err as { code?: unknown }).code === "P2002"
   ) {
     throw new Error(
-      "บันทึกไม่สำเร็จ — มีข้อมูลซ้ำกันในรอบนี้ (เช่น หมายเลข Bib หรือ รหัสลับ ที่ซ้ำกัน) กรุณาแก้ไขรายการที่ขึ้นเตือนสีแดงแล้วบันทึกอีกครั้ง",
+      "บันทึกไม่สำเร็จ — มีข้อมูลซ้ำกันในรอบนี้ (เช่น รหัสกรรมการที่ซ้ำกัน หรือ นักกีฬาที่ถูกเพิ่มซ้ำ) กรุณาแก้ไขรายการที่ขึ้นเตือนสีแดงแล้วบันทึกอีกครั้ง",
     );
   }
   throw err;
@@ -90,9 +137,13 @@ export async function createRound(eventId: string, data: RoundActionData) {
   await requirePermission("events", "create");
   assertOfficialLimits(data.officials);
   if (data.status !== "SCHEDULED") assertStartableOfficials(data.officials);
+  await assertEventUniqueSecretCodes(eventId, data.officials);
 
-  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { date: true } });
+  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { date: true, status: true } });
   if (!event) throw new Error("ไม่พบกิจกรรม");
+  if (event.status === "FINISHED") {
+    throw new Error("กิจกรรมนี้จบการแข่งขันแล้ว — ไม่สามารถสร้างรอบใหม่ได้");
+  }
 
   const scheduledTime = data.scheduledTime ? new Date(data.scheduledTime) : null;
   const expectedEndTime = data.expectedEndTime ? new Date(data.expectedEndTime) : null;
@@ -105,6 +156,21 @@ export async function createRound(eventId: string, data: RoundActionData) {
     athleteIds: data.athletes.map((a) => a.athleteId),
     judgeIds: data.officials.map((o) => o.judgeId),
   });
+
+  // Validate that every submitted athlete is registered in the event (has an EventAthlete row).
+  if (data.athletes.length > 0) {
+    const registered = await prisma.eventAthlete.findMany({
+      where: { eventId, athleteId: { in: data.athletes.map((a) => a.athleteId) }, deletedAt: null },
+      select: { athleteId: true },
+    });
+    const registeredIds = new Set(registered.map((r) => r.athleteId));
+    const unregistered = data.athletes.filter((a) => !registeredIds.has(a.athleteId));
+    if (unregistered.length > 0) {
+      throw new Error(
+        "นักกีฬาบางคนยังไม่ได้ลงทะเบียนในกิจกรรมนี้ — กรุณาเพิ่มนักกีฬาในหน้ากิจกรรมก่อน",
+      );
+    }
+  }
 
   let createdId = "";
   await prisma.$transaction(async (tx) => {
@@ -124,10 +190,10 @@ export async function createRound(eventId: string, data: RoundActionData) {
 
     if (data.athletes.length > 0) {
       await tx.roundAthlete.createMany({
-        data: data.athletes.map((a) => ({
+        data: data.athletes.map((a, i) => ({
           roundId: round.id,
           athleteId: a.athleteId,
-          bib: a.bib,
+          sortOrder: i,
         })),
       });
     }
@@ -152,8 +218,15 @@ export async function createRound(eventId: string, data: RoundActionData) {
     officials: data.officials.length,
   });
 
+  // Use redirect() instead of return + router.push so that Next.js sends a
+  // redirect response directly. Calling revalidatePath() before redirect() is
+  // intentional — it marks the event page cache as stale so the next visit
+  // picks up fresh data. With redirect(), Next.js uses createRedirectRenderResult
+  // which skips re-rendering the current route server-side, avoiding the
+  // "An error occurred in the Server Components render" error that surfaced
+  // when generateFlight tried to re-render /rounds/new after the mutation.
   revalidatePath(`/admin/events/${eventId}`);
-  return { ok: true };
+  redirect(`/admin/events/${eventId}`);
 }
 
 export async function updateRound(
@@ -164,12 +237,22 @@ export async function updateRound(
   await requirePermission("events", "edit");
   assertOfficialLimits(data.officials);
   if (data.status !== "SCHEDULED") assertStartableOfficials(data.officials);
+  await assertEventUniqueSecretCodes(eventId, data.officials, roundId);
 
   const [event, existing] = await Promise.all([
     prisma.event.findUnique({ where: { id: eventId }, select: { date: true } }),
-    prisma.round.findUnique({ where: { id: roundId }, select: { startedAt: true, endedAt: true } }),
+    prisma.round.findUnique({ where: { id: roundId }, select: { status: true, startedAt: true, endedAt: true } }),
   ]);
   if (!event) throw new Error("ไม่พบกิจกรรม");
+
+  // A live (ONGOING) round is locked — its setup must not change mid-race. Live
+  // corrections go through the Moderator tool (audit-logged); editing resumes once
+  // the round is finished.
+  if (existing?.status === "ONGOING") {
+    throw new Error(
+      "รอบนี้กำลังแข่งขันอยู่ — แก้ไขข้อมูลรอบไม่ได้จนกว่าจะจบการแข่งขัน (แก้ไขระหว่างแข่งได้ที่หน้า Moderator)",
+    );
+  }
 
   const scheduledTime = data.scheduledTime ? new Date(data.scheduledTime) : null;
   const expectedEndTime = data.expectedEndTime ? new Date(data.expectedEndTime) : null;
@@ -188,6 +271,21 @@ export async function updateRound(
     athleteIds: data.athletes.map((a) => a.athleteId),
     judgeIds: data.officials.map((o) => o.judgeId),
   });
+
+  // Validate that every submitted athlete is registered in the event.
+  if (data.athletes.length > 0) {
+    const registered = await prisma.eventAthlete.findMany({
+      where: { eventId, athleteId: { in: data.athletes.map((a) => a.athleteId) }, deletedAt: null },
+      select: { athleteId: true },
+    });
+    const registeredIds = new Set(registered.map((r) => r.athleteId));
+    const unregistered = data.athletes.filter((a) => !registeredIds.has(a.athleteId));
+    if (unregistered.length > 0) {
+      throw new Error(
+        "นักกีฬาบางคนยังไม่ได้ลงทะเบียนในกิจกรรมนี้ — กรุณาเพิ่มนักกีฬาในหน้ากิจกรรมก่อน",
+      );
+    }
+  }
 
   const now = new Date();
 
@@ -209,11 +307,13 @@ export async function updateRound(
       where: { roundId, deletedAt: null },
       data: { deletedAt: now },
     });
-    for (const a of data.athletes) {
+    // The array order IS the start-list order — persist each athlete's index.
+    for (let i = 0; i < data.athletes.length; i++) {
+      const a = data.athletes[i];
       await tx.roundAthlete.upsert({
         where: { roundId_athleteId: { roundId, athleteId: a.athleteId } },
-        create: { roundId, athleteId: a.athleteId, bib: a.bib },
-        update: { bib: a.bib, deletedAt: null },
+        create: { roundId, athleteId: a.athleteId, sortOrder: i },
+        update: { sortOrder: i, deletedAt: null },
       });
     }
 
@@ -247,5 +347,5 @@ export async function updateRound(
     status: data.status,
   });
   revalidatePath(`/admin/events/${eventId}`);
-  return { ok: true };
+  redirect(`/admin/events/${eventId}`);
 }

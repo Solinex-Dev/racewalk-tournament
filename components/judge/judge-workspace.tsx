@@ -6,12 +6,15 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { issueYellowCard, issueRedCard, type CardSymbol } from "@/app/actions/cards";
 import { logoutOfficial } from "@/app/actions/officials";
+import { RaceStatusBanner, racePhaseFromStatus } from "@/components/common/race-status-banner";
+import { metersFromKm } from "@/lib/distance";
 
 export type JudgeAthleteRow = {
   bib: string;
   athleteId: string;
   name: string;
   status: "OK" | "DQ" | "DNF";
+  isFinished: boolean;
   myYellowKnee: boolean;
   myYellowFoot: boolean;
   myRedSymbol: "~" | ">" | null;
@@ -22,7 +25,6 @@ export type JudgeEventInfo = {
   id: string;
   name: string;
   roundName: string;
-  heatName: string;
   distanceKm: string;
   lapCount: number;
   currentLap: number;
@@ -32,10 +34,12 @@ type JudgeWorkspaceProps = {
   eventId: string;
   event: JudgeEventInfo | null;
   judgeName: string;
+  judgeZone?: string;
+  roundStatus: string;
   athletes: JudgeAthleteRow[];
 };
 
-export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWorkspaceProps) {
+export function JudgeWorkspace({ eventId, event, judgeName, judgeZone, roundStatus, athletes }: Readonly<JudgeWorkspaceProps>) {
   const router = useRouter();
   const [selectedBib, setSelectedBib] = React.useState<string | null>(null);
   const [isPending, startTransition] = React.useTransition();
@@ -78,7 +82,14 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
   };
 
   const isDQSelected = selectedAthlete?.status === "DQ";
+  const isFinishedSelected = !!selectedAthlete?.isFinished;
+  // Cards can't be issued to an athlete who is DQ'd or has crossed the line.
+  const isLockedSelected = isDQSelected || isFinishedSelected;
   const hasGivenSelected = !!selectedAthlete?.myRedSymbol;
+  // Cards may only be issued while the round is actually in progress — before the
+  // moderator starts the race (or after it ends) the controls are locked so a
+  // judge can't trigger a server-side "round not started" error.
+  const isRoundLive = roundStatus === "ONGOING";
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -95,10 +106,10 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
                 <p className="mt-1 text-sm text-slate-300">
                   กิจกรรม:{" "}
                   <span className="font-semibold text-slate-100">{event.name}</span>{" "}
-                  – {event.heatName || event.roundName}
+                  – {event.roundName}
                 </p>
                 <p className="text-sm text-slate-400">
-                  ระยะ {event.distanceKm} กม. • Lap {event.currentLap} / {event.lapCount}
+                  ระยะ {metersFromKm(event.distanceKm)} ม. • Lap {event.currentLap} / {event.lapCount}
                 </p>
               </>
             ) : (
@@ -111,11 +122,17 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
               <span className="text-slate-400">กรรมการ: </span>
               <span className="font-medium text-slate-100">{judgeName}</span>
             </div>
+            {judgeZone && (
+              <div className="rounded-full border border-sky-700/60 bg-sky-950/40 px-3 py-1 text-[11px] text-sky-200">
+                <span className="text-sky-400/80">โซน/โต๊ะ: </span>
+                <span className="font-medium">{judgeZone}</span>
+              </div>
+            )}
             <Link
               href={`/events/${eventId}`}
               className="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-slate-800"
             >
-              เปิดหน้า Live
+              ดูกระดานคะแนน
             </Link>
             <button
               type="button"
@@ -126,6 +143,8 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
             </button>
           </div>
         </header>
+
+        <RaceStatusBanner phase={racePhaseFromStatus(roundStatus)} action="ออกใบ" />
 
         <section className="grid gap-4 lg:grid-cols-[2fr,1.1fr] overflow-hidden">
           <div className="space-y-4 w-full overflow-hidden">
@@ -156,7 +175,16 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
                     ) : (
                       athletes.map((athlete) => {
                         const isDQ = athlete.status === "DQ";
+                        const isFinished = athlete.isFinished;
                         const isSelected = selectedBib === athlete.bib;
+                        let unselectedRowClass: string;
+                        if (isDQ) {
+                          unselectedRowClass = "bg-slate-800/30 opacity-60 hover:bg-slate-800/50";
+                        } else if (isFinished) {
+                          unselectedRowClass = "bg-slate-800/20 opacity-70 hover:bg-slate-800/40";
+                        } else {
+                          unselectedRowClass = "hover:bg-slate-800/50";
+                        }
                         return (
                           <tr
                             key={athlete.bib}
@@ -164,9 +192,7 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
                             className={`cursor-pointer transition-colors ${
                               isSelected
                                 ? "bg-slate-700/60 ring-1 ring-inset ring-slate-500"
-                                : isDQ
-                                  ? "bg-slate-800/30 opacity-60 hover:bg-slate-800/50"
-                                  : "hover:bg-slate-800/50"
+                                : unselectedRowClass
                             }`}
                           >
                             <td className={`px-3 py-2 font-mono text-base font-bold ${isDQ ? "text-slate-500" : "text-amber-400"}`}>
@@ -177,10 +203,12 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
                                 className={`inline-flex rounded-full px-2.5 py-0.5 text-sm font-medium ring-1 ${
                                   isDQ
                                     ? "bg-red-950 text-red-400 ring-red-800"
-                                    : "bg-emerald-950 text-emerald-400 ring-emerald-800"
+                                    : isFinished
+                                      ? "bg-sky-950 text-sky-300 ring-sky-800"
+                                      : "bg-emerald-950 text-emerald-400 ring-emerald-800"
                                 }`}
                               >
-                                {athlete.status}
+                                {isFinished && !isDQ ? "เข้าเส้นชัย" : athlete.status}
                               </span>
                             </td>
                             <td className="px-3 py-2">
@@ -241,10 +269,12 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
                   className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${
                     isDQSelected
                       ? "bg-red-950 text-red-400 ring-red-800"
-                      : "bg-emerald-950 text-emerald-400 ring-emerald-800"
+                      : isFinishedSelected
+                        ? "bg-sky-950 text-sky-300 ring-sky-800"
+                        : "bg-emerald-950 text-emerald-400 ring-emerald-800"
                   }`}
                 >
-                  {selectedAthlete.status}
+                  {isFinishedSelected && !isDQSelected ? "เข้าเส้นชัย" : selectedAthlete.status}
                 </span>
                 {selectedAthlete.name && (
                   <span className="text-sm text-slate-400">{selectedAthlete.name}</span>
@@ -259,16 +289,28 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
               </button>
             </div>
 
+            {(isLockedSelected || !isRoundLive) && (
+              <div className="mb-3 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-1.5 text-center text-xs font-medium text-slate-300">
+                {!isRoundLive
+                  ? roundStatus === "FINISHED"
+                    ? "การแข่งขันจบแล้ว — ออกใบไม่ได้"
+                    : "ยังไม่เริ่มการแข่งขัน — ออกใบไม่ได้"
+                  : isDQSelected
+                    ? "นักกีฬาถูกตัดสิทธิ์ (DQ) — ออกใบไม่ได้"
+                    : "นักกีฬาเข้าเส้นชัยแล้ว — ออกใบไม่ได้"}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <div className="flex flex-1 flex-col gap-1.5">
                 <span className="text-center text-base font-medium text-amber-400/70">ใบเหลือง</span>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    disabled={isPending || isDQSelected || selectedAthlete.myYellowKnee}
+                    disabled={isPending || !isRoundLive || isLockedSelected || selectedAthlete.myYellowKnee}
                     onClick={() => handleYellow(selectedAthlete.athleteId, "BENT_KNEE")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                      isPending || isDQSelected || selectedAthlete.myYellowKnee
+                      isPending || !isRoundLive || isLockedSelected || selectedAthlete.myYellowKnee
                         ? "cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600"
                         : "border-amber-700 bg-amber-950 text-amber-400 active:bg-amber-800"
                     }`}
@@ -278,10 +320,10 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
                   </button>
                   <button
                     type="button"
-                    disabled={isPending || isDQSelected || selectedAthlete.myYellowFoot}
+                    disabled={isPending || !isRoundLive || isLockedSelected || selectedAthlete.myYellowFoot}
                     onClick={() => handleYellow(selectedAthlete.athleteId, "LIFTED_FOOT")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                      isPending || isDQSelected || selectedAthlete.myYellowFoot
+                      isPending || !isRoundLive || isLockedSelected || selectedAthlete.myYellowFoot
                         ? "cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600"
                         : "border-amber-700 bg-amber-950 text-amber-400 active:bg-amber-800"
                     }`}
@@ -299,10 +341,10 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    disabled={isPending || isDQSelected || hasGivenSelected}
+                    disabled={isPending || !isRoundLive || isLockedSelected || hasGivenSelected}
                     onClick={() => handleRed(selectedAthlete.athleteId, "BENT_KNEE")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                      isPending || isDQSelected || hasGivenSelected
+                      isPending || !isRoundLive || isLockedSelected || hasGivenSelected
                         ? "cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600"
                         : "border-red-700 bg-red-950 text-red-400 active:bg-red-800"
                     }`}
@@ -312,10 +354,10 @@ export function JudgeWorkspace({ eventId, event, judgeName, athletes }: JudgeWor
                   </button>
                   <button
                     type="button"
-                    disabled={isPending || isDQSelected || hasGivenSelected}
+                    disabled={isPending || !isRoundLive || isLockedSelected || hasGivenSelected}
                     onClick={() => handleRed(selectedAthlete.athleteId, "LIFTED_FOOT")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                      isPending || isDQSelected || hasGivenSelected
+                      isPending || !isRoundLive || isLockedSelected || hasGivenSelected
                         ? "cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600"
                         : "border-red-700 bg-red-950 text-red-400 active:bg-red-800"
                     }`}

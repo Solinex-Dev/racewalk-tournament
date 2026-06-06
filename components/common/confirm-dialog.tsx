@@ -25,7 +25,7 @@ export function ConfirmDialog({
   destructive = false,
   isPending = false,
   onConfirm,
-}: {
+}: Readonly<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
@@ -35,7 +35,7 @@ export function ConfirmDialog({
   destructive?: boolean;
   isPending?: boolean;
   onConfirm: () => void;
-}) {
+}>) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="border-slate-200 sm:max-w-sm">

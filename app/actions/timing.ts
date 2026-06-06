@@ -1,5 +1,6 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOfficialSession } from "@/lib/official-session";
 import {
@@ -14,7 +15,11 @@ import { allActiveAthletesFinished, finalizeRoundEnd } from "@/lib/round-lifecyc
  * Record a lap time for an athlete (Event Logger).
  * timeMs = race elapsed time in milliseconds at the moment the lap finished.
  */
-export async function recordLapTime(athleteId: string, lapNumber: number, timeMs: number) {
+export async function recordLapTime(
+  athleteId: string,
+  lapNumber: number,
+  timeMs: number,
+): Promise<{ ok: true; duplicate?: boolean }> {
   const session = await requireOfficialSession(["EVENT_LOGGER"]);
   const round = await loadOfficialRound(session.roundId);
   assertRoundOngoingForTiming(round);
@@ -23,12 +28,19 @@ export async function recordLapTime(athleteId: string, lapNumber: number, timeMs
     throw new Error("ค่าไม่ถูกต้อง");
   }
 
-  const ra = await prisma.roundAthlete.findFirst({
-    where: { roundId: session.roundId, athleteId, deletedAt: null },
-    include: { athlete: { select: { name: true } } },
-  });
+  const [ra, ea] = await Promise.all([
+    prisma.roundAthlete.findFirst({
+      where: { roundId: session.roundId, athleteId, deletedAt: null },
+      include: { athlete: { select: { name: true } } },
+    }),
+    prisma.eventAthlete.findFirst({
+      where: { eventId: session.eventId, athleteId, deletedAt: null },
+      select: { bib: true },
+    }),
+  ]);
   if (!ra) throw new Error("นักกีฬาไม่อยู่ในรอบนี้");
   assertAthleteActive(ra);
+  const athleteBib = ea?.bib ?? undefined;
 
   const duplicateLap = await prisma.lapTime.findFirst({
     where: {
@@ -39,19 +51,31 @@ export async function recordLapTime(athleteId: string, lapNumber: number, timeMs
     },
   });
   if (duplicateLap) {
-    throw new Error(`บันทึก Lap ${lapNumber} ของนักกีฬาคนนี้ไปแล้ว`);
+    // Fast double-tap on the same athlete — the lap is already recorded. Treat
+    // as an idempotent no-op instead of throwing (a thrown error surfaces as the
+    // generic "Server Components render" crash on the client).
+    return { ok: true, duplicate: true };
   }
 
-  await prisma.lapTime.create({
-    data: {
-      roundId: session.roundId,
-      athleteId,
-      lapNumber,
-      timeMs,
-      recordedBy: session.judgeId,
-      source: session.position,
-    },
-  });
+  try {
+    await prisma.lapTime.create({
+      data: {
+        roundId: session.roundId,
+        athleteId,
+        lapNumber,
+        timeMs,
+        recordedBy: session.judgeId,
+        source: session.position,
+      },
+    });
+  } catch (e) {
+    // Two taps raced past the duplicate pre-check. Harmless if a unique
+    // (roundId, athleteId, lapNumber) index exists — treat as an idempotent no-op.
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return { ok: true, duplicate: true };
+    }
+    throw e;
+  }
 
   if (lapNumber > round.currentLap) {
     await prisma.round.update({
@@ -68,7 +92,7 @@ export async function recordLapTime(athleteId: string, lapNumber: number, timeMs
       actorRole: session.position,
       actionType: "lap_time",
       targetAthleteId: athleteId,
-      targetBib: ra.bib,
+      targetBib: athleteBib,
       lapNumber,
       details: `Lap ${lapNumber} - ${formatMs(timeMs)}`,
     },
@@ -82,24 +106,35 @@ export async function recordLapTime(athleteId: string, lapNumber: number, timeMs
  * Record a finish time for an athlete. Position is auto-assigned based on
  * existing finish records (1 = first to finish).
  */
-export async function recordFinishTime(athleteId: string, timeMs: number) {
+export async function recordFinishTime(
+  athleteId: string,
+  timeMs: number,
+): Promise<{ ok: true; alreadyFinished?: boolean; roundEnded?: boolean }> {
   const session = await requireOfficialSession(["EVENT_LOGGER"]);
   const round = await loadOfficialRound(session.roundId);
   assertRoundOngoingForTiming(round);
 
   if (timeMs < 0) throw new Error("ค่าเวลาไม่ถูกต้อง");
 
-  const ra = await prisma.roundAthlete.findFirst({
-    where: { roundId: session.roundId, athleteId, deletedAt: null },
-    include: { athlete: { select: { name: true } } },
-  });
+  const [ra, ea] = await Promise.all([
+    prisma.roundAthlete.findFirst({
+      where: { roundId: session.roundId, athleteId, deletedAt: null },
+      include: { athlete: { select: { name: true } } },
+    }),
+    prisma.eventAthlete.findFirst({
+      where: { eventId: session.eventId, athleteId, deletedAt: null },
+      select: { bib: true },
+    }),
+  ]);
   if (!ra) throw new Error("นักกีฬาไม่อยู่ในรอบนี้");
   assertAthleteActive(ra);
+  const athleteBib = ea?.bib ?? undefined;
 
   const existing = await prisma.finishTime.findUnique({
     where: { roundId_athleteId: { roundId: session.roundId, athleteId } },
   });
-  if (existing) throw new Error("บันทึกเวลาเข้าเส้นชัยของนักกีฬาคนนี้ไปแล้ว");
+  // Already finished — idempotent no-op (fast double-tap on the finish button).
+  if (existing) return { ok: true, alreadyFinished: true };
 
   const finishedCount = await prisma.finishTime.count({
     where: { roundId: session.roundId, deletedAt: null },
@@ -107,7 +142,8 @@ export async function recordFinishTime(athleteId: string, timeMs: number) {
   const position = finishedCount + 1;
   const lapCount = round.lapCount ?? 0;
 
-  await prisma.$transaction(async (tx) => {
+  try {
+    await prisma.$transaction(async (tx) => {
     await tx.finishTime.create({
       data: {
         roundId: session.roundId,
@@ -147,7 +183,7 @@ export async function recordFinishTime(athleteId: string, timeMs: number) {
             actorRole: session.position,
             actionType: "lap_time",
             targetAthleteId: athleteId,
-            targetBib: ra.bib,
+            targetBib: athleteBib,
             lapNumber: lapCount,
             details: `Lap ${lapCount} - ${formatMs(timeMs)}`,
           },
@@ -175,12 +211,20 @@ export async function recordFinishTime(athleteId: string, timeMs: number) {
         actorRole: session.position,
         actionType: "finish_time",
         targetAthleteId: athleteId,
-        targetBib: ra.bib,
+        targetBib: athleteBib,
         lapNumber: lapCount > 0 ? lapCount : undefined,
         details: `เข้าเส้นชัยอันดับ ${position} - ${formatMs(timeMs)}`,
       },
     });
-  });
+    });
+  } catch (e) {
+    // Two finish taps slipped past the pre-check and raced on the unique
+    // (roundId, athleteId) constraint — treat the loser as an idempotent no-op.
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return { ok: true, alreadyFinished: true };
+    }
+    throw e;
+  }
 
   // Auto-finish the round once every in-standing (OK) athlete has crossed the
   // line — the last finisher ends the race. DQ/DNF athletes never get a finish

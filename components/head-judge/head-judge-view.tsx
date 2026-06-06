@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { confirmRedCard, rejectRedCard } from "@/app/actions/cards";
 import { logoutOfficial } from "@/app/actions/officials";
 import { RoundActivityLogLine } from "@/components/common/round-activity-log-line";
+import { RaceStatusBanner, racePhaseFromStatus } from "@/components/common/race-status-banner";
 
 export type PendingCard = {
   id: string;
@@ -48,8 +49,10 @@ export type LogItem = {
 type HeadJudgeViewProps = {
   eventId: string;
   judgeName: string;
+  judgeZone?: string;
   eventName: string;
   roundName: string;
+  roundStatus: string;
   pendingCards: PendingCard[];
   athletes: AthleteRow[];
   logs: LogItem[];
@@ -58,42 +61,50 @@ type HeadJudgeViewProps = {
 export function HeadJudgeView({
   eventId,
   judgeName,
+  judgeZone,
   eventName,
   roundName,
+  roundStatus,
   pendingCards,
   athletes,
   logs,
-}: HeadJudgeViewProps) {
+}: Readonly<HeadJudgeViewProps>) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
   const [actingId, setActingId] = React.useState<string | null>(null);
 
+  // Keep the acting card's buttons disabled for the whole transition (including
+  // the router.refresh round-trip) so a fast double-click can't fire a second
+  // confirm/reject on a card that's already been decided. The server actions are
+  // also idempotent (atomic PENDING→… transition) as a backstop.
+  React.useEffect(() => {
+    if (!isPending) setActingId(null);
+  }, [isPending]);
+
   const handleConfirm = (cardId: string) => {
+    if (isPending && actingId === cardId) return;
     setActingId(cardId);
     startTransition(async () => {
       try {
-        await confirmRedCard(cardId);
-        toast.success("ยืนยันใบแดงแล้ว");
+        const res = await confirmRedCard(cardId);
+        toast.success(res?.alreadyDecided ? "ใบแดงนี้ถูกตัดสินไปแล้ว" : "ยืนยันใบแดงแล้ว");
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-      } finally {
-        setActingId(null);
       }
     });
   };
 
   const handleReject = (cardId: string) => {
+    if (isPending && actingId === cardId) return;
     setActingId(cardId);
     startTransition(async () => {
       try {
-        await rejectRedCard(cardId);
-        toast.success("ยกเลิกใบแดงแล้ว");
+        const res = await rejectRedCard(cardId);
+        toast.success(res?.alreadyDecided ? "ใบแดงนี้ถูกตัดสินไปแล้ว" : "ยกเลิกใบแดงแล้ว");
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-      } finally {
-        setActingId(null);
       }
     });
   };
@@ -122,11 +133,17 @@ export function HeadJudgeView({
               <span className="text-slate-400">หัวหน้ากรรมการ: </span>
               <span className="font-medium text-slate-100">{judgeName}</span>
             </div>
+            {judgeZone && (
+              <div className="rounded-full border border-sky-700/60 bg-sky-950/40 px-3 py-1 text-[11px] text-sky-200">
+                <span className="text-sky-400/80">โซน/โต๊ะ: </span>
+                <span className="font-medium">{judgeZone}</span>
+              </div>
+            )}
             <Link
               href={`/events/${eventId}`}
               className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-slate-800"
             >
-              เปิดหน้า Live
+              ดูกระดานคะแนน
             </Link>
             <button
               type="button"
@@ -137,6 +154,8 @@ export function HeadJudgeView({
             </button>
           </div>
         </header>
+
+        <RaceStatusBanner phase={racePhaseFromStatus(roundStatus)} action="ยืนยันใบ" />
 
         {/* Pending red cards */}
         <Card className="rounded-2xl border-red-900/50 bg-slate-900">

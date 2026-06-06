@@ -13,11 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ListFiltersPanel } from "@/components/admin/list-filters-panel";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 
 type Judge = {
   id: string;
+  prefix: string;
   first_name: string;
+  middle_name: string;
   last_name: string;
   department: string;
   organization: string;
@@ -33,7 +35,7 @@ type JudgesListProps = {
 
 const ITEMS_PER_PAGE = 10;
 
-export function JudgesList({ judges }: JudgesListProps) {
+export function JudgesList({ judges }: Readonly<JudgesListProps>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
@@ -45,21 +47,21 @@ export function JudgesList({ judges }: JudgesListProps) {
   const countries = useMemo(() => {
     const uniqueCountries = Array.from(
       new Set(judges.map((j) => j.country).filter(Boolean) as string[])
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueCountries;
   }, [judges]);
 
   const provinces = useMemo(() => {
     const uniqueProvinces = Array.from(
       new Set(judges.map((j) => j.province).filter(Boolean) as string[])
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueProvinces;
   }, [judges]);
 
   const organizations = useMemo(() => {
     const uniqueOrganizations = Array.from(
-      new Set(judges.map((j) => j.organization).filter(Boolean) as string[])
-    ).sort();
+      new Set(judges.map((j) => j.organization).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueOrganizations;
   }, [judges]);
 
@@ -70,7 +72,9 @@ export function JudgesList({ judges }: JudgesListProps) {
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
         !searchQuery ||
+        judge.prefix?.toLowerCase().includes(searchLower) ||
         judge.first_name.toLowerCase().includes(searchLower) ||
+        judge.middle_name.toLowerCase().includes(searchLower) ||
         judge.last_name.toLowerCase().includes(searchLower) ||
         judge.department.toLowerCase().includes(searchLower) ||
         judge.organization.toLowerCase().includes(searchLower) ||
@@ -167,7 +171,7 @@ export function JudgesList({ judges }: JudgesListProps) {
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="judges-country-filter" className="text-[11px] font-medium text-slate-600">
                   ประเทศ
                 </label>
                 <Select
@@ -176,7 +180,7 @@ export function JudgesList({ judges }: JudgesListProps) {
                     handleFilterChange(setCountryFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="judges-country-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -191,7 +195,7 @@ export function JudgesList({ judges }: JudgesListProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="judges-province-filter" className="text-[11px] font-medium text-slate-600">
                   จังหวัด
                 </label>
                 <Select
@@ -200,7 +204,7 @@ export function JudgesList({ judges }: JudgesListProps) {
                     handleFilterChange(setProvinceFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="judges-province-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -215,7 +219,7 @@ export function JudgesList({ judges }: JudgesListProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="judges-organization-filter" className="text-[11px] font-medium text-slate-600">
                   องค์กร / สังกัด
                 </label>
                 <Select
@@ -224,7 +228,7 @@ export function JudgesList({ judges }: JudgesListProps) {
                     handleFilterChange(setOrganizationFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="judges-organization-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -239,7 +243,7 @@ export function JudgesList({ judges }: JudgesListProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="judges-status-filter" className="text-[11px] font-medium text-slate-600">
                   สถานะ
                 </label>
                 <Select
@@ -248,7 +252,7 @@ export function JudgesList({ judges }: JudgesListProps) {
                     handleFilterChange(setStatusFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="judges-status-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -274,7 +278,7 @@ export function JudgesList({ judges }: JudgesListProps) {
                   <th className="px-4 py-3 text-left">แผนก / หน่วยงาน</th>
                   <th className="px-4 py-3 text-left">องค์กร / สังกัด</th>
                   <th className="px-4 py-3 text-left">สถานะ</th>
-                  <th className="px-4 py-3 text-left">หมายเหตุ</th>
+                  {/* <th className="px-4 py-3 text-left">หมายเหตุ</th> */}
                   <th className="px-4 py-3 text-right">การจัดการ</th>
                 </tr>
               </thead>
@@ -292,7 +296,9 @@ export function JudgesList({ judges }: JudgesListProps) {
                   paginatedJudges.map((judge) => (
                     <tr key={judge.id} className="hover:bg-slate-50/80">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                        {judge.first_name} {judge.last_name}
+                      {[judge.prefix, judge.first_name, judge.middle_name, judge.last_name]
+                        .filter(Boolean)
+                        .join(" ")}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {judge.country || "-"}
@@ -306,7 +312,7 @@ export function JudgesList({ judges }: JudgesListProps) {
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {judge.organization || "-"}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-nowrap">
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
                             judge.status === "active"
@@ -319,17 +325,19 @@ export function JudgesList({ judges }: JudgesListProps) {
                             : "ปิดการใช้งาน"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
+                      {/* <td className="px-4 py-3 text-xs text-slate-600">
                         {judge.note || "-"}
-                      </td>
+                      </td> */}
                       <td className="px-4 py-3 text-right">
                         <Link href={`/admin/judges/${judge.id}`}>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="rounded-lg border-slate-200 text-xs"
+                            className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
+                            aria-label="ดู / แก้ไข"
+                            title="ดู / แก้ไข"
                           >
-                            ดู / แก้ไข
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
                       </td>
@@ -355,7 +363,7 @@ export function JudgesList({ judges }: JudgesListProps) {
                   className="h-8 rounded-lg text-xs"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  ก่อนหน้า
+                  
                 </Button>
                 <Button
                   variant="outline"
@@ -366,7 +374,7 @@ export function JudgesList({ judges }: JudgesListProps) {
                   disabled={currentPage === totalPages}
                   className="h-8 rounded-lg text-xs"
                 >
-                  ถัดไป
+                  
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

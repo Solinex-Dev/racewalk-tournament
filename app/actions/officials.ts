@@ -38,7 +38,7 @@ export async function joinAsOfficial(
 
   const code = secretCode.trim().toUpperCase();
   if (code.length !== 6) {
-    return { ok: false, error: "รหัสลับต้องมี 6 ตัวอักษร" };
+    return { ok: false, error: "รหัสกรรมการต้องมี 6 ตัวอักษร" };
   }
 
   // Find RoundOfficial whose secretCode matches and whose round belongs to this event
@@ -55,7 +55,7 @@ export async function joinAsOfficial(
   });
 
   if (!official) {
-    return { ok: false, error: "รหัสลับไม่ถูกต้องสำหรับ Event นี้" };
+    return { ok: false, error: "รหัสกรรมการไม่ถูกต้องสำหรับ Event นี้" };
   }
 
   if (official.round.status === "FINISHED") {

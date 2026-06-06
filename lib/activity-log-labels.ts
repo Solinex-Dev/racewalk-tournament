@@ -110,20 +110,20 @@ export function operationLabel(op: string | null | undefined): string {
  */
 export function formatUserAgent(ua: string | null | undefined): string {
   if (!ua) return "";
-  const browser =
-    /Edg\//.test(ua) ? "Edge"
-    : /OPR\/|Opera/.test(ua) ? "Opera"
-    : /Chrome\//.test(ua) ? "Chrome"
-    : /Firefox\//.test(ua) ? "Firefox"
-    : /Safari\//.test(ua) ? "Safari"
-    : "";
-  const os =
-    /Windows/.test(ua) ? "Windows"
-    : /Android/.test(ua) ? "Android"
-    : /iPhone|iPad|iOS/.test(ua) ? "iOS"
-    : /Mac OS X|Macintosh/.test(ua) ? "macOS"
-    : /Linux/.test(ua) ? "Linux"
-    : "";
+  let browser: string;
+  if (/Edg\//.test(ua)) browser = "Edge";
+  else if (/OPR\/|Opera/.test(ua)) browser = "Opera";
+  else if (/Chrome\//.test(ua)) browser = "Chrome";
+  else if (/Firefox\//.test(ua)) browser = "Firefox";
+  else if (/Safari\//.test(ua)) browser = "Safari";
+  else browser = "";
+  let os: string;
+  if (/Windows/.test(ua)) os = "Windows";
+  else if (/Android/.test(ua)) os = "Android";
+  else if (/iPhone|iPad|iOS/.test(ua)) os = "iOS";
+  else if (/Mac OS X|Macintosh/.test(ua)) os = "macOS";
+  else if (/Linux/.test(ua)) os = "Linux";
+  else os = "";
   const parts = [browser, os].filter(Boolean);
   return parts.length ? parts.join(" • ") : ua.slice(0, 40);
 }

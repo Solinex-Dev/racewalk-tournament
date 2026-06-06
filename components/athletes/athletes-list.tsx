@@ -13,11 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ListFiltersPanel } from "@/components/admin/list-filters-panel";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 
 type Athlete = {
   id: string;
+  prefix: string;
   first_name: string;
+  middle_name: string;
   last_name: string;
   affiliation: string;
   country: string;
@@ -32,7 +34,7 @@ type AthletesListProps = {
 
 const ITEMS_PER_PAGE = 10;
 
-export function AthletesList({ athletes }: AthletesListProps) {
+export function AthletesList({ athletes }: Readonly<AthletesListProps>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
@@ -43,29 +45,29 @@ export function AthletesList({ athletes }: AthletesListProps) {
   // Extract unique values for filters
   const countries = useMemo(() => {
     const uniqueCountries = Array.from(
-      new Set(athletes.map((a) => a.country).filter(Boolean) as string[])
-    ).sort();
+      new Set(athletes.map((a) => a.country).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueCountries;
   }, [athletes]);
 
   const provinces = useMemo(() => {
     const uniqueProvinces = Array.from(
-      new Set(athletes.map((a) => a.province).filter(Boolean) as string[])
-    ).sort();
+      new Set(athletes.map((a) => a.province).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueProvinces;
   }, [athletes]);
 
   const affiliations = useMemo(() => {
     const uniqueAffiliations = Array.from(
-      new Set(athletes.map((a) => a.affiliation).filter(Boolean) as string[])
-    ).sort();
+      new Set(athletes.map((a) => a.affiliation).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueAffiliations;
   }, [athletes]);
 
   const clubs = useMemo(() => {
     const uniqueClubs = Array.from(
       new Set(athletes.map((a) => a.club).filter(Boolean) as string[])
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueClubs;
   }, [athletes]);
 
@@ -76,7 +78,9 @@ export function AthletesList({ athletes }: AthletesListProps) {
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
         !searchQuery ||
+        athlete.prefix?.toLowerCase().includes(searchLower) ||
         athlete.first_name.toLowerCase().includes(searchLower) ||
+        athlete.middle_name.toLowerCase().includes(searchLower) ||
         athlete.last_name.toLowerCase().includes(searchLower) ||
         athlete.affiliation.toLowerCase().includes(searchLower) ||
         athlete.country.toLowerCase().includes(searchLower) ||
@@ -171,7 +175,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="athletes-country-filter" className="text-[11px] font-medium text-slate-600">
                   ประเทศ
                 </label>
                 <Select
@@ -180,7 +184,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     handleFilterChange(setCountryFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="athletes-country-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -195,7 +199,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="athletes-province-filter" className="text-[11px] font-medium text-slate-600">
                   จังหวัด
                 </label>
                 <Select
@@ -204,7 +208,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     handleFilterChange(setProvinceFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="athletes-province-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -219,7 +223,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="athletes-affiliation-filter" className="text-[11px] font-medium text-slate-600">
                   สังกัด
                 </label>
                 <Select
@@ -228,7 +232,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     handleFilterChange(setAffiliationFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="athletes-affiliation-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -243,7 +247,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-slate-600">
+                <label htmlFor="athletes-club-filter" className="text-[11px] font-medium text-slate-600">
                   สโมสร
                 </label>
                 <Select
@@ -252,7 +256,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                     handleFilterChange(setClubFilter, value)
                   }
                 >
-                  <SelectTrigger className="h-8 rounded-lg text-sm">
+                  <SelectTrigger id="athletes-club-filter" className="h-8 rounded-lg text-sm">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
                   <SelectContent>
@@ -280,7 +284,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                   <th className="px-4 py-3 text-left">สโมสร</th>
                   <th className="px-4 py-3 text-left">ประเทศ</th>
                   <th className="px-4 py-3 text-left">จังหวัด</th>
-                  <th className="px-4 py-3 text-left">หมายเหตุ</th>
+                  {/* <th className="px-4 py-3 text-left">หมายเหตุ</th> */}
                   <th className="px-4 py-3 text-right">การจัดการ</th>
                 </tr>
               </thead>
@@ -298,7 +302,9 @@ export function AthletesList({ athletes }: AthletesListProps) {
                   paginatedAthletes.map((athlete) => (
                     <tr key={athlete.id} className="hover:bg-slate-50/80">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                        {athlete.first_name} {athlete.last_name}
+                        {[athlete.prefix, athlete.first_name, athlete.middle_name, athlete.last_name]
+                          .filter(Boolean)
+                          .join(" ")}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {athlete.affiliation || "-"}
@@ -312,17 +318,19 @@ export function AthletesList({ athletes }: AthletesListProps) {
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {athlete.province || "-"}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
+                      {/* <td className="px-4 py-3 text-xs text-slate-600">
                         {athlete.note || "-"}
-                      </td>
+                      </td> */}
                       <td className="px-4 py-3 text-right">
                         <Link href={`/admin/athletes/${athlete.id}`}>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="rounded-lg border-slate-200 text-xs"
+                            className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
+                            aria-label="ดู / แก้ไข"
+                            title="ดู / แก้ไข"
                           >
-                            ดู / แก้ไข
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
                       </td>
@@ -348,7 +356,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                   className="h-8 rounded-lg text-xs"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  ก่อนหน้า
+                  
                 </Button>
                 <Button
                   variant="outline"
@@ -359,7 +367,7 @@ export function AthletesList({ athletes }: AthletesListProps) {
                   disabled={currentPage === totalPages}
                   className="h-8 rounded-lg text-xs"
                 >
-                  ถัดไป
+                  
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

@@ -13,6 +13,8 @@
  * the export deliberately follows the official form.
  */
 import { prisma } from "@/lib/prisma";
+import { bibMatchesAgeGroups } from "@/lib/bib";
+import { bangkokTime, bangkokTimeSec } from "@/lib/datetime";
 
 export const OFFICIAL_SYMBOL = { LIFTED_FOOT: "~", BENT_KNEE: "<" } as const;
 export const SYMBOL_TH = { LIFTED_FOOT: "ยกเท้า", BENT_KNEE: "เข่างอ" } as const;
@@ -48,12 +50,13 @@ export type AthleteRow = {
   totals: { lifted: number; bent: number; red: number };
   /** DQ notification info (only when status === "DQ") */
   dq: { time: string | null; offence: string | null } | null;
+  /** Stored WA rule code for a post-race DQ (null = none / "Other" / auto-DQ). */
+  dqReasonCode: string | null;
 };
 
 export type RoundSummary = {
   id: string;
   name: string;
-  heatName: string | null;
   status: "SCHEDULED" | "ONGOING" | "FINISHED";
   distanceKm: string | null;
   startTime: string | null; // "HH:MM"
@@ -85,13 +88,11 @@ export function formatMs(ms: number | null | undefined): string {
 }
 
 export function formatClock(dt: Date | null | undefined): string {
-  if (!dt) return "";
-  return dt.toTimeString().slice(0, 5); // HH:MM
+  return bangkokTime(dt); // HH:MM in Asia/Bangkok (+07)
 }
 
 export function formatClockSec(dt: Date | null | undefined): string {
-  if (!dt) return "";
-  return dt.toTimeString().slice(0, 8); // HH:MM:SS
+  return bangkokTimeSec(dt); // HH:MM:SS in Asia/Bangkok (+07)
 }
 
 // ── query ────────────────────────────────────────────────────────────────────
@@ -104,18 +105,26 @@ export function formatClockSec(dt: Date | null | undefined): string {
 export async function loadEventSummary(
   eventId: string,
   roundId?: string,
+  ageGroups?: number[],
 ): Promise<EventSummary | null> {
   const event = await prisma.event.findUnique({
     where: { id: eventId, deletedAt: null },
     include: {
+      eventAthletes: {
+        where: { deletedAt: null },
+        select: { athleteId: true, bib: true },
+      },
       rounds: {
-        where: { deletedAt: null, ...(roundId ? { id: roundId } : {}) },
+        // Only FINISHED rounds are exportable — a round still in progress (or not
+        // started) must not produce a report. A per-round request for an unfinished
+        // round therefore yields zero rounds, which callers treat as "blocked".
+        where: { deletedAt: null, status: "FINISHED", ...(roundId ? { id: roundId } : {}) },
         orderBy: { scheduledTime: "asc" },
         include: {
           roundAthletes: {
             where: { deletedAt: null },
             include: { athlete: { include: { affiliation: { select: { name: true } } } } },
-            orderBy: [{ position: "asc" }, { bib: "asc" }],
+            orderBy: [{ position: "asc" }, { athleteId: "asc" }],
           },
           roundOfficials: {
             where: { deletedAt: null },
@@ -132,6 +141,9 @@ export async function loadEventSummary(
   });
 
   if (!event) return null;
+
+  // BIB is stored at Event level — build a lookup map for all athlete rows below.
+  const bibMap = new Map(event.eventAthletes.map((ea) => [ea.athleteId, ea.bib]));
 
   const rounds: RoundSummary[] = event.rounds.map((r) => {
     // Zone judges become the columns of the sheet, ordered by zone label.
@@ -193,7 +205,9 @@ export async function loadEventSummary(
         }
       }
 
-      // DQ notification — time of the latest confirmed red, offence = its symbols
+      // DQ notification — time of the latest confirmed red. The "offence" prefers
+      // the moderator's structured rule code (e.g. "TR54.7.5"); otherwise it falls
+      // back to the confirmed red-card symbols (auto-DQ / "Other" free-text reason).
       let dq: AthleteRow["dq"] = null;
       if (ra.status === "DQ") {
         const confirmedReds = cards
@@ -203,19 +217,19 @@ export async function loadEventSummary(
               (a.decidedAt ?? a.issuedAt).getTime() - (b.decidedAt ?? b.issuedAt).getTime(),
           );
         const last = confirmedReds.at(-1);
-        const offence = confirmedReds
+        const symbols = confirmedReds
           .map((c) => OFFICIAL_SYMBOL[c.symbol as DbSymbol])
           .join(" ");
         dq = {
           time: last ? formatClock(last.decidedAt ?? last.issuedAt) : null,
-          offence: offence || null,
+          offence: ra.dqReasonCode || symbols || null,
         };
       }
 
       const finish = finishByAthlete.get(ra.athleteId);
 
       return {
-        bib: ra.bib,
+        bib: bibMap.get(ra.athleteId) ?? "?",
         name: ra.athlete.name,
         country: ra.athlete.country,
         affiliation: ra.athlete.affiliation?.name ?? "",
@@ -225,13 +239,20 @@ export async function loadEventSummary(
         marks,
         totals: { lifted: liftedTotal, bent: bentTotal, red: redConfirmed },
         dq,
+        dqReasonCode: ra.dqReasonCode ?? null,
       };
     });
+
+    // Optional age-group filter (BIB-derived) — applied after shaping so the
+    // CHECK·TOTAL tallies (computed from this array downstream) stay consistent.
+    const filteredAthletes =
+      ageGroups && ageGroups.length > 0
+        ? athletes.filter((a) => bibMatchesAgeGroups(a.bib, ageGroups))
+        : athletes;
 
     return {
       id: r.id,
       name: r.name,
-      heatName: r.heatName,
       status: r.status,
       distanceKm: r.distanceKm,
       // Show the ACTUAL race start (the moderator's editable source of truth);
@@ -242,7 +263,7 @@ export async function loadEventSummary(
       chiefJudge,
       recorders,
       judges,
-      athletes,
+      athletes: filteredAthletes,
     };
   });
 

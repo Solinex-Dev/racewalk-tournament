@@ -26,6 +26,7 @@ function requireAdminUserId(session: Session | null) {
 export async function updateMyProfile(data: {
   prefix: string | null;
   firstName: string;
+  middleName: string | null;
   lastName: string | null;
   email: string;
   title: string;
@@ -45,14 +46,16 @@ export async function updateMyProfile(data: {
   }
 
   const prefix = data.prefix?.trim() || null;
+  const middleName = data.middleName?.trim() || null;
   const lastName = data.lastName?.trim() || null;
 
   await prisma.user.update({
     where: { id: userId },
     data: {
-      name: composeName({ prefix, firstName, lastName }),
+      name: composeName({ prefix, firstName, middleName, lastName }),
       prefix,
       firstName,
+      middleName,
       lastName,
       email,
       title: data.title.trim(),
@@ -79,7 +82,7 @@ export async function changeMyPassword(currentPassword: string, newPassword: str
   if (!pwResult.ok) throw new Error(pwResult.error ?? "รหัสผ่านไม่ถูกต้อง");
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user || !user.password) {
+  if (!user?.password) {
     throw new Error("ไม่พบบัญชีหรือบัญชีนี้ไม่ใช้รหัสผ่าน");
   }
 

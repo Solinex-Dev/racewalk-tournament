@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 
 type Props = { params: Promise<{ judgeId: string }> };
 
-export default async function JudgeDetailPage(props: Props) {
+export default async function JudgeDetailPage(props: Readonly<Props>) {
   const { judgeId } = await props.params;
 
   const [judge, organizations] = await Promise.all([
@@ -73,6 +73,7 @@ export default async function JudgeDetailPage(props: Props) {
           defaultValues={{
             prefix: judge.prefix ?? "",
             firstName: judge.firstName ?? judge.name,
+            middleName: judge.middleName ?? "",
             lastName: judge.lastName ?? "",
             country: judge.country,
             province: judge.province ?? "",

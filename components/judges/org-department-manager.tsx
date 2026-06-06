@@ -29,7 +29,7 @@ import {
 type OrgNode = { id: string; name: string; departments: { id: string; name: string }[] };
 type Target = { kind: "org" | "dept"; id: string; name: string };
 
-export function OrgDepartmentManager({ organizations }: { organizations: OrgNode[] }) {
+export function OrgDepartmentManager({ organizations }: Readonly<{ organizations: OrgNode[] }>) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();

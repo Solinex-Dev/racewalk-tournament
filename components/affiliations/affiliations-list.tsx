@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ListFiltersPanel } from "@/components/admin/list-filters-panel";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 
 type Affiliation = {
   id: string;
@@ -31,7 +31,7 @@ type AffiliationsListProps = {
 
 const ITEMS_PER_PAGE = 10;
 
-export function AffiliationsList({ affiliations }: AffiliationsListProps) {
+export function AffiliationsList({ affiliations }: Readonly<AffiliationsListProps>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
@@ -41,14 +41,14 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
   const countries = useMemo(() => {
     const uniqueCountries = Array.from(
       new Set(affiliations.map((a) => a.country).filter(Boolean) as string[])
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueCountries;
   }, [affiliations]);
 
   const provinces = useMemo(() => {
     const uniqueProvinces = Array.from(
       new Set(affiliations.map((a) => a.province).filter(Boolean) as string[])
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b, "th"));
     return uniqueProvinces;
   }, [affiliations]);
 
@@ -131,7 +131,7 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
 
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-slate-600">
+            <label htmlFor="affiliations-country-filter" className="text-[11px] font-medium text-slate-600">
               ประเทศ
             </label>
             <Select
@@ -140,7 +140,7 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
                 handleFilterChange(setCountryFilter, value)
               }
             >
-              <SelectTrigger className="h-8 rounded-lg text-sm">
+              <SelectTrigger id="affiliations-country-filter" className="h-8 rounded-lg text-sm">
                 <SelectValue placeholder="ทั้งหมด" />
               </SelectTrigger>
               <SelectContent>
@@ -155,7 +155,7 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-slate-600">
+            <label htmlFor="affiliations-province-filter" className="text-[11px] font-medium text-slate-600">
               จังหวัด
             </label>
             <Select
@@ -164,7 +164,7 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
                 handleFilterChange(setProvinceFilter, value)
               }
             >
-              <SelectTrigger className="h-8 rounded-lg text-sm">
+              <SelectTrigger id="affiliations-province-filter" className="h-8 rounded-lg text-sm">
                 <SelectValue placeholder="ทั้งหมด" />
               </SelectTrigger>
               <SelectContent>
@@ -192,7 +192,7 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
                   <th className="px-4 py-3 text-left">จังหวัด</th>
                   <th className="px-4 py-3 text-left">ผู้ดูแล / หัวหน้าสังกัด</th>
                   <th className="px-4 py-3 text-left">วันที่เข้าร่วม</th>
-                  <th className="px-4 py-3 text-left">หมายเหตุ</th>
+                  {/* <th className="px-4 py-3 text-left">หมายเหตุ</th> */}
                   <th className="px-4 py-3 text-right">การจัดการ</th>
                 </tr>
               </thead>
@@ -224,17 +224,19 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {affiliation.join_at || "-"}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
+                      {/* <td className="px-4 py-3 text-xs text-slate-600">
                         {affiliation.note || "-"}
-                      </td>
+                      </td> */}
                       <td className="px-4 py-3 text-right">
                         <Link href={`/admin/affiliations/${affiliation.id}`}>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="rounded-lg border-slate-200 text-xs"
+                            className="h-8 w-8 rounded-lg border-slate-200 p-0 text-slate-500 hover:text-slate-700"
+                            aria-label="ดู / แก้ไข"
+                            title="ดู / แก้ไข"
                           >
-                            ดู / แก้ไข
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
                       </td>
@@ -260,7 +262,7 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
                   className="h-8 rounded-lg text-xs"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  ก่อนหน้า
+                  
                 </Button>
                 <Button
                   variant="outline"
@@ -271,7 +273,7 @@ export function AffiliationsList({ affiliations }: AffiliationsListProps) {
                   disabled={currentPage === totalPages}
                   className="h-8 rounded-lg text-xs"
                 >
-                  ถัดไป
+                  
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

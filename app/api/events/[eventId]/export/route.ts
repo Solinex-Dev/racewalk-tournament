@@ -12,6 +12,14 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission } from "@/lib/permissions";
 import { attachmentContentDisposition } from "@/lib/content-disposition";
+import { metersFromKm } from "@/lib/distance";
+import {
+  parseAgeGroupsParam,
+  bibMatchesAgeGroups,
+  bibAgeStart,
+  ageGroupLabel,
+} from "@/lib/bib";
+import { bangkokDateISO, bangkokDateTimeISO } from "@/lib/datetime";
 
 type Ctx = { params: Promise<{ eventId: string }> };
 
@@ -19,7 +27,7 @@ function escapeCsv(field: string | number | null | undefined): string {
   if (field === null || field === undefined) return "";
   const s = String(field);
   if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-    return `"${s.replace(/"/g, '""')}"`;
+    return `"${s.replaceAll('"', '""')}"`;
   }
   return s;
 }
@@ -41,52 +49,77 @@ export async function GET(request: Request, ctx: Ctx) {
   const { eventId } = await ctx.params;
   const url = new URL(request.url);
   const roundFilter = url.searchParams.get("round");
+  const ageGroups = parseAgeGroupsParam(url.searchParams.get("ageGroups"));
 
-  const event = await prisma.event.findUnique({
-    where: { id: eventId, deletedAt: null },
-    include: {
-      rounds: {
-        where: {
-          deletedAt: null,
-          ...(roundFilter ? { id: roundFilter } : {}),
-        },
-        orderBy: { scheduledTime: "asc" },
-        include: {
-          roundAthletes: {
-            where: { deletedAt: null },
-            include: { athlete: { include: { affiliation: { select: { name: true } } } } },
-            orderBy: [{ position: "asc" }, { bib: "asc" }],
+  const [event, rawEventAthletes] = await Promise.all([
+    prisma.event.findUnique({
+      where: { id: eventId, deletedAt: null },
+      include: {
+        rounds: {
+          // Only FINISHED rounds are exportable — skip rounds still in progress.
+          where: {
+            deletedAt: null,
+            status: "FINISHED",
+            ...(roundFilter ? { id: roundFilter } : {}),
           },
-          cards: { where: { deletedAt: null } },
-          finishTimes: { where: { deletedAt: null } },
+          orderBy: { scheduledTime: "asc" },
+          include: {
+            roundAthletes: {
+              where: { deletedAt: null },
+              include: { athlete: { include: { affiliation: { select: { name: true } } } } },
+              orderBy: [{ position: "asc" }, { athleteId: "asc" }],
+            },
+            cards: { where: { deletedAt: null } },
+            finishTimes: { where: { deletedAt: null } },
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.eventAthlete.findMany({
+      where: { eventId, deletedAt: null },
+      select: { athleteId: true, bib: true },
+    }),
+  ]);
 
   if (!event) return new NextResponse("Not found", { status: 404 });
+
+  // Nothing finished to export (unfinished per-round request, or no finished rounds).
+  if (event.rounds.length === 0) {
+    return new NextResponse(
+      roundFilter
+        ? "รอบนี้ยังแข่งไม่เสร็จ จึงยังไม่สามารถ export รายงานได้"
+        : "ยังไม่มีรอบที่แข่งเสร็จสำหรับออกรายงาน",
+      { status: 403 },
+    );
+  }
+
+  const bibMap = new Map(rawEventAthletes.map((ea) => [ea.athleteId, ea.bib]));
 
   const lines: string[] = [];
 
   // Header section
-  lines.push(escapeCsv(`Event,${event.name}`));
-  lines.push(escapeCsv(`Date,${event.date.toISOString().slice(0, 10)}`));
-  lines.push(escapeCsv(`Location,${event.location}`));
-  lines.push(escapeCsv(`Status,${event.status}`));
+  lines.push(
+    escapeCsv(`Event,${event.name}`),
+    escapeCsv(`Date,${bangkokDateISO(event.date)}`),
+    escapeCsv(`Location,${event.location}`),
+    escapeCsv(`Status,${event.status}`),
+  );
+  if (ageGroups.length > 0) {
+    lines.push(escapeCsv(`Age Groups,${ageGroups.map(ageGroupLabel).join(" / ")}`));
+  }
   lines.push("");
 
   for (const round of event.rounds) {
-    lines.push(`Round,${escapeCsv(round.name)}`);
-    lines.push(`Status,${round.status}`);
-    if (round.distanceKm) lines.push(`Distance (km),${escapeCsv(round.distanceKm)}`);
-    if (round.startedAt) lines.push(`Started at,${round.startedAt.toISOString()}`);
-    if (round.endedAt) lines.push(`Ended at,${round.endedAt.toISOString()}`);
-    lines.push("");
-
+    lines.push(`Round,${escapeCsv(round.name)}`, `Status,${round.status}`);
+    if (round.distanceKm) lines.push(`Distance (m),${escapeCsv(metersFromKm(round.distanceKm))}`);
+    if (round.startedAt) lines.push(`Started at,${escapeCsv(bangkokDateTimeISO(round.startedAt))}`);
+    if (round.endedAt) lines.push(`Ended at,${escapeCsv(bangkokDateTimeISO(round.endedAt))}`);
     // Athlete table for this round
     lines.push(
+      "",
       [
         "BIB",
+        "Age Group",
         "Name",
         "Country",
         "Affiliation",
@@ -102,6 +135,9 @@ export async function GET(request: Request, ctx: Ctx) {
     );
 
     for (const ra of round.roundAthletes) {
+      const bib = bibMap.get(ra.athleteId) ?? "?";
+      if (!bibMatchesAgeGroups(bib, ageGroups)) continue;
+
       const yellow = round.cards.filter((c) => c.athleteId === ra.athleteId && c.color === "YELLOW").length;
       const confirmedRed = round.cards.filter(
         (c) => c.athleteId === ra.athleteId && c.color === "RED" && c.state === "CONFIRMED",
@@ -110,14 +146,20 @@ export async function GET(request: Request, ctx: Ctx) {
         (c) => c.athleteId === ra.athleteId && c.color === "RED" && c.state === "PENDING",
       ).length;
       const finish = round.finishTimes.find((f) => f.athleteId === ra.athleteId);
+      const ageStart = bibAgeStart(bib);
+      // Show the DQ rule code in the Status column when present; otherwise the
+      // plain status ("Other"/free-text DQ and auto-DQ fall back to "DQ").
+      const statusCell =
+        ra.status === "DQ" && ra.dqReasonCode ? ra.dqReasonCode : ra.status;
 
       lines.push(
         [
-          ra.bib,
+          bib,
+          ageStart !== null ? ageGroupLabel(ageStart) : "",
           ra.athlete.name,
           ra.athlete.country,
           ra.athlete.affiliation?.name ?? "",
-          ra.status,
+          statusCell,
           ra.position ?? "",
           yellow,
           confirmedRed,
@@ -128,8 +170,7 @@ export async function GET(request: Request, ctx: Ctx) {
           .join(","),
       );
     }
-    lines.push("");
-    lines.push("");
+    lines.push("", "");
   }
 
   const csv = "﻿" + lines.join("\r\n"); // UTF-8 BOM for Excel

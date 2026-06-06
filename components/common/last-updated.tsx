@@ -14,11 +14,11 @@ export function LastUpdated({
   time,
   className,
   prefix = "อัพเดทล่าสุด",
-}: {
+}: Readonly<{
   time: string;
   className?: string;
   prefix?: string;
-}) {
+}>) {
   const refreshMs = new Date(time).getTime();
 
   const subscribe = useCallback((callback: () => void) => {
@@ -39,12 +39,9 @@ export function LastUpdated({
   else label = `${Math.floor(secondsAgo / 3600)} ชั่วโมงที่แล้ว`;
 
   // Color pulse: green if fresh, amber if getting stale, red if very stale
+  const staleDotColor = secondsAgo < 15 ? "bg-amber-400" : "bg-red-400";
   const dotColor =
-    secondsAgo < 7
-      ? "bg-emerald-400 animate-pulse"
-      : secondsAgo < 15
-        ? "bg-amber-400"
-        : "bg-red-400";
+    secondsAgo < 7 ? "bg-emerald-400 animate-pulse" : staleDotColor;
 
   return (
     <span className={`inline-flex items-center gap-1.5 ${className ?? ""}`}>

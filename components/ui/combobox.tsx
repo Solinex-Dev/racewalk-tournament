@@ -31,7 +31,7 @@ export type ComboboxProps = {
   emptyText?: string;
   disabled?: boolean;
   className?: string;
-  /** Show a "— ไม่ระบุ —" entry that clears the value. */
+  /** Show a "ไม่ระบุ" entry that clears the value. */
   clearable?: boolean;
   clearLabel?: string;
   /** Allow selecting a typed value not in the list (e.g. a custom prefix). */
@@ -39,6 +39,12 @@ export type ComboboxProps = {
   /** Pinned bottom action, e.g. open a "create new judge" dialog. */
   onCreateNew?: () => void;
   createNewLabel?: string;
+  /**
+   * Render the dropdown inline (no portal). Set this when the Combobox lives
+   * inside a Dialog so mouse-wheel scrolling of the list works (the dialog's
+   * scroll-lock otherwise blocks wheel events on portalled content).
+   */
+  portalled?: boolean;
 };
 
 export function Combobox({
@@ -52,17 +58,19 @@ export function Combobox({
   disabled,
   className,
   clearable,
-  clearLabel = "— ไม่ระบุ —",
+  clearLabel = "ไม่ระบุ",
   creatable,
   onCreateNew,
   createNewLabel,
-}: ComboboxProps) {
+  portalled = true,
+}: Readonly<ComboboxProps>) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
 
   const selected = options.find((o) => o.value === value);
   const hasValue = Boolean(value);
-  const triggerLabel = selected ? selected.label : hasValue ? value : placeholder;
+  const fallbackLabel = hasValue ? value : placeholder;
+  const triggerLabel = selected ? selected.label : fallbackLabel;
 
   const trimmed = query.trim();
   const exactExists = options.some((o) => o.value === trimmed || o.label === trimmed);
@@ -101,6 +109,7 @@ export function Combobox({
       <PopoverContent
         className="w-[var(--radix-popover-trigger-width)] min-w-[12rem] p-0"
         align="start"
+        portalled={portalled}
       >
         <Command
           filter={(itemValue, search, keywords) => {

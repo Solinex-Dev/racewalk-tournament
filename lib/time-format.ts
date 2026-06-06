@@ -21,10 +21,10 @@ export function formatRaceTime(ms: number): string {
  * {@link formatRaceTime} used by the moderator edit dialogs.
  */
 export function parseRaceTime(str: string): number | null {
-  const parts = str.trim().split(":").map((p) => Number(p));
+  const parts = str.trim().split(":").map(Number);
   if (parts.length === 0 || parts.some((p) => Number.isNaN(p))) return null;
-  if (parts.length === 1) return parts[0]! * 1000;
-  if (parts.length === 2) return (parts[0]! * 60 + parts[1]!) * 1000;
-  if (parts.length === 3) return (parts[0]! * 3600 + parts[1]! * 60 + parts[2]!) * 1000;
+  if (parts.length === 1) return parts[0] * 1000;
+  if (parts.length === 2) return (parts[0] * 60 + parts[1]) * 1000;
+  if (parts.length === 3) return (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000;
   return null;
 }

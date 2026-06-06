@@ -5,6 +5,9 @@ import { RoundForm, type RoundFormValues } from "@/components/rounds/round-form"
 import { Button } from "@/components/ui/button";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { prisma } from "@/lib/prisma";
+import { ArrowLeft } from "lucide-react";
+import type { EventAthleteOption } from "@/types/event-athlete";
+import { metersFromKm } from "@/lib/distance";
 
 export const metadata: Metadata = {
   title: "แก้ไขรอบแข่ง – การแข่งขันเดินทน",
@@ -25,43 +28,54 @@ function toDateInput(dt: Date) {
     .slice(0, 10);
 }
 
-export default async function RoundDetailPage(props: Props) {
+export default async function RoundDetailPage(props: Readonly<Props>) {
   const { eventId, roundId } = await props.params;
 
-  const [round, athletes, judges] = await Promise.all([
+  const [round, rawEventAthletes, judges, existingCodes] = await Promise.all([
     prisma.round.findUnique({
       where: { id: roundId, deletedAt: null },
       include: {
         event: { select: { name: true, date: true } },
-        roundAthletes: { where: { deletedAt: null } },
+        roundAthletes: { where: { deletedAt: null }, orderBy: { sortOrder: "asc" } },
         roundOfficials: { where: { deletedAt: null } },
       },
     }),
-    prisma.athlete.findMany({
-      where: { deletedAt: null },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
+    prisma.eventAthlete.findMany({
+      where: { eventId, deletedAt: null },
+      orderBy: [{ sortOrder: "asc" }, { bib: "asc" }],
+      select: { athleteId: true, bib: true, athlete: { select: { name: true } } },
     }),
     prisma.judge.findMany({
       where: { deletedAt: null },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    // Codes in use by OTHER rounds of this event (exclude this round) — the form
+    // avoids them so secret codes stay unique across the whole event.
+    prisma.roundOfficial.findMany({
+      where: { deletedAt: null, round: { eventId, deletedAt: null, id: { not: roundId } } },
+      select: { secretCode: true },
+    }),
   ]);
 
   if (!round) notFound();
+
+  const eventAthletes: EventAthleteOption[] = rawEventAthletes.map((ea) => ({
+    athleteId: ea.athleteId,
+    athleteName: ea.athlete.name,
+    bib: ea.bib,
+  }));
 
   const defaultValues: RoundFormValues = {
     name: round.name,
     scheduledTime: round.scheduledTime ? toDatetimeLocal(round.scheduledTime) : "",
     expectedEndTime: round.expectedEndTime ? toDatetimeLocal(round.expectedEndTime) : "",
-    distanceKm: round.distanceKm ?? "",
+    distanceMeters: metersFromKm(round.distanceKm),
     lapCount: round.lapCount ?? 1,
     note: round.note ?? "",
     status: round.status,
     athletes: round.roundAthletes.map((ra) => ({
       athleteId: ra.athleteId,
-      bib: ra.bib,
     })),
     officials: round.roundOfficials.map((ro) => ({
       judgeId: ro.judgeId,
@@ -98,7 +112,7 @@ export default async function RoundDetailPage(props: Props) {
               size="sm"
               className="rounded-lg border-slate-200 text-xs"
             >
-              กลับไปหน้า Event
+              <ArrowLeft className="h-4 w-4" /> กลับไปหน้า Event
             </Button>
           </Link>
         </div>
@@ -107,9 +121,11 @@ export default async function RoundDetailPage(props: Props) {
           mode="edit"
           eventId={eventId}
           roundId={roundId}
-          athleteOptions={athletes}
+          eventAthletes={eventAthletes}
           judgeOptions={judges}
           eventDate={toDateInput(round.event.date)}
+          existingEventCodes={existingCodes.map((c) => c.secretCode)}
+          locked={round.status === "ONGOING"}
           defaultValues={defaultValues}
         />
       </div>

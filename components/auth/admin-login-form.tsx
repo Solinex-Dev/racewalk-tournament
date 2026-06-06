@@ -16,7 +16,7 @@ type AdminLoginFormProps = {
   showDevQuickLogin?: boolean;
 };
 
-export function AdminLoginForm({ showDevQuickLogin = false }: AdminLoginFormProps) {
+export function AdminLoginForm({ showDevQuickLogin = false }: Readonly<AdminLoginFormProps>) {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,8 +44,8 @@ export function AdminLoginForm({ showDevQuickLogin = false }: AdminLoginFormProp
     }
     const callbackUrl = searchParams.get("callbackUrl");
     const target =
-      callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/admin";
-    window.location.assign(target);
+      callbackUrl?.startsWith("/") ? callbackUrl : "/admin";
+    globalThis.location.assign(target);
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

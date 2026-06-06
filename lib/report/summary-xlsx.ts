@@ -12,6 +12,7 @@ import {
   type EventSummary,
   type RoundSummary,
 } from "@/lib/report/summary-sheet";
+import { bangkokDateThai } from "@/lib/datetime";
 
 const BASE_FONT = "Tahoma"; // ships with Windows, renders Thai cleanly
 const JUDGE_SLOTS = 8; // the official form has 8 judge columns
@@ -36,11 +37,11 @@ const THIN = { style: "thin" as const, color: { argb: COLOR.border } };
 const ALL_BORDER = { top: THIN, left: THIN, bottom: THIN, right: THIN };
 
 function thaiDate(d: Date): string {
-  return d.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+  return bangkokDateThai(d); // Asia/Bangkok (+07)
 }
 
 function safeSheetName(name: string, used: Set<string>): string {
-  const base = name.replace(/[[\]*?/\\:]/g, " ").trim().slice(0, 28) || "Round";
+  const base = name.replaceAll(/[[\]*?/\\:]/g, " ").trim().slice(0, 28) || "Round";
   let candidate = base;
   let i = 2;
   while (used.has(candidate.toLowerCase())) {
@@ -84,7 +85,8 @@ export function buildRoundWorksheet(
   ws.getColumn(C_PEN_IN).width = 7;
   ws.getColumn(C_PEN_OUT).width = 7;
   ws.getColumn(C_CHIEF_T).width = 8;
-  ws.getColumn(C_CHIEF_O).width = 9;
+  // Offence holds the DQ rule code (e.g. "TR7.1[TR6.3.1]") when set, else symbols.
+  ws.getColumn(C_CHIEF_O).width = 14;
   // DQ / CHECK OF / YELLOW PADDLES / DISQUAL. — vertical-text headers (narrow)
   ws.getColumn(C_DQ_T).width = 6;
   ws.getColumn(C_TOT_LIFT).width = 6;
@@ -158,14 +160,14 @@ export function buildRoundWorksheet(
 
   infoLabel(C_ATH, dateEnd, "DATE / วันที่");
   infoLabel(dateEnd + 1, startEnd, "START TIME");
-  infoLabel(eventStart, eventEnd, "EVENT / รายการ");
+  infoLabel(eventStart, eventEnd, "รายการ");
   infoLabel(chiefStart, LAST, "CHIEF JUDGE / หัวหน้ากรรมการ");
   infoValue(C_ATH, dateEnd, thaiDate(ev.date));
   infoValue(dateEnd + 1, startEnd, round.startTime || "—", true);
   infoValue(
     eventStart,
     eventEnd,
-    `${ev.name} — ${round.name}${round.heatName ? ` (${round.heatName})` : ""}  •  ${ROUND_STATUS_TH[round.status]}`,
+    `${round.name}  •  ${ROUND_STATUS_TH[round.status]}`,
   );
   infoValue(chiefStart, LAST, round.chiefJudge || "—");
   ws.getRow(3).height = 16;
@@ -245,7 +247,8 @@ export function buildRoundWorksheet(
     ws.getRow(r).height = 16;
     const isDq = a.status === "DQ";
     const isDnf = a.status === "DNF";
-    const ink = isDq ? COLOR.red : isDnf ? COLOR.amber : COLOR.ink;
+    const nonDqInk = isDnf ? COLOR.amber : COLOR.ink;
+    const ink = isDq ? COLOR.red : nonDqInk;
 
     const cell = (col: number, value: ExcelJS.CellValue, align: "left" | "center" = "center") => {
       const cc = ws.getCell(r, col);
@@ -262,7 +265,7 @@ export function buildRoundWorksheet(
 
     for (let j = 0; j < J; j++) {
       const start = jcol(j);
-      const m = judges[j] ? a.marks[judges[j]!.id] : undefined;
+      const m = judges[j] ? a.marks[judges[j].id] : undefined;
       cell(start, m?.yellowLifted ? "✓" : "");
       cell(start + 1, m?.yellowBent ? "✓" : "");
       const rc = cell(start + 2, "");
@@ -326,7 +329,7 @@ export function buildRoundWorksheet(
     const lift = jd ? round.athletes.filter((a) => a.marks[jd.id]?.yellowLifted).length : 0;
     const bent = jd ? round.athletes.filter((a) => a.marks[jd.id]?.yellowBent).length : 0;
     const rc = jd
-      ? round.athletes.filter((a) => a.marks[jd.id]?.red && a.marks[jd.id]!.red!.state !== "OVERRIDDEN").length
+      ? round.athletes.filter((a) => a.marks[jd.id]?.red && a.marks[jd.id].red!.state !== "OVERRIDDEN").length
       : 0;
     totCell(jcol(j), lift || "");
     totCell(jcol(j) + 1, bent || "");

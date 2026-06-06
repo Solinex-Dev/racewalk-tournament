@@ -19,21 +19,32 @@ export function LiveTimer({
   startedAt,
   endedAt,
   className,
-}: {
+}: Readonly<{
   startedAt: string;
   endedAt: string | null;
   className?: string;
-}) {
+}>) {
   const start = new Date(startedAt).getTime();
   const fixedEnd = endedAt ? new Date(endedAt).getTime() : null;
 
   const subscribe = useCallback(
     (callback: () => void) => {
       if (fixedEnd !== null) return () => {};
-      const id = setInterval(callback, 1000);
-      return () => clearInterval(id);
+      // Align ticks to the real elapsed-second boundary (relative to startedAt)
+      // instead of "every 1000ms from mount", so the displayed seconds flip in
+      // sync with the actual race time rather than drifting by the mount offset.
+      let interval: ReturnType<typeof setInterval> | undefined;
+      const msToNextSecond = 1000 - (((Date.now() - start) % 1000) + 1000) % 1000;
+      const timeout = setTimeout(() => {
+        callback();
+        interval = setInterval(callback, 1000);
+      }, msToNextSecond);
+      return () => {
+        clearTimeout(timeout);
+        if (interval) clearInterval(interval);
+      };
     },
-    [fixedEnd],
+    [fixedEnd, start],
   );
 
   const getSnapshot = useCallback(

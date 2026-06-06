@@ -20,7 +20,7 @@ export default async function NewJudgePage() {
   const me = await getCurrentAdmin();
   if (!hasPermission(me, "judges", "create")) return <NoAccess />;
 
-  const [organizations] = await Promise.all([getOrganizationsTree()]);
+  const organizations = await getOrganizationsTree();
   const countryOptions = getCountryComboboxOptions();
   const provinceOptions = getProvinceComboboxOptions();
 

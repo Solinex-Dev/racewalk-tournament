@@ -258,7 +258,7 @@ export function formatRoundActivityLog(
           },
           ...target,
         ],
-        detailLine: input.details && input.details !== input.actionType ? undefined : undefined,
+        detailLine: undefined,
       };
   }
 }

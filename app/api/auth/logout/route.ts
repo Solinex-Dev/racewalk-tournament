@@ -7,10 +7,8 @@ import { authOptions } from "@/auth";
 import { createActivityLog, ActivityLogAction } from "@/lib/activity-log";
 import { prisma } from "@/lib/prisma";
 
-type SessionWithId = { user: { id?: string }; sessionId?: string };
-
 export async function POST() {
-  const session = (await getServerSession(authOptions)) as SessionWithId | null;
+  const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
   const sessionId = session?.sessionId;
 

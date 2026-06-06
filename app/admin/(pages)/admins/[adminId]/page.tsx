@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 type Props = { params: Promise<{ adminId: string }> };
 
-export default async function AdminDetailPage(props: Props) {
+export default async function AdminDetailPage(props: Readonly<Props>) {
   const { adminId } = await props.params;
 
   const me = await getCurrentAdmin();
@@ -27,7 +27,8 @@ export default async function AdminDetailPage(props: Props) {
   const user = await prisma.user.findUnique({
     where: { id: adminId },
   });
-  if (!user || user.role !== "ADMIN" || user.status === "DELETED") notFound();
+  if (!user) notFound();
+  if (user.role !== "ADMIN" || user.status === "DELETED") notFound();
 
   // Manage your own account via Settings — never through the admins list.
   if (user.id === me.id) redirect("/admin/settings");
@@ -68,6 +69,7 @@ export default async function AdminDetailPage(props: Props) {
           defaultValues={{
             prefix: user.prefix ?? "",
             firstName: user.firstName ?? user.name ?? "",
+            middleName: user.middleName ?? "",
             lastName: user.lastName ?? "",
             email: user.email ?? "",
             title: user.title ?? "",

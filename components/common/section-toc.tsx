@@ -12,7 +12,7 @@ export type TocItem = { id: string; label: string };
  *
  * Pass a STABLE `items` reference (module const / useMemo) — it's an effect dep.
  */
-export function SectionToc({ items, className }: { items: TocItem[]; className?: string }) {
+export function SectionToc({ items, className }: Readonly<{ items: TocItem[]; className?: string }>) {
   const [active, setActive] = React.useState<string | null>(items[0]?.id ?? null);
 
   React.useEffect(() => {

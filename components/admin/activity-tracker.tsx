@@ -14,8 +14,8 @@ export function ActivityTracker() {
   const lastRef = React.useRef<string>("");
 
   React.useEffect(() => {
-    if (!pathname || !pathname.startsWith("/admin")) return;
-    const full = window.location.pathname + window.location.search;
+    if (!pathname?.startsWith("/admin")) return;
+    const full = globalThis.location.pathname + globalThis.location.search;
     // Dedupe identical consecutive views (also guards React's dev double-effect).
     if (lastRef.current === full) return;
     lastRef.current = full;

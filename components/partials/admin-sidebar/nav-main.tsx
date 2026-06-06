@@ -18,7 +18,7 @@ export type Route = {
   link: string;
 };
 
-export default function DashboardNavigation({ routes }: { routes: Route[] }) {
+export default function DashboardNavigation({ routes }: Readonly<{ routes: Route[] }>) {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const pathname = usePathname();
