@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Reorder, useDragControls } from "framer-motion";
-import { Pencil, GripVertical, Check } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -61,110 +60,33 @@ const STATUS_LABEL: Record<EventFormValues["status"], string> = {
 const ATHLETES_PER_PAGE = 20;
 
 /**
- * One athlete row. Reorder by dragging the grip handle (only when not searching)
- * OR by clicking the position number, typing a new one, and pressing Enter / ✓.
+ * One athlete row (event form). BIB is editable here; the order number is shown
+ * read-only — the start-list order is set per round in the round form, not here.
  */
-function AthleteReorderRow({
-  athleteId,
+function AthleteRow({
   position,
   athleteName,
   bib,
   bibConflict,
-  canDrag,
-  isEditingPos,
-  editPosValue,
   onBibChange,
   onRemove,
-  onStartEditPos,
-  onChangeEditPos,
-  onCommitPos,
-  onCancelPos,
 }: Readonly<{
-  athleteId: string;
   position: number;
   athleteName: string;
   bib: string;
   bibConflict: boolean;
-  canDrag: boolean;
-  isEditingPos: boolean;
-  editPosValue: string;
   onBibChange: (value: string) => void;
   onRemove: () => void;
-  onStartEditPos: () => void;
-  onChangeEditPos: (value: string) => void;
-  onCommitPos: () => void;
-  onCancelPos: () => void;
 }>) {
-  const controls = useDragControls();
   // BIB must be age-encoded ([age band][3-digit seq], e.g. 65001). Anything else
   // (empty or malformed) is invalid and blocks saving.
   const ageGroup = parseBibAgeGroup(bib);
   const bibInvalid = !ageGroup;
   return (
-    <Reorder.Item
-      value={athleteId}
-      dragListener={false}
-      dragControls={controls}
-      as="div"
-      className="flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2 last:border-b-0"
-    >
-      {canDrag ? (
-        <button
-          type="button"
-          aria-label="ลากเพื่อจัดลำดับ"
-          onPointerDown={(e) => controls.start(e)}
-          className="flex h-7 w-5 shrink-0 cursor-grab touch-none items-center justify-center text-slate-400 hover:text-slate-600 active:cursor-grabbing"
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-      ) : (
-        <span className="w-5 shrink-0" aria-hidden />
-      )}
-
-      {/* Position — click to edit, Enter / ✓ to apply (the list then re-sorts) */}
-      <span className="flex w-16 shrink-0 items-center gap-1">
-        {isEditingPos ? (
-          <>
-            <input
-              type="number"
-              min={1}
-              autoFocus
-              value={editPosValue}
-              onChange={(e) => onChangeEditPos(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  onCommitPos();
-                } else if (e.key === "Escape") {
-                  onCancelPos();
-                }
-              }}
-              onBlur={onCommitPos}
-              className="h-7 w-10 rounded-md border border-slate-300 px-1 text-center text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
-            />
-            <button
-              type="button"
-              aria-label="บันทึกลำดับ"
-              // onMouseDown (not onClick) so it fires before the input's onBlur cancels it
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onCommitPos();
-              }}
-              className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-500"
-            >
-              <Check className="h-3.5 w-3.5" />
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            onClick={onStartEditPos}
-            title="คลิกเพื่อแก้ลำดับ"
-            className="h-7 w-7 rounded-md text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-          >
-            {position}
-          </button>
-        )}
+    <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2 last:border-b-0">
+      {/* Order number — display only (start-list order is edited per round) */}
+      <span className="w-10 shrink-0 text-center text-sm font-semibold text-slate-500">
+        {position}
       </span>
 
       <span className="flex-1 truncate text-xs text-slate-800">{athleteName}</span>
@@ -198,7 +120,7 @@ function AthleteReorderRow({
       >
         ลบ
       </Button>
-    </Reorder.Item>
+    </div>
   );
 }
 
@@ -224,11 +146,9 @@ export function EventForm({
   const [athletePickerOpen, setAthletePickerOpen] = React.useState(false);
   const [athletePickerSelected, setAthletePickerSelected] = React.useState<string[]>([]);
 
-  // In-list search / pagination / inline position editing
+  // In-list search / pagination (order is managed per round, not here)
   const [listQuery, setListQuery] = React.useState("");
   const [listPage, setListPage] = React.useState(0);
-  const [editPosId, setEditPosId] = React.useState<string | null>(null);
-  const [editPosValue, setEditPosValue] = React.useState("");
 
   const startEdit = () => {
     setForm(saved);
@@ -270,38 +190,6 @@ export function EventForm({
 
   const handleRemoveAthlete = (athleteId: string) =>
     setForm((p) => ({ ...p, athletes: p.athletes.filter((a) => a.athleteId !== athleteId) }));
-
-  // Move an athlete to a new 1-based position; the rest shift to fill in.
-  const movePosition = (athleteId: string, newPos1: number) =>
-    setForm((p) => {
-      const from = p.athletes.findIndex((a) => a.athleteId === athleteId);
-      if (from < 0 || Number.isNaN(newPos1)) return p;
-      const to = Math.min(Math.max(0, newPos1 - 1), p.athletes.length - 1);
-      if (to === from) return p;
-      const next = [...p.athletes];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return { ...p, athletes: next };
-    });
-
-  const commitPosEdit = (athleteId: string) => {
-    const n = Number.parseInt(editPosValue, 10);
-    if (!Number.isNaN(n)) movePosition(athleteId, n);
-    setEditPosId(null);
-    setEditPosValue("");
-  };
-
-  // Drag reorder within the current (unfiltered) page slice — reconstruct the
-  // full array by replacing that contiguous slice with the reordered ids.
-  const reorderPageSlice = (start: number, orderedIds: string[]) =>
-    setForm((p) => {
-      const byId = new Map(p.athletes.map((a) => [a.athleteId, a]));
-      const middle = orderedIds.map((id) => byId.get(id)).filter(Boolean) as EventAthleteEntry[];
-      return {
-        ...p,
-        athletes: [...p.athletes.slice(0, start), ...middle, ...p.athletes.slice(start + orderedIds.length)],
-      };
-    });
 
   const confirmAthletePicker = () => {
     const existing = new Set(form.athletes.map((a) => a.athleteId));
@@ -361,8 +249,6 @@ export function EventForm({
   const athletePage = Math.min(listPage, athleteTotalPages - 1);
   const athletePageStart = athletePage * ATHLETES_PER_PAGE;
   const athletePageRows = filteredAthleteRows.slice(athletePageStart, athletePageStart + ATHLETES_PER_PAGE);
-  // Drag only when not searching (then the page is a contiguous slice of the full list).
-  const athleteCanDrag = athleteListQ === "";
 
   return (
     <>
@@ -481,7 +367,7 @@ export function EventForm({
                   <div>
                     <h2 className="text-sm font-semibold text-slate-900">นักกีฬาที่เข้าร่วม Event</h2>
                     <p className="mt-0.5 text-[11px] text-slate-600">
-                      จัดลำดับด้วยการลากไอคอน ⠿ หรือคลิกที่เลขลำดับเพื่อแก้ • Bib ที่กำหนดที่นี่ใช้ในทุกรอบของ Event นี้
+                      Bib ที่กำหนดที่นี่ใช้ในทุกรอบของ Event นี้ • ลำดับการออกตัวของนักกีฬาแก้ไขได้ในหน้า “รอบการแข่งขัน”
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -532,8 +418,7 @@ export function EventForm({
                     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                       {/* header row */}
                       <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-medium uppercase text-slate-500">
-                        <span className="w-5 shrink-0" aria-hidden />
-                        <span className="w-16 shrink-0">ลำดับ</span>
+                        <span className="w-10 shrink-0 text-center">ลำดับ</span>
                         <span className="flex-1">นักกีฬา</span>
                         <span className="w-24 shrink-0">หมายเลข Bib</span>
                         <span className="w-20 shrink-0 text-center">รุ่นอายุ</span>
@@ -545,46 +430,21 @@ export function EventForm({
                           ไม่พบนักกีฬาตามคำค้นหา
                         </div>
                       ) : (
-                        <Reorder.Group
-                          as="div"
-                          axis="y"
-                          values={athletePageRows.map(({ entry }) => entry.athleteId)}
-                          onReorder={
-                            athleteCanDrag
-                              ? (ids: string[]) => reorderPageSlice(athletePageStart, ids)
-                              : () => {}
-                          }
-                        >
-                          {athletePageRows.map(({ entry, fullIndex }) => {
-                            const athlete = globalAthletes.find((a) => a.id === entry.athleteId);
-                            const bibConflict = entry.bib.trim() !== "" && bibDup.keys.has(entry.bib.trim());
-                            return (
-                              <AthleteReorderRow
-                                key={entry.athleteId}
-                                athleteId={entry.athleteId}
-                                position={fullIndex + 1}
-                                athleteName={athlete?.name ?? entry.athleteId}
-                                bib={entry.bib}
-                                bibConflict={bibConflict}
-                                canDrag={athleteCanDrag}
-                                isEditingPos={editPosId === entry.athleteId}
-                                editPosValue={editPosValue}
-                                onBibChange={(v) => handleBibChange(entry.athleteId, v)}
-                                onRemove={() => handleRemoveAthlete(entry.athleteId)}
-                                onStartEditPos={() => {
-                                  setEditPosId(entry.athleteId);
-                                  setEditPosValue(String(fullIndex + 1));
-                                }}
-                                onChangeEditPos={setEditPosValue}
-                                onCommitPos={() => commitPosEdit(entry.athleteId)}
-                                onCancelPos={() => {
-                                  setEditPosId(null);
-                                  setEditPosValue("");
-                                }}
-                              />
-                            );
-                          })}
-                        </Reorder.Group>
+                        athletePageRows.map(({ entry, fullIndex }) => {
+                          const athlete = globalAthletes.find((a) => a.id === entry.athleteId);
+                          const bibConflict = entry.bib.trim() !== "" && bibDup.keys.has(entry.bib.trim());
+                          return (
+                            <AthleteRow
+                              key={entry.athleteId}
+                              position={fullIndex + 1}
+                              athleteName={athlete?.name ?? entry.athleteId}
+                              bib={entry.bib}
+                              bibConflict={bibConflict}
+                              onBibChange={(v) => handleBibChange(entry.athleteId, v)}
+                              onRemove={() => handleRemoveAthlete(entry.athleteId)}
+                            />
+                          );
+                        })
                       )}
                     </div>
 

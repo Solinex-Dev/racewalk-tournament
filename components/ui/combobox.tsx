@@ -39,6 +39,12 @@ export type ComboboxProps = {
   /** Pinned bottom action, e.g. open a "create new judge" dialog. */
   onCreateNew?: () => void;
   createNewLabel?: string;
+  /**
+   * Render the dropdown inline (no portal). Set this when the Combobox lives
+   * inside a Dialog so mouse-wheel scrolling of the list works (the dialog's
+   * scroll-lock otherwise blocks wheel events on portalled content).
+   */
+  portalled?: boolean;
 };
 
 export function Combobox({
@@ -56,6 +62,7 @@ export function Combobox({
   creatable,
   onCreateNew,
   createNewLabel,
+  portalled = true,
 }: Readonly<ComboboxProps>) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -102,6 +109,7 @@ export function Combobox({
       <PopoverContent
         className="w-[var(--radix-popover-trigger-width)] min-w-[12rem] p-0"
         align="start"
+        portalled={portalled}
       >
         <Command
           filter={(itemValue, search, keywords) => {

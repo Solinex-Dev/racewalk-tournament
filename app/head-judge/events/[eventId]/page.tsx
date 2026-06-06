@@ -43,8 +43,9 @@ export default async function HeadJudgePage(props: Readonly<Props>) {
         event: { select: { name: true } },
         roundAthletes: {
           where: { deletedAt: null },
+          // Start-list order configured in the round form (drag-reorder).
+          orderBy: [{ sortOrder: "asc" }, { athleteId: "asc" }],
           include: { athlete: { include: { affiliation: { select: { name: true } } } } },
-          orderBy: [{ position: "asc" }, { athleteId: "asc" }],
         },
       roundOfficials: {
         where: { deletedAt: null },

@@ -34,8 +34,9 @@ export default async function JudgePage(props: Readonly<Props>) {
         event: { select: { id: true, name: true } },
         roundAthletes: {
           where: { deletedAt: null },
+          // Start-list order configured in the round form (drag-reorder).
+          orderBy: [{ sortOrder: "asc" }, { athleteId: "asc" }],
           include: { athlete: { select: { name: true } } },
-          orderBy: [{ position: "asc" }, { athleteId: "asc" }],
         },
       cards: {
         where: { deletedAt: null },

@@ -14,6 +14,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { bibMatchesAgeGroups } from "@/lib/bib";
+import { bangkokTime, bangkokTimeSec } from "@/lib/datetime";
 
 export const OFFICIAL_SYMBOL = { LIFTED_FOOT: "~", BENT_KNEE: "<" } as const;
 export const SYMBOL_TH = { LIFTED_FOOT: "ยกเท้า", BENT_KNEE: "เข่างอ" } as const;
@@ -87,13 +88,11 @@ export function formatMs(ms: number | null | undefined): string {
 }
 
 export function formatClock(dt: Date | null | undefined): string {
-  if (!dt) return "";
-  return dt.toTimeString().slice(0, 5); // HH:MM
+  return bangkokTime(dt); // HH:MM in Asia/Bangkok (+07)
 }
 
 export function formatClockSec(dt: Date | null | undefined): string {
-  if (!dt) return "";
-  return dt.toTimeString().slice(0, 8); // HH:MM:SS
+  return bangkokTimeSec(dt); // HH:MM:SS in Asia/Bangkok (+07)
 }
 
 // ── query ────────────────────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ import {
   type EventSummary,
   type RoundSummary,
 } from "@/lib/report/summary-sheet";
+import { bangkokDateThai } from "@/lib/datetime";
 
 const BASE_FONT = "Tahoma"; // ships with Windows, renders Thai cleanly
 const JUDGE_SLOTS = 8; // the official form has 8 judge columns
@@ -36,7 +37,7 @@ const THIN = { style: "thin" as const, color: { argb: COLOR.border } };
 const ALL_BORDER = { top: THIN, left: THIN, bottom: THIN, right: THIN };
 
 function thaiDate(d: Date): string {
-  return d.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+  return bangkokDateThai(d); // Asia/Bangkok (+07)
 }
 
 function safeSheetName(name: string, used: Set<string>): string {

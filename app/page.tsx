@@ -262,6 +262,13 @@ export default async function Home() {
           </details>
         </section>
       </main>
+
+      <footer className="border-t border-slate-800 py-5 text-center">
+        <p className="text-xs text-slate-500">
+          Powered by{" "}
+          <span className="font-semibold text-slate-400">Solinex</span>
+        </p>
+      </footer>
     </div>
   );
 }
