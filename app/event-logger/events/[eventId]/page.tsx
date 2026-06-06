@@ -44,6 +44,11 @@ export default async function EventLoggerPage(props: Readonly<Props>) {
         },
         lapTimes: { where: { deletedAt: null }, orderBy: { lapNumber: "asc" } },
         finishTimes: { where: { deletedAt: null } },
+        // This official's own zone/table assignment for the round.
+        roundOfficials: {
+          where: { judgeId: session.judgeId, deletedAt: null },
+          select: { zone: true },
+        },
       },
     }),
     prisma.eventAthlete.findMany({
@@ -86,6 +91,7 @@ export default async function EventLoggerPage(props: Readonly<Props>) {
       <LapRecorder
         eventId={eventId}
         judgeName={session.judgeName}
+        judgeZone={round.roundOfficials[0]?.zone ?? ""}
         roleLabel="คนเก็บ Lap Time"
         joinPath={`/event-logger/events/${eventId}/join`}
         eventName={round.event.name}

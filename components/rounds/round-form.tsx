@@ -56,6 +56,12 @@ type RoundFormProps = {
   judgeOptions: JudgeOption[];
   /** Event start day (yyyy-mm-dd) — a round may not be scheduled before it. */
   eventDate?: string;
+  /**
+   * Secret codes already used by OTHER rounds in this event. New/regenerated
+   * codes avoid these so codes stay unique across the whole event (rounds can
+   * run simultaneously; the join resolves a code within the event).
+   */
+  existingEventCodes?: string[];
   defaultValues?: Partial<RoundFormValues>;
 };
 
@@ -93,6 +99,15 @@ function generateSecretCode() {
   for (let i = 0; i < 6; i++) {
     code += SECRET_CHARS[bytes[i] % SECRET_CHARS.length] ?? "X";
   }
+  return code;
+}
+
+/** A code not already in `used` (codes are compared uppercase). Adds it to the set. */
+function genUniqueSecret(used: Set<string>): string {
+  let code = generateSecretCode();
+  let guard = 0;
+  while (used.has(code) && guard++ < 50) code = generateSecretCode();
+  used.add(code);
   return code;
 }
 
@@ -159,16 +174,25 @@ export function RoundForm({
   eventAthletes,
   judgeOptions,
   eventDate,
+  existingEventCodes,
   defaultValues,
 }: Readonly<RoundFormProps>) {
   const router = useRouter();
-  const [form, setForm] = React.useState<RoundFormValues>({
-    ...EMPTY,
-    ...defaultValues,
-    officials: (defaultValues?.officials ?? []).map((o) => ({
-      ...o,
-      secretCode: o.secretCode || generateSecretCode(),
-    })),
+  // Codes used by other rounds of the event — new codes avoid these.
+  const baseUsedCodes = React.useMemo(
+    () => new Set((existingEventCodes ?? []).map((c) => c.toUpperCase())),
+    [existingEventCodes],
+  );
+  const [form, setForm] = React.useState<RoundFormValues>(() => {
+    const used = new Set((existingEventCodes ?? []).map((c) => c.toUpperCase()));
+    const officials = (defaultValues?.officials ?? []).map((o) => {
+      if (o.secretCode) {
+        used.add(o.secretCode.toUpperCase());
+        return o;
+      }
+      return { ...o, secretCode: genUniqueSecret(used) };
+    });
+    return { ...EMPTY, ...defaultValues, officials };
   });
   const [isPending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
@@ -306,12 +330,17 @@ export function RoundForm({
   };
 
   const handleRegenerateSecret = (index: number) =>
-    setForm((p) => ({
-      ...p,
-      officials: p.officials.map((o, i) =>
-        i === index ? { ...o, secretCode: generateSecretCode() } : o,
-      ),
-    }));
+    setForm((p) => {
+      const used = new Set(baseUsedCodes);
+      p.officials.forEach((o, i) => {
+        if (i !== index && o.secretCode) used.add(o.secretCode.toUpperCase());
+      });
+      const code = genUniqueSecret(used);
+      return {
+        ...p,
+        officials: p.officials.map((o, i) => (i === index ? { ...o, secretCode: code } : o)),
+      };
+    });
 
   const confirmResetSecret = () => {
     if (resetSecretIndex === null) return;
@@ -340,6 +369,9 @@ export function RoundForm({
         let judges = p.officials.filter((o) => o.position === "JUDGE").length;
         let heads = p.officials.filter((o) => o.position === "HEAD_JUDGE").length;
         let loggers = p.officials.filter((o) => o.position === "EVENT_LOGGER").length;
+        // Codes already in play (other rounds + this form) — keep new ones unique.
+        const used = new Set(baseUsedCodes);
+        p.officials.forEach((o) => o.secretCode && used.add(o.secretCode.toUpperCase()));
         // Fill open slots in order: กรรมการ (≤8) → หัวหน้ากรรมการ (≤1) → ผู้เก็บ Lap Time (≤1).
         // Extras beyond 10 are skipped (the admin can re-assign positions afterwards).
         const added: OfficialEntry[] = [];
@@ -356,7 +388,7 @@ export function RoundForm({
             loggers += 1;
           }
           if (position) {
-            added.push({ judgeId: id, zone: "", secretCode: generateSecretCode(), position });
+            added.push({ judgeId: id, zone: "", secretCode: genUniqueSecret(used), position });
           }
         }
         return { ...p, officials: [...p.officials, ...added] };

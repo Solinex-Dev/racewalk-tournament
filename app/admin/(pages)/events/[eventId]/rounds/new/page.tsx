@@ -26,7 +26,7 @@ function toDateInput(dt: Date) {
 export default async function NewRoundPage(props: Readonly<Props>) {
   const { eventId } = await props.params;
 
-  const [event, rawEventAthletes, judges] = await Promise.all([
+  const [event, rawEventAthletes, judges, existingCodes] = await Promise.all([
     prisma.event.findUnique({
       where: { id: eventId, deletedAt: null },
       select: { name: true, lapCount: true, distanceKm: true, date: true, status: true },
@@ -40,6 +40,12 @@ export default async function NewRoundPage(props: Readonly<Props>) {
       where: { deletedAt: null },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
+    }),
+    // Secret codes already in use by other rounds of this event — the form avoids
+    // them so codes stay unique across the whole event (rounds can run at once).
+    prisma.roundOfficial.findMany({
+      where: { deletedAt: null, round: { eventId, deletedAt: null } },
+      select: { secretCode: true },
     }),
   ]);
 
@@ -100,6 +106,7 @@ export default async function NewRoundPage(props: Readonly<Props>) {
           eventAthletes={eventAthletes}
           judgeOptions={judges}
           eventDate={event ? toDateInput(event.date) : undefined}
+          existingEventCodes={existingCodes.map((c) => c.secretCode)}
           defaultValues={roundDefaults}
         />
       </div>

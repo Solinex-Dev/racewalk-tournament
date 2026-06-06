@@ -45,6 +45,11 @@ export default async function JudgePage(props: Readonly<Props>) {
         where: { deletedAt: null },
         select: { athleteId: true },
       },
+      // This official's own zone/table assignment for the round.
+      roundOfficials: {
+        where: { judgeId: session.judgeId, deletedAt: null },
+        select: { zone: true },
+      },
     },
   }),
     prisma.eventAthlete.findMany({
@@ -97,6 +102,7 @@ export default async function JudgePage(props: Readonly<Props>) {
       <JudgeWorkspace
         eventId={eventId}
         judgeName={session.judgeName}
+        judgeZone={round.roundOfficials[0]?.zone ?? ""}
         roundStatus={round.status}
         event={{
           id: round.event.id,

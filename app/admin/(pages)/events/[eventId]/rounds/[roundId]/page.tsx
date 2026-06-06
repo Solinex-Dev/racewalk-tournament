@@ -31,7 +31,7 @@ function toDateInput(dt: Date) {
 export default async function RoundDetailPage(props: Readonly<Props>) {
   const { eventId, roundId } = await props.params;
 
-  const [round, rawEventAthletes, judges] = await Promise.all([
+  const [round, rawEventAthletes, judges, existingCodes] = await Promise.all([
     prisma.round.findUnique({
       where: { id: roundId, deletedAt: null },
       include: {
@@ -49,6 +49,12 @@ export default async function RoundDetailPage(props: Readonly<Props>) {
       where: { deletedAt: null },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
+    }),
+    // Codes in use by OTHER rounds of this event (exclude this round) — the form
+    // avoids them so secret codes stay unique across the whole event.
+    prisma.roundOfficial.findMany({
+      where: { deletedAt: null, round: { eventId, deletedAt: null, id: { not: roundId } } },
+      select: { secretCode: true },
     }),
   ]);
 
@@ -118,6 +124,7 @@ export default async function RoundDetailPage(props: Readonly<Props>) {
           eventAthletes={eventAthletes}
           judgeOptions={judges}
           eventDate={toDateInput(round.event.date)}
+          existingEventCodes={existingCodes.map((c) => c.secretCode)}
           defaultValues={defaultValues}
         />
       </div>

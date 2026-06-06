@@ -23,6 +23,7 @@ export type AthleteRecord = {
 type LapRecorderProps = {
   eventId: string;
   judgeName: string;
+  judgeZone?: string;
   roleLabel: string;
   joinPath: string;
   eventName: string;
@@ -52,6 +53,7 @@ const RING_C = 2 * Math.PI * RING_R;
 export function LapRecorder({
   eventId,
   judgeName,
+  judgeZone,
   roleLabel,
   joinPath,
   eventName,
@@ -184,6 +186,12 @@ export function LapRecorder({
               <span className="text-slate-400">{roleLabel}: </span>
               <span className="font-medium text-slate-100">{judgeName}</span>
             </div>
+            {judgeZone && (
+              <div className="rounded-full border border-sky-700/60 bg-sky-950/40 px-3 py-1 text-[11px] text-sky-200">
+                <span className="text-sky-400/80">โซน/โต๊ะ: </span>
+                <span className="font-medium">{judgeZone}</span>
+              </div>
+            )}
             <Link
               href={`/events/${eventId}`}
               className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-slate-800"
