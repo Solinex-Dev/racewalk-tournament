@@ -32,6 +32,52 @@ function normalizeNote(note?: string): string | null {
   return trimmed || null;
 }
 
+/**
+ * Secret codes must be unique across the WHOLE event, not just within a round —
+ * rounds can run simultaneously and the join (joinAsOfficial) matches a code
+ * within the event (findFirst), so a code shared by two rounds would route an
+ * official to the wrong round. The DB only enforces @@unique([roundId, secretCode]),
+ * so we guard event-wide here. Checks both the submitted batch against itself and
+ * against every other (non-deleted) round in the event.
+ */
+async function assertEventUniqueSecretCodes(
+  eventId: string,
+  officials: OfficialInput[],
+  excludeRoundId?: string,
+) {
+  const used = new Set<string>();
+  // Within this submission.
+  for (const o of officials) {
+    const code = o.secretCode.trim().toUpperCase();
+    if (used.has(code)) {
+      throw new Error(
+        "มีรหัสกรรมการซ้ำกันภายในรอบนี้ — กรุณากดสุ่มรหัสใหม่ให้ไม่ซ้ำกันแล้วบันทึกอีกครั้ง",
+      );
+    }
+    used.add(code);
+  }
+
+  // Against other rounds in the same event.
+  const others = await prisma.roundOfficial.findMany({
+    where: {
+      deletedAt: null,
+      round: {
+        eventId,
+        deletedAt: null,
+        ...(excludeRoundId ? { id: { not: excludeRoundId } } : {}),
+      },
+    },
+    select: { secretCode: true },
+  });
+  const otherCodes = new Set(others.map((o) => o.secretCode.trim().toUpperCase()));
+  const clash = officials.find((o) => otherCodes.has(o.secretCode.trim().toUpperCase()));
+  if (clash) {
+    throw new Error(
+      "รหัสกรรมการซ้ำกับรอบอื่นในกิจกรรมเดียวกัน — เนื่องจากรอบต่าง ๆ อาจแข่งพร้อมกัน รหัสต้องไม่ซ้ำทั้งกิจกรรม กรุณากดสุ่มรหัสใหม่แล้วบันทึกอีกครั้ง",
+    );
+  }
+}
+
 /** Per-round official caps — 8 judges + 1 head judge + 1 event logger = 10 max. */
 const MAX_JUDGES_PER_ROUND = 8;
 const MAX_HEAD_JUDGE_PER_ROUND = 1;
@@ -91,6 +137,7 @@ export async function createRound(eventId: string, data: RoundActionData) {
   await requirePermission("events", "create");
   assertOfficialLimits(data.officials);
   if (data.status !== "SCHEDULED") assertStartableOfficials(data.officials);
+  await assertEventUniqueSecretCodes(eventId, data.officials);
 
   const event = await prisma.event.findUnique({ where: { id: eventId }, select: { date: true, status: true } });
   if (!event) throw new Error("ไม่พบกิจกรรม");
@@ -190,6 +237,7 @@ export async function updateRound(
   await requirePermission("events", "edit");
   assertOfficialLimits(data.officials);
   if (data.status !== "SCHEDULED") assertStartableOfficials(data.officials);
+  await assertEventUniqueSecretCodes(eventId, data.officials, roundId);
 
   const [event, existing] = await Promise.all([
     prisma.event.findUnique({ where: { id: eventId }, select: { date: true } }),

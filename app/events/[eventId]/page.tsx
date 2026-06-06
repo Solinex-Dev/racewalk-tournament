@@ -22,7 +22,10 @@ export const metadata: Metadata = {
     "หน้าดูผลการแข่งขันเดินทนแบบสด (Live scoreboard) สำหรับผู้ชมและผู้ติดตาม",
 };
 
-type Props = { params: Promise<{ eventId: string }> };
+type Props = {
+  params: Promise<{ eventId: string }>;
+  searchParams: Promise<{ round?: string }>;
+};
 
 function formatMs(ms: number) {
   const h = Math.floor(ms / 3600000);
@@ -142,6 +145,7 @@ function getLeaderboard(eventId: string): Promise<LeaderboardData> {
 
 export default async function EventLivePage(props: Readonly<Props>) {
   const { eventId } = await props.params;
+  const { round: roundParam } = await props.searchParams;
 
   const event = await getLeaderboard(eventId);
 
@@ -159,8 +163,13 @@ export default async function EventLivePage(props: Readonly<Props>) {
         }
       : null;
 
-  // Pick current round: ONGOING, else last FINISHED, else first SCHEDULED
+  // Pick current round: an explicit ?round= (so simultaneous rounds are each
+  // viewable), else ONGOING, else last FINISHED, else first SCHEDULED.
+  const requestedRound = roundParam
+    ? event.rounds.find((r) => r.id === roundParam)
+    : null;
   const currentRound =
+    requestedRound ??
     event.rounds.find((r) => r.status === "ONGOING") ??
     [...event.rounds].reverse().find((r) => r.status === "FINISHED") ??
     event.rounds[0];

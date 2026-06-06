@@ -74,7 +74,7 @@ export function AffiliationForm({
   const [isPending, startTransition] = React.useTransition();
 
   const [judgeDialogOpen, setJudgeDialogOpen] = React.useState(false);
-  const [judgeDraft, setJudgeDraft] = React.useState({ prefix: "", firstName: "", lastName: "", country: "TH" });
+  const [judgeDraft, setJudgeDraft] = React.useState({ prefix: "", firstName: "", middleName: "", lastName: "", country: "TH" });
   const [judgeBusy, setJudgeBusy] = React.useState(false);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
 
@@ -106,6 +106,7 @@ export function AffiliationForm({
       const res = await createJudge({
         prefix: judgeDraft.prefix.trim() || null,
         firstName,
+        middleName: judgeDraft.middleName.trim() || null,
         lastName: judgeDraft.lastName.trim() || null,
         country: judgeDraft.country || "TH",
         province: null,
@@ -114,11 +115,16 @@ export function AffiliationForm({
         status: "ACTIVE",
         note: null,
       });
-      const name = composeName({ prefix: judgeDraft.prefix, firstName, lastName: judgeDraft.lastName });
+      const name = composeName({
+        prefix: judgeDraft.prefix,
+        firstName,
+        middleName: judgeDraft.middleName,
+        lastName: judgeDraft.lastName,
+      });
       setJudgeList((prev) => [...prev, { id: res.id, name }]);
       set({ headJudgeId: res.id });
       setJudgeDialogOpen(false);
-      setJudgeDraft({ prefix: "", firstName: "", lastName: "", country: "TH" });
+      setJudgeDraft({ prefix: "", firstName: "", middleName: "", lastName: "", country: "TH" });
       toast.success("สร้างกรรมการ (หัวหน้าสังกัด) เรียบร้อย");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
@@ -266,7 +272,7 @@ export function AffiliationForm({
                 searchPlaceholder="ค้นหากรรมการ…"
                 emptyText="ไม่พบกรรมการ"
                 onCreateNew={() => {
-                  setJudgeDraft({ prefix: "", firstName: "", lastName: "", country: "TH" });
+                  setJudgeDraft({ prefix: "", firstName: "", middleName: "", lastName: "", country: "TH" });
                   setJudgeDialogOpen(true);
                 }}
                 createNewLabel="สร้างกรรมการใหม่"
@@ -336,6 +342,7 @@ export function AffiliationForm({
             <PersonNameFields
               prefix={judgeDraft.prefix}
               firstName={judgeDraft.firstName}
+              middleName={judgeDraft.middleName}
               lastName={judgeDraft.lastName}
               onChange={(patch) => setJudgeDraft((p) => ({ ...p, ...patch }))}
               disabled={judgeBusy}

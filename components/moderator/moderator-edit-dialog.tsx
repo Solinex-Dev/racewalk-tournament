@@ -512,6 +512,8 @@ export function ModeratorEditDialog({
                   placeholder="เลือกเหตุผล / รหัสกติกา…"
                   searchPlaceholder="ค้นหารหัส หรือเหตุผล (เช่น TR54, ใบแดง)…"
                   emptyText="ไม่พบรหัสที่ค้นหา"
+                  // Inside a Dialog — render inline so the list scrolls with the mouse wheel.
+                  portalled={false}
                 />
                 <p className="text-xs text-slate-500">
                   รหัสที่เลือกจะแสดงในช่อง DQ ของเอกสาร PDF / Excel / CSV — เลือก

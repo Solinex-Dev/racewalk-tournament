@@ -27,6 +27,7 @@ type OrgNode = { id: string; name: string; departments: { id: string; name: stri
 export type JudgeFormValues = {
   prefix: string;
   firstName: string;
+  middleName: string;
   lastName: string;
   country: string;
   province: string;
@@ -50,6 +51,7 @@ type JudgeFormProps = {
 const EMPTY: JudgeFormValues = {
   prefix: "",
   firstName: "",
+  middleName: "",
   lastName: "",
   country: "TH",
   province: "",
@@ -151,6 +153,7 @@ export function JudgeForm({
         const payload = {
           prefix: form.prefix.trim() || null,
           firstName: form.firstName.trim(),
+          middleName: form.middleName.trim() || null,
           lastName: form.lastName.trim() || null,
           country: form.country || "TH",
           province: isThai ? form.province.trim() || null : null,
@@ -224,6 +227,7 @@ export function JudgeForm({
             <PersonNameFields
               prefix={form.prefix}
               firstName={form.firstName}
+              middleName={form.middleName}
               lastName={form.lastName}
               onChange={set}
               disabled={isPending}

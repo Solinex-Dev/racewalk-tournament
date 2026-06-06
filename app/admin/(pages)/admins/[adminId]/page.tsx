@@ -69,6 +69,7 @@ export default async function AdminDetailPage(props: Readonly<Props>) {
           defaultValues={{
             prefix: user.prefix ?? "",
             firstName: user.firstName ?? user.name ?? "",
+            middleName: user.middleName ?? "",
             lastName: user.lastName ?? "",
             email: user.email ?? "",
             title: user.title ?? "",

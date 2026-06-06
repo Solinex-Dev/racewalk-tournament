@@ -19,6 +19,7 @@ import {
   bibAgeStart,
   ageGroupLabel,
 } from "@/lib/bib";
+import { bangkokDateISO, bangkokDateTimeISO } from "@/lib/datetime";
 
 type Ctx = { params: Promise<{ eventId: string }> };
 
@@ -99,7 +100,7 @@ export async function GET(request: Request, ctx: Ctx) {
   // Header section
   lines.push(
     escapeCsv(`Event,${event.name}`),
-    escapeCsv(`Date,${event.date.toISOString().slice(0, 10)}`),
+    escapeCsv(`Date,${bangkokDateISO(event.date)}`),
     escapeCsv(`Location,${event.location}`),
     escapeCsv(`Status,${event.status}`),
   );
@@ -111,8 +112,8 @@ export async function GET(request: Request, ctx: Ctx) {
   for (const round of event.rounds) {
     lines.push(`Round,${escapeCsv(round.name)}`, `Status,${round.status}`);
     if (round.distanceKm) lines.push(`Distance (m),${escapeCsv(metersFromKm(round.distanceKm))}`);
-    if (round.startedAt) lines.push(`Started at,${round.startedAt.toISOString()}`);
-    if (round.endedAt) lines.push(`Ended at,${round.endedAt.toISOString()}`);
+    if (round.startedAt) lines.push(`Started at,${escapeCsv(bangkokDateTimeISO(round.startedAt))}`);
+    if (round.endedAt) lines.push(`Ended at,${escapeCsv(bangkokDateTimeISO(round.endedAt))}`);
     // Athlete table for this round
     lines.push(
       "",

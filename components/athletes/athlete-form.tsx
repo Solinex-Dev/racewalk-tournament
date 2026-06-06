@@ -19,6 +19,7 @@ export type AffiliationOption = { id: string; name: string };
 export type AthleteFormValues = {
   prefix: string;
   firstName: string;
+  middleName: string;
   lastName: string;
   country: string;
   affiliationId: string;
@@ -41,6 +42,7 @@ type AthleteFormProps = {
 const EMPTY: AthleteFormValues = {
   prefix: "",
   firstName: "",
+  middleName: "",
   lastName: "",
   country: "TH",
   affiliationId: "",
@@ -96,6 +98,7 @@ export function AthleteForm({
         const payload = {
           prefix: form.prefix.trim() || null,
           firstName: form.firstName.trim(),
+          middleName: form.middleName.trim() || null,
           lastName: form.lastName.trim() || null,
           country: form.country || "TH",
           affiliationId: form.affiliationId || null,
@@ -181,6 +184,7 @@ export function AthleteForm({
             <PersonNameFields
               prefix={form.prefix}
               firstName={form.firstName}
+              middleName={form.middleName}
               lastName={form.lastName}
               onChange={set}
               disabled={isPending}

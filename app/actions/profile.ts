@@ -26,6 +26,7 @@ function requireAdminUserId(session: Session | null) {
 export async function updateMyProfile(data: {
   prefix: string | null;
   firstName: string;
+  middleName: string | null;
   lastName: string | null;
   email: string;
   title: string;
@@ -45,14 +46,16 @@ export async function updateMyProfile(data: {
   }
 
   const prefix = data.prefix?.trim() || null;
+  const middleName = data.middleName?.trim() || null;
   const lastName = data.lastName?.trim() || null;
 
   await prisma.user.update({
     where: { id: userId },
     data: {
-      name: composeName({ prefix, firstName, lastName }),
+      name: composeName({ prefix, firstName, middleName, lastName }),
       prefix,
       firstName,
+      middleName,
       lastName,
       email,
       title: data.title.trim(),

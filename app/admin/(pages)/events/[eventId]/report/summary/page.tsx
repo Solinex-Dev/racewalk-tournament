@@ -9,6 +9,7 @@ import { getCurrentAdmin } from "@/lib/authz";
 import { hasPermission } from "@/lib/permissions";
 import { metersFromKm } from "@/lib/distance";
 import { parseAgeGroupsParam, ageGroupLabel } from "@/lib/bib";
+import { bangkokDateThai } from "@/lib/datetime";
 import {
   loadEventSummary,
   type RoundSummary,
@@ -38,7 +39,7 @@ const ROUND_STATUS_TH: Record<RoundSummary["status"], string> = {
 };
 
 function thaiDate(d: Date): string {
-  return d.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+  return bangkokDateThai(d); // Asia/Bangkok (+07)
 }
 
 function RoundSheet({ ev, round }: Readonly<{ ev: EventSummary; round: RoundSummary }>) {

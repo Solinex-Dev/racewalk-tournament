@@ -49,6 +49,7 @@ export type LogItem = {
 type HeadJudgeViewProps = {
   eventId: string;
   judgeName: string;
+  judgeZone?: string;
   eventName: string;
   roundName: string;
   roundStatus: string;
@@ -60,6 +61,7 @@ type HeadJudgeViewProps = {
 export function HeadJudgeView({
   eventId,
   judgeName,
+  judgeZone,
   eventName,
   roundName,
   roundStatus,
@@ -131,6 +133,12 @@ export function HeadJudgeView({
               <span className="text-slate-400">หัวหน้ากรรมการ: </span>
               <span className="font-medium text-slate-100">{judgeName}</span>
             </div>
+            {judgeZone && (
+              <div className="rounded-full border border-sky-700/60 bg-sky-950/40 px-3 py-1 text-[11px] text-sky-200">
+                <span className="text-sky-400/80">โซน/โต๊ะ: </span>
+                <span className="font-medium">{judgeZone}</span>
+              </div>
+            )}
             <Link
               href={`/events/${eventId}`}
               className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-slate-800"

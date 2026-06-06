@@ -34,8 +34,9 @@ export default async function JudgePage(props: Readonly<Props>) {
         event: { select: { id: true, name: true } },
         roundAthletes: {
           where: { deletedAt: null },
+          // Start-list order configured in the round form (drag-reorder).
+          orderBy: [{ sortOrder: "asc" }, { athleteId: "asc" }],
           include: { athlete: { select: { name: true } } },
-          orderBy: [{ position: "asc" }, { athleteId: "asc" }],
         },
       cards: {
         where: { deletedAt: null },
@@ -43,6 +44,11 @@ export default async function JudgePage(props: Readonly<Props>) {
       finishTimes: {
         where: { deletedAt: null },
         select: { athleteId: true },
+      },
+      // This official's own zone/table assignment for the round.
+      roundOfficials: {
+        where: { judgeId: session.judgeId, deletedAt: null },
+        select: { zone: true },
       },
     },
   }),
@@ -96,6 +102,7 @@ export default async function JudgePage(props: Readonly<Props>) {
       <JudgeWorkspace
         eventId={eventId}
         judgeName={session.judgeName}
+        judgeZone={round.roundOfficials[0]?.zone ?? ""}
         roundStatus={round.status}
         event={{
           id: round.event.id,

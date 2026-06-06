@@ -11,6 +11,11 @@ import { metersFromKm } from "@/lib/distance";
 import { SectionToc, type TocItem } from "@/components/common/section-toc";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import {
+  usePaginatedList,
+  ListSearch,
+  ListPager,
+} from "@/components/common/list-pagination";
+import {
   Play,
   Goal,
   CheckCircle2,
@@ -230,6 +235,14 @@ export function ModeratorView({
   const roundAthletes = displayData?.athletes ?? [];
   const roundJudges = displayData?.judges ?? [];
   const roundPendingCards = displayData?.pendingRedCards ?? [];
+
+  // Search + pagination (20/page) for the long per-round lists.
+  const athleteList = usePaginatedList(roundAthletes, (a, q) =>
+    `${a.bib} ${a.name} ${a.affiliation ?? ""}`.toLowerCase().includes(q),
+  );
+  const judgeList = usePaginatedList(roundJudges, (j, q) =>
+    `${j.name} ${j.position} ${j.zone ?? ""}`.toLowerCase().includes(q),
+  );
 
   // Athletes still on the course — no finish position yet, and not DQ/DNF.
   // `position` is set when an athlete crosses the line; DQ/DNF are resolved
@@ -525,6 +538,13 @@ export function ModeratorView({
                         {roundAthletes.length} คน
                       </span>
                     </div>
+                    <div className="border-b border-slate-200 px-6 py-3">
+                      <ListSearch
+                        value={athleteList.query}
+                        onChange={athleteList.setQuery}
+                        placeholder="ค้นหานักกีฬา (Bib, ชื่อ, สังกัด)..."
+                      />
+                    </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full border-collapse text-xs">
                         <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
@@ -549,17 +569,19 @@ export function ModeratorView({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 bg-white">
-                          {roundAthletes.length === 0 ? (
+                          {athleteList.pageItems.length === 0 ? (
                             <tr>
                               <td
                                 colSpan={7}
                                 className="px-4 py-6 text-center text-xs text-slate-500"
                               >
-                                ยังไม่มีนักกีฬาในรอบนี้
+                                {roundAthletes.length === 0
+                                  ? "ยังไม่มีนักกีฬาในรอบนี้"
+                                  : "ไม่พบนักกีฬาตามคำค้นหา"}
                               </td>
                             </tr>
                           ) : (
-                            roundAthletes.map((a) => {
+                            athleteList.pageItems.map((a) => {
                               const isExpanded = expandedAthleteBibs.has(a.bib);
                               const hasCards = a.cardDetails.length > 0;
                               // Reds awaiting Head Judge decision — not yet counted toward R/DQ
@@ -658,6 +680,19 @@ export function ModeratorView({
                         </tbody>
                       </table>
                     </div>
+                    <div className="border-t border-slate-200 px-6 py-3">
+                      <ListPager
+                        page={athleteList.page}
+                        totalPages={athleteList.totalPages}
+                        onPage={athleteList.setPage}
+                        rangeStart={athleteList.rangeStart}
+                        rangeEnd={athleteList.rangeEnd}
+                        filteredTotal={athleteList.filteredTotal}
+                        total={athleteList.total}
+                        isFiltered={athleteList.isFiltered}
+                        unit="คน"
+                      />
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -687,6 +722,13 @@ export function ModeratorView({
                         </span>
                       </div>
                     </div>
+                    <div className="border-b border-slate-200 px-6 py-3">
+                      <ListSearch
+                        value={judgeList.query}
+                        onChange={judgeList.setQuery}
+                        placeholder="ค้นหากรรมการ (ชื่อ, ตำแหน่ง, โซน)..."
+                      />
+                    </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full border-collapse text-xs">
                         <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
@@ -703,17 +745,19 @@ export function ModeratorView({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 bg-white">
-                          {roundJudges.length === 0 ? (
+                          {judgeList.pageItems.length === 0 ? (
                             <tr>
                               <td
                                 colSpan={5}
                                 className="px-3 py-4 text-center text-xs text-slate-500"
                               >
-                                ยังไม่มีข้อมูลกรรมการในรอบนี้
+                                {roundJudges.length === 0
+                                  ? "ยังไม่มีข้อมูลกรรมการในรอบนี้"
+                                  : "ไม่พบกรรมการตามคำค้นหา"}
                               </td>
                             </tr>
                           ) : (
-                            roundJudges.map((judge) => {
+                            judgeList.pageItems.map((judge) => {
                               const isExpanded = expandedJudgeIds.has(judge.id);
                               const { yellowCards, redCards } = getJudgeLogs(
                                 judge.id,
@@ -805,6 +849,19 @@ export function ModeratorView({
                           )}
                         </tbody>
                       </table>
+                    </div>
+                    <div className="border-t border-slate-200 px-6 py-3">
+                      <ListPager
+                        page={judgeList.page}
+                        totalPages={judgeList.totalPages}
+                        onPage={judgeList.setPage}
+                        rangeStart={judgeList.rangeStart}
+                        rangeEnd={judgeList.rangeEnd}
+                        filteredTotal={judgeList.filteredTotal}
+                        total={judgeList.total}
+                        isFiltered={judgeList.isFiltered}
+                        unit="คน"
+                      />
                     </div>
                   </CardContent>
                 </Card>

@@ -43,8 +43,9 @@ export default async function HeadJudgePage(props: Readonly<Props>) {
         event: { select: { name: true } },
         roundAthletes: {
           where: { deletedAt: null },
+          // Start-list order configured in the round form (drag-reorder).
+          orderBy: [{ sortOrder: "asc" }, { athleteId: "asc" }],
           include: { athlete: { include: { affiliation: { select: { name: true } } } } },
-          orderBy: [{ position: "asc" }, { athleteId: "asc" }],
         },
       roundOfficials: {
         where: { deletedAt: null },
@@ -72,6 +73,8 @@ export default async function HeadJudgePage(props: Readonly<Props>) {
   }
 
   const bibMap = new Map(eventAthletes.map((ea) => [ea.athleteId, ea.bib]));
+  const myZone =
+    round.roundOfficials.find((ro) => ro.judgeId === session.judgeId)?.zone ?? "";
 
   const pendingCards: PendingCard[] = round.cards
     .filter((c) => c.color === "RED" && c.state === "PENDING")
@@ -142,6 +145,7 @@ export default async function HeadJudgePage(props: Readonly<Props>) {
       <HeadJudgeView
         eventId={eventId}
         judgeName={session.judgeName}
+        judgeZone={myZone}
         eventName={round.event.name}
         roundName={round.name}
         roundStatus={round.status}

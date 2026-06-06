@@ -11,6 +11,7 @@ import {
   bibAgeStart,
   ageGroupLabel,
 } from "@/lib/bib";
+import { bangkokDateThai, bangkokDateTimeThai } from "@/lib/datetime";
 import { PrintButton } from "@/components/report/print-button";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
@@ -155,10 +156,7 @@ export default async function PrintReportPage(props: Readonly<Props>) {
       <h1 className="text-2xl font-bold">รายงานผลการแข่งขัน</h1>
       <div className="mb-4 mt-2 text-sm text-slate-700">
         <p className="text-lg font-semibold">{event.name}</p>
-        <p>
-          วันที่:{" "}
-          {event.date.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })}
-        </p>
+        <p>วันที่: {bangkokDateThai(event.date)}</p>
         <p>สถานที่: {event.location}</p>
         <p>สถานะ Event: {STATUS_LABEL[event.status] ?? event.status}</p>
         <p>ระยะ: {metersFromKm(event.distanceKm)} ม.</p>
@@ -184,8 +182,8 @@ export default async function PrintReportPage(props: Readonly<Props>) {
           </div>
           {round.startedAt && (
             <p className="mt-1 text-xs text-slate-600">
-              เริ่ม: {round.startedAt.toLocaleString("th-TH")}
-              {round.endedAt && ` — จบ: ${round.endedAt.toLocaleString("th-TH")}`}
+              เริ่ม: {bangkokDateTimeThai(round.startedAt)}
+              {round.endedAt && ` — จบ: ${bangkokDateTimeThai(round.endedAt)}`}
             </p>
           )}
 
@@ -239,7 +237,7 @@ export default async function PrintReportPage(props: Readonly<Props>) {
       ))}
 
       <div className="mt-8 border-t border-slate-300 pt-3 text-xs text-slate-500">
-        <p>สร้างเมื่อ: {new Date().toLocaleString("th-TH")}</p>
+        <p>สร้างเมื่อ: {bangkokDateTimeThai(new Date())}</p>
         <p>ระบบ Racewalk Tournament</p>
       </div>
     </main>
