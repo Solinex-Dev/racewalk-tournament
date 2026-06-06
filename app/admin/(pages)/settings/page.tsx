@@ -57,6 +57,12 @@ export default async function AdminSettingsPage() {
           defaultTitle={user.title ?? ""}
         />
       </div>
+
+      <footer className="mt-10 border-t border-slate-200 pt-5 text-center">
+        <p className="text-xs text-slate-400">
+          Powered by <span className="font-semibold text-slate-500">Solinex</span>
+        </p>
+      </footer>
     </main>
   );
 }

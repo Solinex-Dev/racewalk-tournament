@@ -118,7 +118,7 @@ export default async function Home() {
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold tracking-tight">การแข่งขันเดินทน</span>
               <span className="text-[11px] text-slate-400">
-                Live scoreboard · ระบบตัดสินบนคลาวด์
+                Live Scoreboard · Racewalk Events
               </span>
             </div>
           </div>
