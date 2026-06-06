@@ -30,6 +30,11 @@ import { CardEditDialog } from "@/components/moderator/card-edit-dialog";
 import { RoundInfoDialog } from "@/components/moderator/round-info-dialog";
 import { SectionToc, type TocItem } from "@/components/common/section-toc";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
+import {
+  usePaginatedList,
+  ListSearch,
+  ListPager,
+} from "@/components/common/list-pagination";
 
 const EDIT_TOC: TocItem[] = [
   { id: "sec-round", label: "ข้อมูลรอบ / เวลา" },
@@ -241,6 +246,20 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
 
   const lapAthletes = props.athletes.filter(
     (a) => lapsByAthlete.has(a.id) || finishByAthleteId.has(a.id),
+  );
+
+  // Search + pagination (20/page) for the long sections.
+  const athleteList = usePaginatedList(props.athletes, (a, q) =>
+    `${a.bib} ${a.name}`.toLowerCase().includes(q),
+  );
+  const judgeList = usePaginatedList(props.judges, (j, q) =>
+    `${j.name} ${j.zone ?? ""} ${POSITION_LABEL[j.position]}`.toLowerCase().includes(q),
+  );
+  const lapList = usePaginatedList(lapAthletes, (a, q) =>
+    `${a.bib} ${a.name}`.toLowerCase().includes(q),
+  );
+  const finishList = usePaginatedList(props.finishes, (f, q) =>
+    `${f.bib} ${f.athleteName}`.toLowerCase().includes(q),
   );
 
   // ── expand helpers ────────────────────────────────────────────────────────────
@@ -491,6 +510,13 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
                 </h2>
                 <p className="text-xs text-slate-500">คลิกปุ่มเพื่อ override สถานะ</p>
               </div>
+              <div className="border-b border-slate-200 px-6 py-3">
+                <ListSearch
+                  value={athleteList.query}
+                  onChange={athleteList.setQuery}
+                  placeholder="ค้นหานักกีฬา (Bib, ชื่อ)..."
+                />
+              </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-xs">
                   <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
@@ -502,7 +528,15 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {props.athletes.map((a) => {
+                    {athleteList.pageItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
+                          {props.athletes.length === 0
+                            ? "ไม่มีนักกีฬาในรอบนี้"
+                            : "ไม่พบนักกีฬาตามคำค้นหา"}
+                        </td>
+                      </tr>
+                    ) : athleteList.pageItems.map((a) => {
                       const nonDqStatusClass =
                         a.status === "DNF"
                           ? "bg-amber-100 text-amber-700"
@@ -560,6 +594,19 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
                   </tbody>
                 </table>
               </div>
+              <div className="border-t border-slate-200 px-6 py-3">
+                <ListPager
+                  page={athleteList.page}
+                  totalPages={athleteList.totalPages}
+                  onPage={athleteList.setPage}
+                  rangeStart={athleteList.rangeStart}
+                  rangeEnd={athleteList.rangeEnd}
+                  filteredTotal={athleteList.filteredTotal}
+                  total={athleteList.total}
+                  isFiltered={athleteList.isFiltered}
+                  unit="คน"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -576,11 +623,23 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
                 </div>
               </div>
 
-              {props.judges.length === 0 ? (
-                <p className="px-6 py-6 text-center text-xs text-slate-500">ไม่มีกรรมการในรอบนี้</p>
+              <div className="border-b border-slate-200 px-6 py-3">
+                <ListSearch
+                  value={judgeList.query}
+                  onChange={judgeList.setQuery}
+                  placeholder="ค้นหากรรมการ (ชื่อ, โซน)..."
+                />
+              </div>
+
+              {judgeList.pageItems.length === 0 ? (
+                <p className="px-6 py-6 text-center text-xs text-slate-500">
+                  {props.judges.length === 0
+                    ? "ไม่มีกรรมการในรอบนี้"
+                    : "ไม่พบกรรมการตามคำค้นหา"}
+                </p>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {props.judges.map((j) => {
+                  {judgeList.pageItems.map((j) => {
                     const myCards = cardsByJudge.get(j.id) ?? [];
                     const yellow = myCards.filter((c) => c.color === "YELLOW").length;
                     const red = myCards.filter(
@@ -752,6 +811,19 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
                   })}
                 </div>
               )}
+              <div className="border-t border-slate-200 px-6 py-3">
+                <ListPager
+                  page={judgeList.page}
+                  totalPages={judgeList.totalPages}
+                  onPage={judgeList.setPage}
+                  rangeStart={judgeList.rangeStart}
+                  rangeEnd={judgeList.rangeEnd}
+                  filteredTotal={judgeList.filteredTotal}
+                  total={judgeList.total}
+                  isFiltered={judgeList.isFiltered}
+                  unit="คน"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -768,13 +840,23 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
                 </div>
               </div>
 
-              {lapAthletes.length === 0 ? (
+              <div className="border-b border-slate-200 px-6 py-3">
+                <ListSearch
+                  value={lapList.query}
+                  onChange={lapList.setQuery}
+                  placeholder="ค้นหานักกีฬา (Bib, ชื่อ)..."
+                />
+              </div>
+
+              {lapList.pageItems.length === 0 ? (
                 <p className="px-6 py-6 text-center text-xs text-slate-500">
-                  ยังไม่มีการบันทึกเวลา Lap ในรอบนี้
+                  {lapAthletes.length === 0
+                    ? "ยังไม่มีการบันทึกเวลา Lap ในรอบนี้"
+                    : "ไม่พบนักกีฬาตามคำค้นหา"}
                 </p>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {lapAthletes.map((a) => {
+                  {lapList.pageItems.map((a) => {
                     const laps = lapsByAthlete.get(a.id) ?? [];
                     const finish = finishByAthleteId.get(a.id);
                     const expanded = expandedLapAthletes.has(a.id);
@@ -874,6 +956,19 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
                   })}
                 </div>
               )}
+              <div className="border-t border-slate-200 px-6 py-3">
+                <ListPager
+                  page={lapList.page}
+                  totalPages={lapList.totalPages}
+                  onPage={lapList.setPage}
+                  rangeStart={lapList.rangeStart}
+                  rangeEnd={lapList.rangeEnd}
+                  filteredTotal={lapList.filteredTotal}
+                  total={lapList.total}
+                  isFiltered={lapList.isFiltered}
+                  unit="คน"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -889,6 +984,13 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
                   <p className="text-xs text-slate-500">แก้เวลา / อันดับ หรือลบ (ลบแล้วบันทึกใหม่ได้)</p>
                 </div>
               </div>
+              <div className="border-b border-slate-200 px-6 py-3">
+                <ListSearch
+                  value={finishList.query}
+                  onChange={finishList.setQuery}
+                  placeholder="ค้นหานักกีฬา (Bib, ชื่อ)..."
+                />
+              </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-xs">
                   <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium uppercase text-slate-500">
@@ -901,14 +1003,16 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {props.finishes.length === 0 ? (
+                    {finishList.pageItems.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-4 py-4 text-center text-slate-500">
-                          ยังไม่มีเวลาเข้าเส้นชัย
+                          {props.finishes.length === 0
+                            ? "ยังไม่มีเวลาเข้าเส้นชัย"
+                            : "ไม่พบนักกีฬาตามคำค้นหา"}
                         </td>
                       </tr>
                     ) : (
-                      props.finishes.map((ft) => (
+                      finishList.pageItems.map((ft) => (
                         <tr key={ft.id} className="hover:bg-slate-50/50">
                           <td className="px-4 py-2 font-bold">{ft.position}</td>
                           <td className="px-4 py-2 font-mono">{ft.bib}</td>
@@ -955,6 +1059,19 @@ export function ModeratorEditView(props: Readonly<ModeratorEditViewProps>) {
                     )}
                   </tbody>
                 </table>
+              </div>
+              <div className="border-t border-slate-200 px-6 py-3">
+                <ListPager
+                  page={finishList.page}
+                  totalPages={finishList.totalPages}
+                  onPage={finishList.setPage}
+                  rangeStart={finishList.rangeStart}
+                  rangeEnd={finishList.rangeEnd}
+                  filteredTotal={finishList.filteredTotal}
+                  total={finishList.total}
+                  isFiltered={finishList.isFiltered}
+                  unit="รายการ"
+                />
               </div>
             </CardContent>
           </Card>
