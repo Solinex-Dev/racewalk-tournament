@@ -1,37 +1,39 @@
 # Admin · Events List
 
+**Status**: Implemented (Prisma-backed)
+
 **Route**: `/admin/events`
-**Role**: [admin](../../personas/admin.md)
-**Type**: Server Component
-**Code**: [app/admin/(pages)/events/page.tsx](../../../app/admin/(pages)/events/page.tsx)
+**Role**: [admin](../../personas/admin.md) (reachable by event managers, Moderator-only, and Reports-only admins — each sees their own row actions)
+**Type**: Server Component, Client `EventsList`
+**Code**:
+- [app/admin/(pages)/events/page.tsx](../../../app/admin/(pages)/events/page.tsx)
+- [components/events/events-list.tsx](../../../components/events/events-list.tsx)
 
 ## Purpose
 
-Listing of all events with status badges and per-row actions.
+Listing of all events with status badges and per-row actions. This list is a shared hub: admins with `events:*`, `moderator:view`, or `reports:view` all reach it (otherwise `<NoAccess />`), and each just sees the row buttons their permissions allow.
 
 ## UI Sections
 
-1. **Page header** with "New event" button → `/admin/events/new`
-2. **Events table**:
-   - Name, date, location, distance, status badge
-   - Row actions: Edit → `/admin/events/[eventId]`, Moderator → `/admin/events/[eventId]/moderator`, Report → `/admin/events/[eventId]/report`
+1. **Page header** with "+ สร้าง Event ใหม่" button → `/admin/events/new` (shown only with `events:create`)
+2. **Filters panel** ([events-list.tsx](../../../components/events/events-list.tsx)): client-side search (name / location / date / distance), status filter, location filter, and a date filter (none / single / range)
+3. **Events table**:
+   - Name (with a pulsing **LIVE** badge while ONGOING), date, location, distance (shown in **metres**, converted from the stored km via `metersFromKm`), status badge
+   - Row actions, each permission-gated:
+     - 3-dot menu (non-draft events): open public event page, copy the judge join link
+     - Edit → `/admin/events/[eventId]` (`events:view`)
+     - Report → `/admin/events/[eventId]/report` (`reports:view`, non-draft only)
+     - Moderator → `/admin/events/[eventId]/moderator` (`moderator:view`, non-draft only)
+   - Pagination (10 per page)
 
 ## Data Displayed
 
-Source: `MOCK_EVENTS: AdminEvent[]` — 22 sample events from Dec 2024 to Dec 2025.
-
-```typescript
-AdminEvent {
-  id, name, date, location, distance_km,
-  status: "draft" | "scheduled" | "ongoing" | "finished",
-}
-```
+Source: live Prisma query (`prisma.event.findMany` where `deletedAt: null`, ordered by date desc). Each row carries id, name, date, location, `distanceKm` (a **string**, stored in km), and status (`draft` / `scheduled` / `ongoing` / `finished`).
 
 ## Actions
 
-- Click row → edit event
-- Click status row chips to filter (planned)
-- New event button
+- Edit / Moderator / Report / open-public-page / copy-judge-link — all client-side navigation (or new-tab links)
+- Filtering, search, date-range, and pagination are handled client-side in `EventsList`
 
 ## Features Surfaced
 
@@ -40,7 +42,5 @@ AdminEvent {
 
 ## TODOs
 
-- Filter by status
-- Sort by date
-- Search by name
-- Pagination if events grow large
+- Server-side pagination / search if the event count grows large (currently the full list is loaded and filtered client-side)
+- Sortable columns

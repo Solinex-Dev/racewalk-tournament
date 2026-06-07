@@ -21,7 +21,6 @@ import {
   CheckCircle2,
   CalendarClock,
   ArrowLeft,
-  ArrowUpRight,
 } from "lucide-react";
 
 const MAIN_TOC: TocItem[] = [
@@ -196,18 +195,6 @@ export function ModeratorView({
     const m = Math.floor((ms % 3600000) / 60000);
     const s = Math.floor((ms % 60000) / 1000);
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  };
-
-  const statusLabel: Record<EventStatus, string> = {
-    scheduled: "ยังไม่เริ่ม",
-    ongoing: "กำลังแข่งขัน",
-    finished: "จบการแข่งขันแล้ว",
-  };
-
-  const statusClassName: Record<EventStatus, string> = {
-    scheduled: "bg-sky-50 text-sky-700 ring-sky-200",
-    ongoing: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-    finished: "bg-slate-100 text-slate-700 ring-slate-200",
   };
 
   const roundStatusLabel: Record<RoundStatus, string> = {

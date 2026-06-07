@@ -49,15 +49,15 @@ import { cn } from "@/lib/utils";
 
 ## Card matrix visuals
 
-The shared `JudgeCardMatrix` defines the canonical look for cards everywhere:
+The shared [`JudgeCardMatrix`](../../components/judge/card-matrix.tsx) defines the canonical look for cards everywhere:
 
-- Yellow slots: max 2 (one per symbol)
-- Red slots: max 4 in aggregate; max scales by judge count in moderator view
-- Symbol rendered inside the slot: `>` (bent knee) or `~` (lifted foot)
-- "This judge's" red card gets a yellow ring (`isFromThisJudge` flag)
+- Yellow slots: `MAX_YELLOW = 2` (one per symbol)
+- Red slots: `MAX_RED = 4` in aggregate; the moderator view passes a larger `maxRed` prop that scales by judge count
+- Symbol rendered inside the slot: `>` (bent knee / เข่างอ) or `~` (lifted foot / ยกเท้า)
+- "This judge's" red card gets a yellow ring (`isFromThisJudge` flag → `ring-1 ring-yellow-400`)
 - Empty slots show as muted placeholders
 
-When card visuals change, change `JudgeCardMatrix` and nothing else.
+`MAX_YELLOW` and `MAX_RED` are exported from `card-matrix.tsx`. When card visuals change, change `JudgeCardMatrix` and nothing else.
 
 ## Typography
 
@@ -65,8 +65,14 @@ Geist (variable, sans + mono) is loaded in `app/layout.tsx`. Use Tailwind's font
 
 ## Forms
 
-- All inputs are shadcn components from `components/ui/` (`Input`, `Select`, `InputOTP`, etc.).
-- Forms use plain HTML `<form>` + controlled state. See [component-patterns.md](component-patterns.md).
+- All inputs are shadcn components from `components/ui/` (`Input`, `Select`, `InputOTP`, `Combobox`, etc.).
+- Forms use plain HTML `<form>` + controlled state, submitting via Server Actions. See [component-patterns.md](component-patterns.md).
+- The 6-character secret-code join entry uses `InputOTP` (`components/judge/judge-join-form.tsx`).
+
+## Toasts & feedback
+
+- Toasts use **sonner**, mounted once in `app/layout.tsx` as `<Toaster position="top-right" richColors closeButton />`. Import `toast` from `sonner`.
+- Inline validation errors render as Thai strings near the form (controlled `error` state), not via `alert()`.
 
 ## Iconography
 

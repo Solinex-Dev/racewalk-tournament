@@ -3,6 +3,10 @@
 คู่มือทดสอบครอบคลุมทุก lifecycle ของระบบ ใช้ร่วมกับ seed data ที่อยู่ใน [`prisma/seed.ts`](../prisma/seed.ts).
 
 > **Setup:** รัน `npm run db:seed:reset` ก่อนเริ่ม เพื่อรีเซ็ตข้อมูลทั้งหมดเป็นสถานะที่เอกสารนี้บรรยาย
+>
+> seed เป็นแบบ **generator-driven** — secret code ของกรรมการถูกสร้างแบบ deterministic และ
+> **พิมพ์ออกมาใน run summary** ของ `db:seed` (เฉพาะรอบ SCHEDULED / ONGOING ที่ join ได้)
+> ให้อ่านรหัสจาก output ของ seed ไม่ต้องเดาจากเอกสาร
 
 ---
 
@@ -12,61 +16,64 @@
 
 | Event ID | สถานะ | Rounds | Test target |
 |----------|------|--------|-------------|
-| `evt-empty` | DRAFT | 0 rounds | UX สำหรับ event ที่ยังไม่มีอะไรเลย |
-| `evt-pre` | SCHEDULED | 1 (SCHEDULED) | Pre-race setup — judges join ก่อนเริ่ม |
-| `evt-001` | ONGOING | 2 (FINISHED + ONGOING) | **หลัก — race-day live flow** |
-| `evt-past` | FINISHED | 1 (FINISHED) | ผลลัพธ์ + ประวัติ |
+| `evt-draft` | DRAFT | 0 rounds | UX สำหรับ event ที่ยังเป็นร่าง / ว่างเปล่า |
+| `evt-sched` | SCHEDULED | 1 (SCHEDULED) | Pre-race setup — officials join ก่อนเริ่ม |
+| `evt-live` | ONGOING | finished prelim + **LIVE final** | **หลัก — race-day live flow (ชาย 20k)** |
+| `evt-live2` | ONGOING | LIVE final | Live flow รอง(หญิง 10k) |
+| `evt-fin-nat` | FINISHED | FINISHED | ผลลัพธ์ + ประวัติ (ระดับชาติ) |
+| `evt-fin-asia` | FINISHED | FINISHED | ผลลัพธ์ระดับนานาชาติ |
+| `evt-open` | FINISHED | FINISHED | field sizes สุดขั้ว (50 / 2 / 1 คน) |
 
 ### Users (Admin)
 
 | Email | Password | Status | Title | ใช้ทดสอบ |
 |------|----------|--------|-------|----------|
-| `owner@racewalk.local` | `owner1234` | ACTIVE | Owner | login ปกติ + admin ทุกหน้า |
-| `events@racewalk.local` | `events1234` | ACTIVE | Event Manager | login ปกติ |
-| `score@racewalk.local` | `score1234` | ACTIVE | Score Officer | login ปกติ |
+| `owner@racewalk.local` | `owner1234` | ACTIVE | Owner (root) | login ปกติ + admin ทุกหน้า (bypass permission) |
+| `events@racewalk.local` | `events1234` | ACTIVE | Event Manager | login ปกติ (events/athletes/judges/affiliations CRUD, ไม่มี admins) |
+| `score@racewalk.local` | `score1234` | ACTIVE | Score Officer | login ปกติ (view + moderator only) |
 | `suspended@racewalk.local` | `suspended1234` | SUSPENDED | Former Admin | ทดสอบ **login block** |
 
 ### Secret codes (Round Officials)
 
-> ⚠️ **เฉพาะ ONGOING round** เท่านั้นที่จะ login เข้า workspace ได้ — รหัสจาก FINISHED round จะถูกปฏิเสธ
+> ⚠️ **เฉพาะ SCHEDULED / ONGOING round** เท่านั้นที่จะ join เข้า workspace ได้ —
+> รหัสจาก FINISHED round จะถูกปฏิเสธ
+>
+> รหัสจริงพิมพ์อยู่ใน seed output ภายใต้หัวข้อ `=== Joinable secret codes (SCHEDULED / ONGOING) ===`
+> แต่ละรอบที่ join ได้จะมีตำแหน่ง: **JUDGE** (หลายคน, มี Zone), **HEAD_JUDGE** (1), **EVENT_LOGGER** (1)
 
-#### `evt-001 / round-2` (ONGOING — รอบชิงชนะเลิศ) — ใช้ทดสอบหลัก
+> มีเพียง 3 ตำแหน่งใน `OfficialPosition`: `JUDGE` / `HEAD_JUDGE` / `EVENT_LOGGER`
+> **ไม่มีตำแหน่ง/route ของ Timekeeper** — การจับ lap/finish ทำโดย **Event Logger**
 
-| Position | Judge | Secret Code | Zone | Redirect ไป |
-|----------|-------|-------------|------|-------------|
-| JUDGE | สมศักดิ์ กรรมการ | **`QR3456`** | Zone A | `/judge/events/evt-001` |
-| JUDGE | วิชัย ตัดสิน | **`ST7892`** | Zone B | `/judge/events/evt-001` |
-| JUDGE | ประเสริฐ มองทาง | **`UV3467`** | Zone C | `/judge/events/evt-001` |
-| JUDGE | อนุชา ฟ้าใส | **`WX5678`** | Zone D | `/judge/events/evt-001` |
-| HEAD_JUDGE | Head Judge Ref | **`YZ9234`** | – | `/head-judge/events/evt-001` |
-| EVENT_LOGGER | Event Logger 1 | **`HJ4589`** | – | `/event-logger/events/evt-001` |
-| TIMEKEEPER | Timekeeper 1 | **`KL6235`** | – | `/timekeeper/events/evt-001` |
+#### join paths
 
-#### `evt-pre / round-pre` (SCHEDULED — pre-race)
+| Position | Join URL (เช่น `evt-live`) | Redirect ไป |
+|----------|----------------------------|-------------|
+| JUDGE | `/judge/events/evt-live/join` | `/judge/events/evt-live` |
+| HEAD_JUDGE | `/head-judge/events/evt-live/join` | `/head-judge/events/evt-live` |
+| EVENT_LOGGER | `/event-logger/events/evt-live/join` | `/event-logger/events/evt-live` |
 
-| Position | Judge | Secret Code |
-|----------|-------|-------------|
-| JUDGE | Coach E (jud-008) | `PA2345` |
-| JUDGE | สมศักดิ์ กรรมการ | `PB3456` |
-| HEAD_JUDGE | Head Judge Backup | `PC4567` |
-| EVENT_LOGGER | Event Logger 1 | `PD5678` |
-| TIMEKEEPER | Timekeeper Pre-race | `PE6789` |
-
-#### `evt-001 / round-1` (FINISHED) + `evt-past / round-past` (FINISHED)
+#### FINISHED rounds
 
 รหัสอยู่ในระบบ (ดูใน seed.ts) แต่จะถูก **ปฏิเสธ** ตอน join เพราะ round สถานะ FINISHED
+(error: `"รอบที่ใช้รหัสนี้จบการแข่งขันแล้ว"`)
 
 ---
 
-## 2. สถานะนักกีฬาใน `round-2` (ONGOING — playground หลัก)
+## 2. สถานะนักกีฬาในรอบ LIVE final ของ `evt-live` (playground หลัก)
 
-| BIB | นักกีฬา | สังกัด | Lap | Cards (ของจริง) | Status |
-|-----|---------|--------|-----|----------------|--------|
-| 01 | Somchai Rakdee (TH) | ชมรมเดินทนกรุงเทพฯ | 7/20 | _ไม่มี (clean leader)_ | OK |
-| 02 | Jane Doe (TH) | Bangkok Road Runners | 7/20 | 2 yellow + **1 PENDING red** | OK (รอ Head Judge) |
-| 03 | Chanida Runfast (TH) | ChiangMai Striders | 6/20 | 3 yellow + 1 CONFIRMED red | OK (ใกล้ trouble) |
-| 04 | Luis Garcia (ES) | Hat Yai Athletic Club | 5/20 | **4 CONFIRMED reds** + 1 yellow | **DQ** |
-| 05 | Siriwan Walkfast (TH) | ชมรมเดินทนกรุงเทพฯ | 6/20 | _ไม่มี (clean)_ | OK |
+ข้อมูลนักกีฬา (ชื่อ / BIB / สังกัด / lap / cards) ถูก **generate** แบบ correct-by-construction
+จึงไม่ระบุค่าตายตัวในเอกสารนี้ — เปิด `/admin/events/evt-live/moderator` หรือ scoreboard
+`/events/evt-live` เพื่อดูค่าจริงหลัง seed สิ่งที่ seed รับประกันไว้ในรอบ LIVE:
+
+- มี **leader ที่ clean** (lap สูงสุด, ไม่มี card)
+- มีนักกีฬาที่มี **2 yellow + 1 PENDING red** (รอ Head Judge ตัดสิน)
+- มีนักกีฬาที่มี **CONFIRMED red** อย่างน้อย 1 ใบ (ใกล้ trouble)
+- มีนักกีฬา **DQ** ที่มี **≥4 CONFIRMED reds จาก 4 judges ที่ต่างกัน** (generator throws ถ้าไม่ครบ)
+- lap times เป็น cumulative; final crossing เก็บเป็น `FinishTime` (ไม่ใช่ lap row),
+  `currentLap = lap rows + (finished ? 1 : 0)`
+
+> กฎ cards ที่ seed บังคับ: Yellow ≤1 ต่อ symbol ต่อ judge ต่อ athlete; Red ≤1 (non-overridden)
+> ต่อ judge ต่อ athlete; OVERRIDDEN red ไม่ถูกนับเข้า DQ
 
 ---
 
@@ -75,166 +82,206 @@
 ### 3.1 Admin lifecycle
 
 1. **Login** ที่ `localhost:3000/admin/login` ด้วย `owner@racewalk.local` / `owner1234`
-2. **Suspended user blocked** — ลอง login ด้วย `suspended@racewalk.local` → ต้องถูกปฏิเสธ (ตรวจ `lib/user-status.ts` resolveUserStatus)
+2. **Suspended user blocked** — ลอง login ด้วย `suspended@racewalk.local` → ต้องถูกปฏิเสธ
+   (ตรวจ [`lib/user-status.ts`](../lib/user-status.ts) `resolveUserStatus`; login gate อยู่ใน [`auth.ts`](../auth.ts))
 3. **Events list** ที่ `/admin/events`
-   - เห็น 4 events
+   - เห็น events ทั้งหมด (DRAFT / SCHEDULED / ONGOING / FINISHED)
    - event ที่ `ONGOING` มี badge LIVE
    - ปุ่ม "Moderator" เห็นเฉพาะ event ที่ดำเนินการได้
-4. **Create new event** — `/admin/events/new` → กรอกฟอร์ม → DB มี row ใหม่
-5. **Add round** — เข้า event ใหม่ → `/admin/events/{id}/rounds/new` → เลือก athletes + judges → generate secret codes → save → ดู secret codes ที่ออกมาในตาราง
+4. **Create new event** — `/admin/events/new` → กรอกฟอร์ม → Server Action `createEvent`
+   ([`app/actions/events.ts`](../app/actions/events.ts)) → DB มี row ใหม่ (ตรวจ BIB validation: age band + 3-digit seq, unique ต่อ event)
+5. **Add round** — เข้า event ใหม่ → `/admin/events/{id}/rounds/new` → เลือก athletes + officials →
+   generate secret codes → save (`createRound`, [`app/actions/rounds.ts`](../app/actions/rounds.ts)) →
+   ดู secret codes ที่ออกมาในตาราง (สูงสุด 8 JUDGE + 1 HEAD_JUDGE + 1 EVENT_LOGGER)
 
-### 3.2 Pre-race join (evt-pre)
+### 3.2 Pre-race join (`evt-sched`)
 
-1. เปิด `/judge/events/evt-pre/join` (anonymous)
-2. กรอกรหัส **`PA2345`** → ต้องถูก redirect ไป `/judge/events/evt-pre`
-3. ใน workspace เห็นนักกีฬา 4 คน (BIB 11-14) — ทั้งหมด clean ไม่มี cards
-4. **ทดสอบ logout** — กดออกจากระบบ → กลับ join page
-5. กรอกรหัสผิด เช่น `XXXXXX` → ได้ error "รหัสกรรมการไม่ถูกต้องสำหรับ Event นี้"
+1. เปิด `/judge/events/evt-sched/join` (anonymous)
+2. กรอกรหัส JUDGE ของ `evt-sched` (ดูจาก seed output) → ต้องถูก redirect ไป `/judge/events/evt-sched`
+3. ใน workspace เห็นนักกีฬาของรอบ — ทั้งหมด clean ไม่มี cards (รอบยังไม่เริ่ม)
+4. **ทดสอบ logout** — กดออกจากระบบ (`logoutOfficial`) → กลับ join page
+5. กรอกรหัสผิด เช่น `XXXXXX` → ได้ error `"รหัสกรรมการไม่ถูกต้องสำหรับ Event นี้"`
 
-### 3.3 Race-day Judge flow (evt-001 / round-2)
+### 3.3 Race-day Judge flow (`evt-live`, รอบ LIVE final)
 
-1. **Judge join:** `/judge/events/evt-001/join` → กรอก **`QR3456`** (Coach A, Zone A)
-2. ใน workspace เห็น 5 นักกีฬา:
-   - BIB 04 (Luis) แสดง **DQ** ribbon → ปุ่ม disable
-   - BIB 01 (Somchai), 02 (Jane), 03 (Chanida), 05 (Siriwan) กดได้
-3. **Yellow card flow:**
-   - กดที่ BIB 01 → action bar ขึ้น → กด "งอเข่า" ใต้ใบเตือน → DB เพิ่ม card YELLOW BENT_KNEE
-   - หลัง refresh ดูจุดเหลืองที่ BIB 01 จะมี filled
-   - กดอีกครั้ง (yellow BENT_KNEE อีก) → ปุ่ม disable เพราะให้แล้ว
-   - กด LIFTED_FOOT → ได้ครบ 2 yellow
-   - กด LIFTED_FOOT อีก → ปุ่ม disable
-4. **Try max yellow:** ลองออก yellow ที่ 3 → ปุ่มหายเพราะ disabled (max 2 per judge per athlete)
-5. **Red card flow:**
-   - กดที่ BIB 05 (clean newcomer) → กด "งอเข่า" ใต้ใบแดง → DB สร้าง card RED BENT_KNEE state=PENDING
+> writes อยู่ใน [`app/actions/cards.ts`](../app/actions/cards.ts); workspace UI คือ
+> [`components/judge/judge-workspace.tsx`](../components/judge/judge-workspace.tsx) → `JudgeCardMatrix`
+> หลัง action จะเรียก `router.refresh()` และ workspace ยัง auto-refresh ทุก 2500 ms (2000 ms ถ้ารอบ SCHEDULED)
+
+1. **Judge join:** `/judge/events/evt-live/join` → กรอกรหัส JUDGE (Zone A) จาก seed output
+2. ใน workspace เห็นนักกีฬาของรอบ:
+   - นักกีฬา **DQ** แสดง ribbon → ปุ่ม disable
+   - นักกีฬาที่ยัง OK และยังไม่ finish → กดได้
+3. **Yellow card flow:** (`issueYellowCard`)
+   - กดที่นักกีฬา clean → action bar ขึ้น → กด "งอเข่า" (BENT_KNEE) ใต้ใบเตือน → DB เพิ่ม card YELLOW BENT_KNEE
+   - หลัง refresh ดูจุดเหลืองจะ filled
+   - กด BENT_KNEE อีกครั้ง → ปุ่ม disable (1 yellow ต่อ symbol ต่อ judge)
+   - กด LIFTED_FOOT → ได้ครบ 2 yellow → ปุ่มทั้งสอง symbol disable
+4. **Max yellow:** ออก yellow symbol เดิมซ้ำ → server throws `"ให้ใบเหลืองสัญลักษณ์นี้แก่นักกีฬาคนนี้แล้ว"`
+   (max = 2 symbols × 1 = 2 ใบต่อ judge ต่อ athlete)
+5. **Red card flow:** (`issueRedCard`)
+   - กดที่นักกีฬา clean → กด "งอเข่า" ใต้ใบแดง → DB สร้าง card RED BENT_KNEE state=`PENDING`
    - ปุ่ม red ทั้งสองจะถูก disable หลังออก (max 1 red per judge per athlete)
-6. **DQ athlete protection:** กดที่ BIB 04 → ทุกปุ่มถูก disable
+6. **DQ athlete protection:** กดที่นักกีฬา DQ → ทุกปุ่มถูก disable
+7. **Finished athlete protection:** นักกีฬาที่ finish แล้ว → ออก card ไม่ได้
+   (`"นักกีฬาเข้าเส้นชัยแล้ว — ออกใบไม่ได้"`)
 
 ### 3.4 Head Judge confirm/reject flow
 
-1. **Head Judge join:** เปิด tab ใหม่ → `/head-judge/events/evt-001/join` → กรอก **`YZ9234`**
-2. **Pending list:** ต้องเห็น 2 รายการ:
-   - BIB 02 (Jane Doe) — pending red BENT_KNEE จาก Coach A (seed)
-   - BIB 05 (Siriwan) — pending red BENT_KNEE จาก Coach A (ถ้าเพิ่งกดใน step 3.3.5)
-3. **Confirm red:** กด "ยืนยัน" ของ BIB 02 → DB เปลี่ยน state=CONFIRMED, decidedBy=jud-005
-   - Activity log มี `red_card_confirm` record
-   - ดูที่ BIB 02 ในตารางนักกีฬาด้านล่าง — confirmedRed=1, pendingRed=0
-4. **Reject red:** กด "ยกเลิก" ของ BIB 05 → DB เปลี่ยน state=OVERRIDDEN
-   - Activity log มี `red_card_override` record
-   - BIB 05 confirmedRed=0
-5. **Test auto-DQ:** ออก red 3 ใบจาก 3 judges อื่นๆ ให้ BIB 02 (ใช้ `ST7892`, `UV3467`, `WX5678`) → confirm หมด → DB เปลี่ยน RoundAthlete.status เป็น DQ อัตโนมัติ
+> writes: `confirmRedCard` / `rejectRedCard` ([`app/actions/cards.ts`](../app/actions/cards.ts));
+> view: [`components/head-judge/head-judge-view.tsx`](../components/head-judge/head-judge-view.tsx)
 
-### 3.5 Event Logger / Timekeeper flow
+1. **Head Judge join:** เปิด tab ใหม่ → `/head-judge/events/evt-live/join` → กรอกรหัส HEAD_JUDGE
+2. **Pending list:** เห็นใบแดง state=PENDING ทั้งหมดของรอบ (รวมที่ seed ไว้ + ที่เพิ่งกดใน 3.3)
+3. **Confirm red:** กด "ยืนยัน" → atomic `updateMany` PENDING→CONFIRMED (เซ็ต `decidedBy`/`decidedAt`)
+   - RoundActivityLog มี `red_card_confirm`
+   - double-click จะ idempotent (`{ ok: true, alreadyDecided: true }`)
+4. **Reject red:** กด "ยกเลิก" → PENDING→OVERRIDDEN, log `red_card_override`; OVERRIDDEN ไม่นับ DQ
+5. **Auto-DQ:** confirm ใบแดงจนนักกีฬาคนเดียวมี **≥4 CONFIRMED reds จาก 4 judges** →
+   `RoundAthlete.status` เปลี่ยนเป็น DQ อัตโนมัติ + log `athlete_dq`
+   (ถ้า DQ นั้นทำให้ไม่มีนักกีฬาเหลือในสนาม รอบจะ auto-end ด้วย)
 
-1. **Event Logger join:** `/event-logger/events/evt-001/join` → กรอก **`HJ4589`**
-2. หรือ **Timekeeper join:** `/timekeeper/events/evt-001/join` → กรอก **`KL6235`**
-3. ใน workspace:
-   - กดปุ่ม "เริ่ม" → stopwatch เริ่มเดิน
-   - กดปุ่มที่ BIB 01 → DB เพิ่ม lap (lapNumber=8) ที่ timeMs = elapsed
-   - กดต่อเนื่องจนถึง lap สุดท้าย (lap 20) → ปุ่มแสดง "เข้าเส้นชัย" → กดแล้วสร้าง FinishTime
-4. **Auto-positioning:** ดูที่ DB หรือ scoreboard → FinishTime ของคนแรกที่จบจะมี position=1
-5. **Duplicate finish:** ลอง record finish ซ้ำของคนเดิม → ต้องได้ error "บันทึกเวลาเข้าเส้นชัยของนักกีฬาคนนี้ไปแล้ว"
+### 3.5 Event Logger flow (lap / finish)
+
+> writes: `recordLapTime` / `recordFinishTime` ([`app/actions/timing.ts`](../app/actions/timing.ts));
+> UI: [`components/timekeeper/lap-recorder.tsx`](../components/timekeeper/lap-recorder.tsx) (ใช้ร่วมในหน้า event-logger)
+> ต้องเป็น session position `EVENT_LOGGER` เท่านั้น
+
+1. **Event Logger join:** `/event-logger/events/evt-live/join` → กรอกรหัส EVENT_LOGGER
+2. ใน workspace (รอบต้อง ONGOING + มี `startedAt`):
+   - กดปุ่มที่นักกีฬา → ถ้ายังไม่ถึง lap สุดท้าย → `recordLapTime(nextLap, elapsedMs)` (bump `currentLap`)
+   - ถ้า `nextLap >= lapCount` → `recordFinishTime` (สร้าง FinishTime + เขียน lap สุดท้ายให้ครบ N/N)
+   - ปุ่มมี **cooldown 10 วินาที** ต่อนักกีฬา (COOLDOWN_MS = 10_000) — นักกีฬาคนอื่นยังกดได้
+3. **Auto-positioning:** `position = (จำนวน finishTimes ที่ไม่ถูกลบ) + 1` → คนแรกที่จบได้ position=1
+4. **Duplicate finish:** record finish ซ้ำของคนเดิม → **idempotent no-op** `{ ok: true, alreadyFinished: true }` (ไม่ใช่ error)
+5. **Auto-finish round:** เมื่อ status-OK ทุกคน finish ครบ → รอบ auto-end (`roundEnded: true`)
 
 ### 3.6 Public scoreboard
 
-1. เปิด `/events/evt-001` (anonymous)
+> [`components/events/live-board.tsx`](../components/events/live-board.tsx) — client poll ทุก 5s
+> ไปที่ route `/api/events/{eventId}/leaderboard` (CDN-cached);
+> DTO สร้างจาก [`lib/leaderboard.ts`](../lib/leaderboard.ts)
+
+1. เปิด `/events/evt-live` (anonymous)
 2. ต้องเห็น:
-   - ชื่อ event + รอบปัจจุบัน + elapsed time (live computed)
-   - ตารางนักกีฬา 5 คน
-   - BIB 04 (Luis DQ) อยู่ล่างสุด ribbon **DQ**
-   - BIB 01 (Somchai) อันดับ 1 (ไม่มี red, lap สูงสุด)
-   - ใบแดง column แสดง 4 ใบสำหรับ BIB 04, 1 ใบสำหรับ BIB 03
-3. ดู `/events/evt-past` → ต้องเห็น 5 นักกีฬา: 3 finished มี position, 1 DQ, 1 DNF
+   - ชื่อ event + รอบปัจจุบัน + elapsed time (live, `LiveTimer` อิง `startedAt`/`endedAt`)
+   - ตารางนักกีฬา (display order = round start-list `sortOrder`, ไม่ reorder ตามผล)
+   - **rank** คำนวณแยกบนสำเนาที่ sort ตาม finish (เฉพาะ OK && finished)
+   - นักกีฬา DQ แสดง ribbon **DQ**
+   - คอลัมน์ใบแดงแสดง **เฉพาะ CONFIRMED reds** (PENDING/OVERRIDDEN ไม่ขึ้น)
+3. เปลี่ยน `?round=` → board adopt ค่า server-rendered ทันที (ไม่รอ poll รอบถัดไป)
+4. ดู `/events/evt-fin-nat` (FINISHED) → finished athletes มี position, มี DQ/DNF
+5. **Resilience:** ตัดเน็ตชั่วคราว → board คงค่าเดิม (ไม่ blank)
 
 ### 3.7 Moderator (Admin) live view
 
-1. Login admin → `/admin/events/evt-001/moderator`
+> [`/admin/events/{eventId}/moderator`](../app/admin/(pages)/events/[eventId]/moderator/page.tsx) —
+> Server Component อ่าน Prisma ตรง; refresh ด้วย `revalidatePath`/`revalidateTag` เมื่อมี write
+> (ผ่าน [`lib/revalidate-race-day.ts`](../lib/revalidate-race-day.ts))
+
+1. Login admin (ต้องมีสิทธิ์ `moderator: view` — `owner` หรือ `score`) → `/admin/events/evt-live/moderator`
 2. ต้องเห็น:
-   - Round selector — กดเปลี่ยน round-1/round-2 ได้
+   - Round selector — สลับ prelim / final ได้
    - Athletes table — Y count + R count ถูกต้อง (R นับเฉพาะ CONFIRMED)
-   - Judges table — กดขยายเห็น cards ที่แต่ละ judge ออก
+   - Judges table — กดขยายเห็น cards ที่แต่ละ judge ออก (`isFromThisJudge` ฯลฯ)
    - Pending red badge "X รอยืนยัน" ถ้ามี pending
-   - Activity log — round_start, athlete_dq events ปรากฏ
+   - Activity log — `round_start`, `athlete_dq` ฯลฯ ปรากฏ
 
-### 3.8 Empty event UX
+### 3.8 Empty / draft event UX
 
-1. เข้า `/admin/events/evt-empty` → เห็น event detail แต่ rounds list ว่าง
-2. เปิด `/events/evt-empty` → scoreboard ต้องโชว์ "ยังไม่มีข้อมูล" gracefully (ไม่ crash)
-3. ลอง join `/judge/events/evt-empty/join` → join action ต้อง return error (ไม่มี round เปิด)
+1. เข้า `/admin/events/evt-draft` → เห็น event detail แต่ rounds list ว่าง
+2. เปิด `/events/evt-draft` → scoreboard ต้องโชว์สถานะ "ยังไม่มีข้อมูล" gracefully (ไม่ crash)
+3. ลอง join `/judge/events/evt-draft/join` → join action ต้อง return error (ไม่มี round เปิด)
 
 ---
 
 ## 4. ตรวจสอบเรื่อง security / edge cases
 
-### Session
-- **Cookie invalid** — ลบ cookie `rw_official_session` ใน DevTools → เข้า workspace → ต้อง redirect กลับ `/join`
-- **Cross-event session** — join เป็น judge ใน evt-001 → ลอง URL `/judge/events/evt-pre` → ต้อง redirect ไป join page (session.eventId mismatch)
-- **Wrong role** — join เป็น JUDGE → ลอง URL `/head-judge/events/evt-001` → redirect ไป join (session.position mismatch)
+### Session (official JWT cookie)
 
-### Card constraints
-- **Max yellow ต่อ judge ต่อ athlete = 2** — ออก 3 จาก judge เดียวกัน → server throws "ให้ใบเหลืองครบ 2 ใบ"
-- **Max red ต่อ judge ต่อ athlete = 1** — ออก red ครั้งที่ 2 จาก judge เดียวกัน → server throws "ได้ออกใบแดงให้นักกีฬาคนนี้แล้ว"
-- **Athlete ไม่อยู่ในรอบ** — POST issueCard ด้วย athleteId ที่ไม่ได้อยู่ในรอบ → throws "นักกีฬาไม่อยู่ในรอบนี้"
+> cookie `rw_official_session` (signed HS256 ด้วย `NEXTAUTH_SECRET`, TTL 12h);
+> primitives ใน [`lib/official-jwt.ts`](../lib/official-jwt.ts) / [`lib/official-session.ts`](../lib/official-session.ts)
+
+- **Cookie invalid** — ลบ cookie `rw_official_session` ใน DevTools → เข้า workspace → ต้อง redirect กลับ `/join`
+- **Cross-event session** — join เป็น judge ใน `evt-live` → ลอง URL `/judge/events/evt-sched` → mismatch eventId → redirect ไป join
+- **Wrong role** — join เป็น JUDGE → ลอง URL `/head-judge/events/evt-live` → mismatch position → redirect ไป join
+
+### Card constraints ([`app/actions/cards.ts`](../app/actions/cards.ts))
+
+- **Yellow ต่อ symbol ต่อ judge ต่อ athlete = 1** — ออก symbol เดิมซ้ำ → throws `"ให้ใบเหลืองสัญลักษณ์นี้แก่นักกีฬาคนนี้แล้ว"`
+- **Max red ต่อ judge ต่อ athlete = 1** — ออก red ครั้งที่ 2 จาก judge เดียวกัน → throws `"ได้ออกใบแดงให้นักกีฬาคนนี้แล้ว"`
+- **Athlete ไม่อยู่ในรอบ** — issue card ด้วย athleteId ที่ไม่ได้อยู่ในรอบ → throws `"นักกีฬาไม่อยู่ในรอบนี้"`
 - **OVERRIDDEN red ไม่ block** — judge ที่ red ถูก override สามารถออก red ใหม่ได้
 
 ### Round status
-- **FINISHED round** — รหัสจาก round-1 (`AB2345`) → join action ปฏิเสธว่า "รอบที่ใช้รหัสนี้จบการแข่งขันแล้ว"
+
+- **FINISHED round** — รหัสจากรอบที่จบแล้ว → join ปฏิเสธ `"รอบที่ใช้รหัสนี้จบการแข่งขันแล้ว"`
+- **ออก card นอก ONGOING** — รอบไม่ ONGOING → ออก card ไม่ได้ (`assertRoundOngoingForCards`)
+
+### Rate limit (join)
+
+- `joinAsOfficial` ([`app/actions/officials.ts`](../app/actions/officials.ts)): max **10 ครั้ง/นาที/IP/event**
+  → เกินแล้ว return `"พยายามมากเกินไป กรุณารอสักครู่แล้วลองอีกครั้ง"`
 
 ### DQ trigger
-- **DQ threshold = 4 CONFIRMED reds** — Test: ออก red 4 ใบจาก 4 judges ให้คนเดียวกัน → confirm หมด → status เปลี่ยน DQ อัตโนมัติ + activity log `athlete_dq` ถูกสร้าง
+
+- **DQ threshold = 4 CONFIRMED reds** — ออก red 4 ใบจาก 4 judges ให้คนเดียวกัน → confirm หมด →
+  status เปลี่ยน DQ อัตโนมัติ + RoundActivityLog `athlete_dq` ถูกสร้าง
 
 ---
 
-## 5. New features (full rollout)
+## 5. Features (full rollout) — สถานะ Implemented
 
 ### 5.1 Race timer sync (synced across roles)
 - Round มี `startedAt` / `endedAt` ใน schema — single source of truth
-- Admin/Moderator กดปุ่ม **"▶ เริ่มจับเวลาการแข่งขัน"** ที่หน้า moderator → status SCHEDULED → ONGOING + เซ็ต `startedAt = now()`
-- ทุก role (Judge/Head Judge/Event Logger/Timekeeper/Public) เห็นเวลาเดียวกันแบบสด
-- กดปุ่ม **"■ จบการแข่งขัน"** → status FINISHED + เซ็ต `endedAt = now()`
-- Seeded `evt-001/round-2` มี `startedAt` 30 นาทีก่อน — timer เปิดมาเดิน 30:00 เลย
+- Admin/Moderator กดปุ่ม **"▶ เริ่มจับเวลาการแข่งขัน"** ([`startRound`](../app/actions/round-timing.ts)) →
+  status SCHEDULED → ONGOING + เซ็ต `startedAt` (gate: ต้องมี ≥1 ของแต่ละตำแหน่ง JUDGE/HEAD_JUDGE/EVENT_LOGGER)
+- ทุก role (Judge/Head Judge/Event Logger/Public) เห็นเวลาเดียวกันแบบสด (`LiveTimer` อิง `startedAt`)
+- กดปุ่ม **"■ จบการแข่งขัน"** ([`endRound`](../app/actions/round-timing.ts)) → status FINISHED + เซ็ต `endedAt`
+- Seeded `evt-live` รอบ LIVE มี `startedAt` ในอดีต — timer เปิดมาเดินต่อทันที
 
 ### 5.2 Export (Report page)
 - `/admin/events/{eventId}/report` มีปุ่ม:
-  - **⬇ ดาวน์โหลด CSV** — รวมทุกรอบในไฟล์เดียว (เปิด Excel ได้ตรงๆ ใส่ BOM แก้ปัญหาภาษาไทย)
-  - **🖨️ Print / Save as PDF** — เปิดหน้า print-friendly ที่ `/admin/events/{eventId}/report/print` กด Ctrl+P
-  - **CSV รายรอบ** — ดาวน์โหลดแยกแต่ละรอบ
-- Endpoint: `/api/events/{eventId}/export?round={roundId}` (admin auth required)
+  - **⬇ ดาวน์โหลด CSV / XLSX** — รวมทุกรอบ (ใช้ `papaparse` / `exceljs`; ใส่ BOM แก้ภาษาไทยใน CSV)
+  - **🖨️ Print / Save as PDF** — เปิดหน้า print-friendly กด Ctrl+P
+  - **รายรอบ** — ดาวน์โหลดแยกแต่ละรอบ
+- Endpoints: `/api/events/{eventId}/export?round={roundId}` และ `/api/events/{eventId}/summary-xlsx` (admin auth required)
 
 ### 5.3 Moderator edit (correction mode)
-- `/admin/events/{eventId}/moderator/edit?round={roundId}` — แก้ไขข้อมูลที่ผิดพลาด
-- จัดการได้: ลบ card (ใบเหลือง/แดง), override athlete status (OK/DQ/DNF), แก้ไข/ลบ lap time, แก้ไข/ลบ finish time
-- ทุก action ต้องระบุ **เหตุผล** ผ่าน prompt → บันทึกใน RoundActivityLog + ActivityLog
+- `/admin/events/{eventId}/moderator/edit?round={roundId}` — แก้ไขข้อมูลที่ผิดพลาด ([`app/actions/moderator.ts`](../app/actions/moderator.ts))
+- จัดการได้: ลบ/แก้ card, confirm/reject red (head-judge fallback), override athlete status (OK/DQ/DNF),
+  แก้ไข/ลบ lap time, แก้ไข/ลบ finish time, แก้ round info (`startedAt`/`endedAt`/`lapCount`/`distanceKm`/`name`)
+- ทุก action บันทึกใน RoundActivityLog + ActivityLog (`logCurrentAdmin`)
 - ถ้าลบใบแดง CONFIRMED ที่ทำให้นักกีฬา DQ — ระบบปลด DQ อัตโนมัติเมื่อ confirmed reds < 4
 
-### 5.4 Real-time polling
-- หน้า Workspaces มี `<AutoRefresh>` poll ทุก:
-  - Head Judge: **5 วินาที** (เห็น pending reds เร็ว)
-  - Public scoreboard: **10 วินาที**
-  - Event Logger / Timekeeper: **10 วินาที** (สำหรับ race state)
-  - Judge: **15 วินาที** (น้อยกว่าเพราะ judge ส่วนใหญ่เป็นคนออก ไม่ใช่รอรับ)
-  - Moderator: **10 วินาที**
+### 5.4 Real-time updates
+- **Official workspaces** (Judge / Head Judge / Event Logger): `<AutoRefresh>` →
+  `router.refresh()` ทุก **2000 ms** ถ้ารอบ SCHEDULED, **2500 ms** ถ้าไม่ใช่
+  ([`components/common/auto-refresh.tsx`](../components/common/auto-refresh.tsx))
+- **Public scoreboard:** client poll JSON route ทุก **5000 ms** (ไม่ใช่ `router.refresh`),
+  CDN cache `s-maxage=4, stale-while-revalidate=10` → ผู้ชมส่วนใหญ่ถูกดูดที่ edge (0 Active CPU)
+- **Home page** (`/`): `<AutoRefresh>` ทุก **15000 ms**
+- **Moderator:** ไม่ใช้ AutoRefresh — เป็น Server Component, อัปเดตผ่าน `revalidatePath`/`revalidateTag` เมื่อมี write
 
-### 5.5 CSV import (bulk add)
-- `/admin/athletes` มีปุ่ม **⬆ Import CSV** — คอลัมน์: `name, country, affiliation_name`
-  - Affiliation ถูกสร้างอัตโนมัติถ้ายังไม่มี
-- `/admin/judges` มีปุ่ม **⬆ Import CSV** — คอลัมน์: `name`
-- รองรับ header row (ระบบจะ skip ให้)
+### 5.5 CSV import (bulk add) — **ROOT ADMIN เท่านั้น**
+- import แบบ 2 เฟส (preview → commit), all-or-nothing `$transaction` ([`app/actions/csv-import.ts`](../app/actions/csv-import.ts))
+- Athlete (`name, country, affiliation_name`; affiliation auto-create), Judge, Affiliation
+- limits: `MAX_ROWS = 5000`, `MAX_BYTES = 5MB`; รองรับ header row
 
-### 5.6 Password change
-- `/admin/settings` — แก้ไขชื่อ/อีเมล/บทบาท + เปลี่ยนรหัสผ่าน
-- ต้องใส่รหัสผ่านปัจจุบันถึงจะเปลี่ยนได้, รหัสใหม่ต้องไม่ซ้ำ + ≥ 8 ตัวอักษร
+### 5.6 Profile / password change
+- `/admin/settings` — แก้ไขชื่อ/อีเมล + เปลี่ยนรหัสผ่าน ([`app/actions/profile.ts`](../app/actions/profile.ts))
+- ต้องใส่รหัสผ่านปัจจุบันถึงจะเปลี่ยนได้, รหัสใหม่ ≥ 8 ตัวอักษร
 
 ### 5.7 Admin audit log
-- ทุก mutation ของ admin (event/round/athlete/judge/affiliation/admin CRUD + moderator overrides) บันทึกใน `ActivityLog` table
-- ดูได้ผ่าน DB query (ยังไม่มี UI แสดง — Future enhancement)
+- ทุก mutation ของ admin (event/round/athlete/judge/affiliation/admin CRUD + moderator overrides)
+  บันทึกใน `ActivityLog` table (`createActivityLog` กลืน error ไม่ให้ล้ม request)
+- หมายเหตุ: ยังไม่มี UI แสดงเต็มรูปแบบ — ดูได้ผ่าน DB query (genuine TODO)
 
 ### 5.8 Rate limit (security)
-- `joinAsOfficial` action: max **10 ครั้ง/นาที/IP/event** — กัน brute-force secret codes
-- เกิน → return `"พยายามมากเกินไป กรุณารอสักครู่"`
+- `joinAsOfficial`: max **10 ครั้ง/นาที/IP/event** — กัน brute-force secret codes (ดู §4)
 
 ### 5.9 Toast notifications
-- ใช้ `sonner` — toast บน top-right พร้อม success/error/warning colors
-- แทนที่ inline error message เดิม (ไม่ต้อง refresh เห็นทันที)
+- ใช้ `sonner` — toast บน top-right พร้อม success/error/warning colors (mounted ใน `app/layout.tsx`)
 
 ---
 
@@ -248,5 +295,6 @@ npm run db:seed:reset
 
 จะ:
 1. ลบทุก row ในทุกตาราง (FK-safe order)
-2. Reseed ทั้งหมดตามที่บรรยายไว้ในเอกสารนี้
+2. Reseed ทั้งหมดตามที่บรรยายไว้ในเอกสารนี้ (generator-driven)
 3. รหัสผ่าน admin ถูกรีเซ็ตด้วย
+4. พิมพ์ joinable secret codes + summary ออกมาใน console
