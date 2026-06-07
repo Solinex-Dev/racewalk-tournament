@@ -6,10 +6,17 @@ import { logCurrentAdmin, ActivityLogAction } from "@/lib/activity-log";
 import { requirePermission } from "@/lib/authz";
 import { revalidateRaceDayViews } from "@/lib/revalidate-race-day";
 import { syncEventStatus, finalizeRoundEnd } from "@/lib/round-lifecycle";
+import { missingStartRoles } from "@/lib/round-start";
+import type { OfficialPosition } from "@prisma/client";
 
 async function requireAdmin() {
   return requirePermission("moderator", "view");
 }
+
+export type StartRoundResult =
+  | { ok: true }
+  | { ok: false; reason: "missing_officials"; missing: OfficialPosition[] }
+  | { ok: false; reason: "not_found" | "finished"; error: string };
 
 /**
  * Admin/Moderator: mark the race as started. Sets startedAt = now()
@@ -17,7 +24,7 @@ async function requireAdmin() {
  * compute elapsed time, keeping every role's clock in sync.
  * Also bumps the parent Event to ONGOING.
  */
-export async function startRound(roundId: string) {
+export async function startRound(roundId: string): Promise<StartRoundResult> {
   // Capture the start instant FIRST — before auth + the DB checks below — so
   // startedAt is as close as possible to the moment the moderator pressed start
   // (≈ gun time). Capturing it after the queries would shift every elapsed time
@@ -27,21 +34,20 @@ export async function startRound(roundId: string) {
   const user = await requireAdmin();
 
   const round = await prisma.round.findUnique({ where: { id: roundId } });
-  if (!round) throw new Error("ไม่พบรอบที่ระบุ");
-  if (round.status === "FINISHED") throw new Error("รอบนี้จบไปแล้ว");
+  if (!round) return { ok: false, reason: "not_found", error: "ไม่พบรอบที่ระบุ" };
+  if (round.status === "FINISHED")
+    return { ok: false, reason: "finished", error: "รอบนี้จบไปแล้ว" };
 
   // A round can only start with at least 1 head judge, 1 judge and 1 event logger.
+  // Return a structured result (not a throw) so the UI shows a friendly message
+  // listing what's missing, instead of an opaque server-action system error.
   const officials = await prisma.roundOfficial.findMany({
     where: { roundId, deletedAt: null },
     select: { position: true },
   });
-  const heads = officials.filter((o) => o.position === "HEAD_JUDGE").length;
-  const judges = officials.filter((o) => o.position === "JUDGE").length;
-  const loggers = officials.filter((o) => o.position === "EVENT_LOGGER").length;
-  if (heads < 1 || judges < 1 || loggers < 1) {
-    throw new Error(
-      "ยังเริ่มไม่ได้ — รอบนี้ต้องมีหัวหน้ากรรมการ, กรรมการ และผู้เก็บ Lap Time อย่างน้อยอย่างละ 1 คน",
-    );
+  const missing = missingStartRoles(officials.map((o) => o.position));
+  if (missing.length > 0) {
+    return { ok: false, reason: "missing_officials", missing };
   }
 
   await prisma.round.update({

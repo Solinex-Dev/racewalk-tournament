@@ -301,6 +301,7 @@ export default async function ModeratorPage(props: Readonly<Props>) {
         note: r.note ?? undefined,
         lapCount: r.lapCount ?? undefined,
         currentLap: r.currentLap,
+        officialPositions: r.roundOfficials.map((ro) => ro.position),
       },
       athletes,
       judges,
