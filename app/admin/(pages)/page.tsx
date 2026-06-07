@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import type { EventStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/authz";
-import { hasPermission } from "@/lib/permissions";
+import { canAccessResource, hasPermission } from "@/lib/permissions";
 
 // Reflect live ONGOING status without serving a stale cached dashboard.
 export const dynamic = "force-dynamic";
@@ -35,6 +35,13 @@ function countUniqueIds(ids: string[]): number {
 export default async function AdminDashboardPage() {
   const me = await getCurrentAdmin();
   const canModerate = hasPermission(me, "moderator", "view");
+  // Show the "manage events" shortcut only to admins who can actually open the
+  // events hub — mirrors the access rule on /admin/events. Admins with no events
+  // access at all would otherwise click through to a NoAccess page.
+  const canOpenEventsHub =
+    canAccessResource(me, "events") ||
+    canModerate ||
+    hasPermission(me, "reports", "view");
 
   const [eventsTotal, judgesTotal, athletesTotal, ongoingRows] =
     await Promise.all([
@@ -206,12 +213,14 @@ export default async function AdminDashboardPage() {
             <p className="mt-1 text-xs text-slate-500">
               เริ่มการแข่งขันได้จากหน้า Moderator ของแต่ละ Event
             </p>
-            <Link
-              href="/admin/events"
-              className="mt-4 inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800"
-            >
-              ไปจัดการ Event
-            </Link>
+            {canOpenEventsHub && (
+              <Link
+                href="/admin/events"
+                className="mt-4 inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800"
+              >
+                ไปจัดการ Event
+              </Link>
+            )}
           </section>
         )}
       </div>

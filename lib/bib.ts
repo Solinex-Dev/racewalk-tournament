@@ -1,12 +1,12 @@
 /**
  * BIB number helpers.
  *
- * In masters/senior athletics the BIB encodes the athlete's 5-year age band:
+ * Each athlete's BIB encodes their 5-year age band:
  *   BIB = [age-band lower bound][3-digit sequence]
  *   e.g. "65001" → age band 65-69, athlete #1
  *        "105001" → age band 105-109, athlete #1   (note: 6 digits!)
  *
- * The age prefix is 2 digits for bands 35-95 and 3 digits for 100+, so a BIB is
+ * The age prefix is 2 digits for bands 10-95 and 3 digits for 100+, so a BIB is
  * 5 OR 6 characters — it must NOT be locked to a fixed length. The trailing 3
  * digits are always the in-band sequence.
  */
@@ -23,14 +23,14 @@ export type BibAgeGroup = {
 /**
  * Parse a BIB into its age band + sequence. Returns null when the value does not
  * match the expected `[age][3-digit seq]` shape or the age band is not a valid
- * masters band (multiple of 5, ≥ 35).
+ * 5-year band (multiple of 5, ≥ 10).
  */
 export function parseBibAgeGroup(bib: string | null | undefined): BibAgeGroup | null {
   if (!bib) return null;
   const m = /^(\d{2,3})(\d{3})$/.exec(bib.trim());
   if (!m) return null;
   const ageStart = Number(m[1]);
-  if (ageStart < 35 || ageStart % 5 !== 0) return null;
+  if (ageStart < 10 || ageStart % 5 !== 0) return null;
   return { ageStart, label: `${ageStart}-${ageStart + 4}`, sequence: Number(m[2]) };
 }
 
@@ -67,7 +67,7 @@ export function parseAgeGroupsParam(raw: string | null | undefined): number[] {
   const set = new Set<number>();
   for (const part of raw.split(",")) {
     const n = Number(part.trim());
-    if (Number.isInteger(n) && n >= 35 && n % 5 === 0) set.add(n);
+    if (Number.isInteger(n) && n >= 10 && n % 5 === 0) set.add(n);
   }
   return [...set].sort((a, b) => a - b);
 }

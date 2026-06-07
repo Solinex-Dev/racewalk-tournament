@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { startRound, endRound } from "@/app/actions/round-timing";
+import { missingStartRoles, POSITION_LABEL_TH } from "@/lib/round-start";
+import type { OfficialPosition } from "@prisma/client";
 import { metersFromKm } from "@/lib/distance";
 import { SectionToc, type TocItem } from "@/components/common/section-toc";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
@@ -45,6 +47,9 @@ export type RoundInfo = {
   note?: string;
   lapCount?: number;
   currentLap?: number;
+  // Raw OfficialPosition[] present on this round (non-deleted) — used to decide
+  // whether the round can start and what is still missing.
+  officialPositions?: OfficialPosition[];
 };
 
 export type AthleteCardDetail = {
@@ -165,11 +170,22 @@ export function ModeratorView({
   const handleStartRound = (roundId: string) => {
     startTransition(async () => {
       try {
-        await startRound(roundId);
+        const res = await startRound(roundId);
+        if (!res.ok) {
+          if (res.reason === "missing_officials") {
+            const label = res.missing
+              .map((p) => POSITION_LABEL_TH[p])
+              .join(", ");
+            toast.error(`ยังเริ่มไม่ได้ — ยังไม่ได้ตั้ง: ${label}`);
+          } else {
+            toast.error(res.error);
+          }
+          return;
+        }
         toast.success("เริ่มจับเวลาการแข่งขันแล้ว");
         router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+      } catch {
+        toast.error("เกิดข้อผิดพลาด");
       }
     });
   };
@@ -211,6 +227,17 @@ export function ModeratorView({
   const displayRoundId = selectedRoundId || currentRound?.info.id || null;
   const displayData = rounds.find((r) => r.info.id === displayRoundId);
   const displayRound = displayData?.info;
+
+  // A round needs ≥1 head judge, ≥1 judge and ≥1 event logger before it can
+  // start. Compute what's still missing so the Start button is disabled with a
+  // clear reason instead of throwing a server error on click.
+  const missingStart = displayRound
+    ? missingStartRoles(displayRound.officialPositions ?? [])
+    : [];
+  const canStartRound = missingStart.length === 0;
+  const missingStartLabel = missingStart
+    .map((p) => POSITION_LABEL_TH[p])
+    .join(", ");
 
   // Status-chip class for the edit-confirm modal when the round is not "finished"
   // (rendered only while displayRound is truthy, so the value is unchanged there).
@@ -471,15 +498,27 @@ export function ModeratorView({
                           </p>
                         )}
                         {displayRound.status === "scheduled" && (
-                          <button
-                            type="button"
-                            disabled={isPending}
-                            onClick={() => handleStartRound(displayRound.id)}
-                            className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                          >
-                            <Play className="h-4 w-4" />
-                            เริ่มจับเวลาการแข่งขัน
-                          </button>
+                          <div className="mt-1 flex flex-col items-end gap-1.5">
+                            <button
+                              type="button"
+                              disabled={isPending || !canStartRound}
+                              title={
+                                canStartRound
+                                  ? undefined
+                                  : `ยังเริ่มไม่ได้ — ยังไม่ได้ตั้ง: ${missingStartLabel}`
+                              }
+                              onClick={() => handleStartRound(displayRound.id)}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <Play className="h-4 w-4" />
+                              เริ่มจับเวลาการแข่งขัน
+                            </button>
+                            {!canStartRound && (
+                              <p className="max-w-[15rem] text-right text-[11px] font-medium text-amber-600">
+                                ยังเริ่มไม่ได้ — ยังไม่ได้ตั้ง: {missingStartLabel}
+                              </p>
+                            )}
+                          </div>
                         )}
                         {displayRound.status === "ongoing" && (
                           <button

@@ -1,6 +1,34 @@
 [
   {
     "date": "2026-06-07",
+    "version": "1.1.4",
+    "type": "fix",
+    "title": "Accept all 5-year age-group BIBs, not just masters (35+)",
+    "details": "The BIB age-band validator was hard-coded to masters bands (age ≥ 35), so BIBs for younger groups (20-24, 25-29, 30-34, ...) were flagged \"invalid\" and blocked the event from saving. Lowered the floor to 10 so any valid 5-year band is accepted, in both the event-form check and the report age-group filter."
+  },
+  {
+    "date": "2026-06-07",
+    "version": "1.1.3",
+    "type": "fix",
+    "title": "Guard the moderator \"start round\" action when officials are missing",
+    "details": "The Start button is now disabled until a head judge, judge and lap-time keeper are assigned, with a clear note of which roles are still missing — instead of throwing an opaque system error on click. startRound now returns a structured result."
+  },
+  {
+    "date": "2026-06-07",
+    "version": "1.1.2",
+    "type": "fix",
+    "title": "Hide the \"manage events\" shortcut on the dashboard from admins without events access",
+    "details": "On the admin home page, the events shortcut is shown only to admins who can actually open the events hub (events / moderator / reports permission), instead of to everyone. The create-event button on the events page itself remains gated by the events:create permission."
+  },
+  {
+    "date": "2026-06-07",
+    "version": "1.1.1",
+    "type": "security",
+    "title": "Hide root-admin activity from non-root admins",
+    "details": "On /admin/activity, non-root admins no longer see activity-log entries performed by a root admin. The filter is applied to both the rows and the total/pagination count."
+  },
+  {
+    "date": "2026-06-07",
     "version": "1.1.0",
     "type": "feature",
     "title": "Add a changelog table to the About page (Root Admin only)",
