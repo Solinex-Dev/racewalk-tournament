@@ -23,10 +23,19 @@ type JWTWithId = {
   sub?: string;
   rememberMe?: boolean;
   role?: string;
+  lastCheckedAt?: number; // Unix seconds of the last DB session/user revalidation
 };
 
 const isSecure = process.env.NEXTAUTH_URL?.startsWith("https://");
 const hasGoogle = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+
+// Re-validate the session/user against the DB at most once per this window per
+// token instead of on every authenticated request — cutting two Prisma queries
+// off the hot path and freeing a pooled DB connection for race-day writes.
+// Tradeoff: an admin-revoked/suspended session stays usable for navigation up to
+// this long. Bounded because every mutating admin action re-checks role/status
+// live via getCurrentAdmin() (lib/authz.ts).
+const SESSION_REVALIDATE_EVERY_SEC = 5 * 60;
 
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -163,6 +172,7 @@ export const authOptions: AuthOptions = {
         });
         t.sessionId = sessionId;
         t.rememberMe = rememberMe;
+        t.lastCheckedAt = Math.floor(Date.now() / 1000);
         void createActivityLog({
           userId: user.id,
           action: ActivityLogAction.USER_LOGGED_IN,
@@ -176,6 +186,14 @@ export const authOptions: AuthOptions = {
         return t as typeof token;
       }
       if (t.sessionId) {
+        const nowSec = Math.floor(Date.now() / 1000);
+        // Within the trust window — skip the two per-request DB queries below.
+        if (
+          t.lastCheckedAt &&
+          nowSec - t.lastCheckedAt < SESSION_REVALIDATE_EVERY_SEC
+        ) {
+          return token;
+        }
         const row = await prisma.userSession.findFirst({
           where: { sessionId: t.sessionId, revokedAt: null },
         });
@@ -227,6 +245,7 @@ export const authOptions: AuthOptions = {
         t.id = row.userId;
         t.sub = row.userId;
         t.role = dbUser.role;
+        t.lastCheckedAt = nowSec;
       }
       return token;
     },

@@ -39,6 +39,18 @@ export async function signOfficialSession(payload: OfficialSessionPayload): Prom
 export async function verifyOfficialSession(
   token: string,
 ): Promise<OfficialSessionPayload | null> {
+  return (await verifyOfficialSessionWithExp(token))?.payload ?? null;
+}
+
+/**
+ * Like verifyOfficialSession but also returns the JWT `exp` (Unix seconds) so
+ * callers can decide whether the cookie is close enough to expiry to re-sign.
+ * Used by the sliding-session refresh in proxy.ts to avoid an HMAC sign on
+ * every single request.
+ */
+export async function verifyOfficialSessionWithExp(
+  token: string,
+): Promise<{ payload: OfficialSessionPayload; exp: number } | null> {
   try {
     const { payload } = await jwtVerify(token, getKey());
     if (
@@ -47,16 +59,20 @@ export async function verifyOfficialSession(
       typeof payload.judgeName === "string" &&
       typeof payload.roundId === "string" &&
       typeof payload.eventId === "string" &&
-      typeof payload.position === "string"
+      typeof payload.position === "string" &&
+      typeof payload.exp === "number"
     ) {
       return {
-        officialId: payload.officialId,
-        judgeId: payload.judgeId,
-        judgeName: payload.judgeName,
-        roundId: payload.roundId,
-        eventId: payload.eventId,
-        position: payload.position as OfficialPosition,
-        zone: (payload.zone as string | null) ?? null,
+        payload: {
+          officialId: payload.officialId,
+          judgeId: payload.judgeId,
+          judgeName: payload.judgeName,
+          roundId: payload.roundId,
+          eventId: payload.eventId,
+          position: payload.position as OfficialPosition,
+          zone: (payload.zone as string | null) ?? null,
+        },
+        exp: payload.exp,
       };
     }
     return null;
