@@ -44,14 +44,32 @@ What follows from this decision — positive and negative?
 |---|-------|--------|
 | [0001](0001-secret-code-charset.md) | Secret code charset and length | Accepted |
 
-## Pending decisions (no ADR yet)
+## Decisions now settled in code (ADRs to be backfilled)
 
-These are open questions called out across the docs. Each will become an ADR when decided:
+Several questions that were once open have since been resolved in the implementation.
+They are recorded here until a full ADR is backfilled; the cited source is the
+current source of truth:
 
-- **Real-time sync mechanism**: polling vs. SSE vs. WebSocket vs. managed (Pusher/Ably). See [../architecture/state-and-data-flow.md](../architecture/state-and-data-flow.md).
-- **Pending vs. confirmed red card semantics**: does a pending red card count toward DQ before head judge confirms? See [../product/domain-rules.md](../product/domain-rules.md).
-- **Bib uniqueness scope**: per event, per season, or global? See [../architecture/data-model.md](../architecture/data-model.md).
-- **Admin permission model**: RBAC enum vs. flag-based, and exact owner/manager/officer matrix. See [../features/admin-mgmt.md](../features/admin-mgmt.md).
-- **Server actions vs. route handlers for writes**: which pattern dominates the admin CRUD vs. live workspace writes. See [../architecture/state-and-data-flow.md](../architecture/state-and-data-flow.md).
-- **Code storage**: hash secret codes (security) or store plain (admin re-display). See [../features/secret-code-access.md](../features/secret-code-access.md).
-- **Export format(s)**: CSV / XLSX / PDF; which libraries. See [../features/reporting-export.md](../features/reporting-export.md).
+- **Real-time sync mechanism**: polling, two channels. Official workspaces call
+  `router.refresh()` via `AutoRefresh` (2000 ms when the round is SCHEDULED, 2500 ms
+  otherwise); the public scoreboard client-polls a CDN-cached JSON route at 5 s.
+  See [../architecture/state-and-data-flow.md](../architecture/state-and-data-flow.md)
+  and [../../lib/leaderboard.ts](../../lib/leaderboard.ts).
+- **Pending vs. confirmed red card semantics**: only **CONFIRMED** reds count toward
+  DQ (threshold 4) and appear on the public board; a head judge confirms or overrides.
+  See [../product/domain-rules.md](../product/domain-rules.md) and [../../app/actions/cards.ts](../../app/actions/cards.ts).
+- **Bib uniqueness scope**: **per event** — BIB lives on `EventAthlete`, unique per
+  `(eventId, bib)`, reused across all rounds in the event. See
+  [../architecture/data-model.md](../architecture/data-model.md).
+- **Admin permission model**: a resource × action matrix (`permissions Json` on
+  `User`) with a `isRoot` bypass; checks enforced by `requirePermission`. See
+  [../features/admin-mgmt.md](../features/admin-mgmt.md) and [../../lib/permissions.ts](../../lib/permissions.ts).
+- **Server Actions vs. route handlers for writes**: **Server Actions** dominate
+  (`app/actions/*`); route handlers are reserved for read endpoints (the cached
+  leaderboard JSON, exports) and NextAuth. See
+  [../architecture/state-and-data-flow.md](../architecture/state-and-data-flow.md).
+- **Code storage**: stored **plain** (admins must re-display codes on printed slips);
+  brute-force is mitigated by event-wide uniqueness + a join rate limit. See
+  [../features/secret-code-access.md](../features/secret-code-access.md).
+- **Export format(s)**: CSV and XLSX (via `exceljs`/`papaparse`) plus a
+  print-to-PDF page. See [../features/reporting-export.md](../features/reporting-export.md).

@@ -4,7 +4,7 @@ The canonical patterns for adding a page or component in this codebase.
 
 ## Server page + client island
 
-The most common pattern. A server page reads data (today: from a mock; tomorrow: from Prisma), then renders a thin shell that hands data to a client component.
+The most common pattern. A server page reads data from Prisma, then renders a thin shell that hands data to a client component.
 
 ```tsx
 // app/judge/events/[eventId]/page.tsx  (server)
@@ -12,8 +12,8 @@ import { JudgeWorkspace } from "@/components/judge/judge-workspace";
 
 export default async function Page(props: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await props.params;
-  // server-side data fetch here
-  return <JudgeWorkspace eventId={eventId} />;
+  // server-side Prisma reads here (round, athletes, cards, ...)
+  return <JudgeWorkspace eventId={eventId} /* + data props */ />;
 }
 ```
 
@@ -23,7 +23,7 @@ export default async function Page(props: { params: Promise<{ eventId: string }>
 import { useState } from "react";
 
 export function JudgeWorkspace({ eventId }: { eventId: string }) {
-  const [athletes, setAthletes] = useState(INITIAL_ATHLETES);
+  const [athletes, setAthletes] = useState(initialAthletes);
   // ...
 }
 ```
@@ -32,34 +32,43 @@ Why: keeps data fetching server-side and interaction client-side, with a clear h
 
 ## Form pattern (controlled, no library)
 
-Forms are plain controlled inputs with `useState`. No `react-hook-form`, no Zod.
+Forms are plain controlled inputs with `useState` — no `react-hook-form`, no Zod. The submit handler calls a **Server Action** from `app/actions/*` inside `startTransition`, refreshes the route, and surfaces errors as Thai strings.
 
 ```tsx
 "use client";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { createEvent, updateEvent } from "@/app/actions/events";
 
-export function AthleteForm() {
+export function EventForm({ mode, eventId }: { mode: "create" | "edit"; eventId?: string }) {
+  const router = useRouter();
   const [name, setName] = useState("");
-  const [bib, setBib] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // TODO: replace with real API call
-    console.log("Mock save", { name, bib });
-    alert("บันทึก (mock)");
+    setError(null);
+    startTransition(async () => {
+      try {
+        if (mode === "edit" && eventId) {
+          await updateEvent(eventId, { name });
+          router.refresh();
+        } else {
+          const result = await createEvent({ name });
+          router.push(`/admin/events/${result.id}`);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+      }
+    });
   }
 
-  return (
-    <form onSubmit={handleSubmit}>
-      <Input value={name} onChange={(e) => setName(e.target.value)} />
-      <Input value={bib} onChange={(e) => setBib(e.target.value)} />
-      <Button type="submit">Save</Button>
-    </form>
-  );
+  return <form onSubmit={handleSubmit}>{/* controlled Inputs */}</form>;
 }
 ```
 
-When the codebase migrates off mocks, **server actions** are the planned write path. The form's `onSubmit` will call the action; the per-field `useState` stays.
+The Server Action (`"use server"`) re-checks authorization with `requirePermission(...)`, mutates Prisma, logs via `logCurrentAdmin`, and revalidates (`revalidatePath` for admin views, or `revalidateRaceDayViews` for race-day writes). The form never talks to the DB directly. See `components/events/event-form.tsx` and `components/athletes/athlete-form.tsx` for real examples.
 
 ## Page docs the same shape
 
@@ -67,15 +76,22 @@ Every page doc (under [pages/](../pages/)) uses the template described in [../pa
 
 ## Component family pattern (admin CRUD)
 
-Each manageable entity has a triple in `components/<entity>/`:
+Each manageable entity has a pair in `components/<entity>/`:
 
 | File | Role |
 |------|------|
-| `<entity>-list.tsx` | Table view; server component |
-| `<entity>-form.tsx` | Create/edit form; client component |
+| `<entity>-list.tsx` | Table view; client component (search/filter state), rows passed in as props |
+| `<entity>-form.tsx` | Create/edit form; client component, calls the Server Action |
 | (no separate detail component) | List + form covers the use case |
 
-Pages in `app/admin/(pages)/<entity>/` consume these. Example: `components/athletes/athletes-list.tsx` and `athlete-form.tsx`.
+The server `page.tsx` in `app/admin/(pages)/<entity>/` does the Prisma read and the permission gate (`getCurrentAdmin()` + `canAccessResource`), then passes rows down. Example: `components/athletes/athletes-list.tsx` and `athlete-form.tsx`, consumed by `app/admin/(pages)/athletes/page.tsx`.
+
+## Real-time refresh
+
+Two distinct mechanisms, both client-side:
+
+- **Official workspaces** (judge / head-judge / event-logger) use [`AutoRefresh`](../../components/common/auto-refresh.tsx) → `router.refresh()` on an interval. The three workspace pages pass `intervalMs={round.status === "SCHEDULED" ? 2000 : 2500}`.
+- **Public scoreboard** ([`LiveBoard`](../../components/events/live-board.tsx)) does **not** use `router.refresh()`. It holds the DTO in `useState` and polls the CDN-cached JSON route [`/api/events/[eventId]/leaderboard`](../../app/api/events/[eventId]/leaderboard/route.ts) every `POLL_INTERVAL_MS = 5000` with an `AbortController`, keeping the last good state on error. The DTO shape is built by [`lib/leaderboard.ts`](../../lib/leaderboard.ts).
 
 ## Shared card matrix
 
@@ -96,13 +112,13 @@ The admin layout (`app/admin/(pages)/layout.tsx`) wraps everything with `Dashboa
 - Used in 1 place but > ~120 lines? Consider extracting if it has its own state or has natural sub-sections.
 - Otherwise leave it inline.
 
-Resist the temptation to extract "for testability" — there is no test runner today, and abstraction without callers is dead weight.
+A Vitest runner exists, so extracting genuinely reusable logic for tests is reasonable — but still resist extracting UI "for testability" when there's only one caller; abstraction without callers is dead weight.
 
 ## When to add `"use client"`
 
 Add when the component:
 
-- Uses `useState`, `useEffect`, `useRef`, or other React hooks
+- Uses `useState`, `useEffect`, `useRef`, `useTransition`, or other React hooks
 - Uses event handlers like `onClick`, `onChange`
 - Uses browser-only APIs (`window`, `document`)
 - Uses `framer-motion`, `next/navigation` client hooks, etc.

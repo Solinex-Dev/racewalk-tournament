@@ -384,9 +384,9 @@ export function EventForm({
                     >
                       + เพิ่มนักกีฬา
                     </Button>
-                    <Button type="submit" size="sm" disabled={isPending} className="h-7 rounded-lg px-3 text-xs font-medium">
+                    {/* <Button type="submit" size="sm" disabled={isPending} className="h-7 rounded-lg px-3 text-xs font-medium">
                       {isPending ? "กำลังบันทึก..." : "บันทึก"}
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
 

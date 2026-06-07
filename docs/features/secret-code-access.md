@@ -1,25 +1,24 @@
 # Secret Code Access
 
-**Status**: UI only (mock data)
-**Roles**: Issued by [admin](../personas/admin.md); used by [head-judge](../personas/head-judge.md), [judge](../personas/judge.md), [event-logger](../personas/event-logger.md), [timekeeper](../personas/timekeeper.md)
+**Status**: Implemented
+**Roles**: Issued by [admin](../personas/admin.md); used by [head-judge](../personas/head-judge.md), [judge](../personas/judge.md), [event-logger](../personas/event-logger.md) (the [timekeeper](../personas/timekeeper.md) persona joins via the Event Logger flow)
 **Routes**:
 - `/judge/events/[eventId]/join`
 - `/head-judge/events/[eventId]/join`
 - `/event-logger/events/[eventId]/join`
-- `/timekeeper/events/[eventId]/join`
-**Entities**: `Round` (holds codes), per-user assignment
+**Entities**: `RoundOfficial` (holds `secretCode`, `position`, `zone`), official-session JWT cookie
 **Related features**: [round-configuration](round-configuration.md) (codes generated here)
 **Decisions**: see [decisions/](../decisions/) (charset choice, length, lifetime)
 
 ## Overview
 
-Non-admin users do not have accounts. They join a specific event/round by entering a **6-character secret code** the admin generated for them. The code determines:
+Non-admin race-day officials do not have accounts. They join a specific event/round by entering a **6-character secret code** the admin generated for them. On a valid code the server sets a signed session cookie and redirects them to the workspace for their position. The code resolves:
 
-- **Which event** they join (event ID is in the URL).
-- **Which round** within that event they are assigned to.
-- **Which role** they occupy (judge, head judge, event logger, timekeeper).
+- **Which event** they join (the event ID is in the URL; the code must belong to a round of that event).
+- **Which round** within that event they are assigned to (`RoundOfficial.roundId`).
+- **Which position** they occupy (`JUDGE`, `HEAD_JUDGE`, or `EVENT_LOGGER`).
 
-This means the same person can be issued different codes for different events or rounds — there is no persistent user identity for non-admin roles.
+The same person can be issued different codes for different events or rounds — there is no persistent user identity for non-admin roles. (There is no separate Timekeeper position in the schema; that role joins as `EVENT_LOGGER`.)
 
 ## Why codes instead of accounts
 
@@ -33,54 +32,54 @@ This means the same person can be issued different codes for different events or
 | Property | Value |
 |----------|-------|
 | Length | 6 characters |
-| Character set | Alphanumeric (digits + A–Z) |
-| Input pattern | `REGEXP_ONLY_DIGITS_AND_CHARS` ([input-otp](https://github.com/guilhermerodz/input-otp)) |
-
-The charset specifically excludes ambiguous characters (the constant `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` in `generateRoundSecretCode()` skips `I`, `O`, `0`, `1`) to reduce transcription errors on paper.
+| Character set | `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (32 chars; no ambiguous `I`/`O`/`0`/`1`) |
+| Input pattern | `REGEXP_ONLY_DIGITS_AND_CHARS` ([input-otp](https://github.com/guilhermerodz/input-otp)), uppercased |
 
 ## Code generation
 
-Implemented in [round-form.tsx](../../components/rounds/round-form.tsx) as `generateRoundSecretCode()`. Each judge, head judge, event logger, and timekeeper in a round gets a unique code at round creation time. See [round-configuration](round-configuration.md).
+Implemented in [round-form.tsx](../../components/rounds/round-form.tsx) as `generateSecretCode()` / `genUniqueSecret()`. It uses **`crypto.getRandomValues`** (Web Crypto, cryptographically secure) over a `Uint8Array(6)`, mapping `bytes[i] % 32` onto `SECRET_CHARS` (256 is a multiple of 32 → no modulo bias), and retries (≤50) to avoid collisions within the form and against other rounds in the event.
+
+One code is auto-assigned per official per round, stored on `RoundOfficial.secretCode`. Per-round caps are `MAX_JUDGES = 8`, `MAX_HEAD_JUDGE = 1`, `MAX_EVENT_LOGGER = 1` (10 officials max). The DB enforces `@@unique([roundId, secretCode])`, and the round Server Action ([app/actions/rounds.ts](../../app/actions/rounds.ts), `assertEventUniqueSecretCodes`) additionally guards uniqueness **event-wide** (so simultaneously-running rounds can't collide on a code). See [round-configuration](round-configuration.md).
 
 ## Join flow
 
-1. User opens `/<role>/events/[eventId]/join` (URL is shared by admin or printed on the code slip).
-2. User enters the 6-character code via [`InputOTP`](https://github.com/guilhermerodz/input-otp).
-3. Form validates that length === 6.
-4. Form looks up the code → resolves to a destination URL.
-5. `router.push(destination)` navigates to the role's workspace.
+The join is a Server Action, [`joinAsOfficial(eventId, secretCode)`](../../app/actions/officials.ts) — validation is fully server-side:
 
-Currently the mock uses a small lookup `MOCK_CODE_DESTINATIONS` in [judge-join-form.tsx](../../components/judge/judge-join-form.tsx):
+1. User opens `/<role>/events/[eventId]/join` (URL shared by admin or printed on the code slip).
+2. User enters the 6-character code via [`InputOTP`](https://github.com/guilhermerodz/input-otp); submit is disabled until length 6.
+3. The form calls `joinAsOfficial`, which **rate-limits** the request (max `JOIN_MAX_ATTEMPTS = 10` per IP per event per `JOIN_WINDOW_MS = 60_000` via [lib/rate-limit.ts](../../lib/rate-limit.ts)), trims/uppercases the code, and rejects anything not exactly 6 chars.
+4. It looks up the `RoundOfficial` whose `secretCode` matches **and** whose round belongs to this event. Unknown code → "รหัสกรรมการไม่ถูกต้องสำหรับ Event นี้"; a `FINISHED` round → rejected.
+5. On success it calls `setOfficialSessionCookie({ officialId, judgeId, judgeName, roundId, eventId, position, zone })` and returns a redirect from `defaultRouteForPosition(position, eventId)`.
+6. The client `router.push()`es to that workspace.
 
-- `"111111"` → `/timekeeper/events/{eventId}` (demo timekeeper route)
-- any other code → `/judge/events/{eventId}` (default for judge form)
+## Official session cookie
 
-In production this lookup happens server-side, validating the code against the round's assignments.
+The session is a signed JWT cookie, not a NextAuth session. Two modules:
+
+- [lib/official-jwt.ts](../../lib/official-jwt.ts) — edge-safe `jose` primitives (no `next/headers`), so they run in middleware and Server Actions. Cookie `rw_official_session`; `OFFICIAL_COOKIE_TTL_SECONDS = 60 * 60 * 12` (12h); HS256 signed over `NEXTAUTH_SECRET`; payload `{ officialId, judgeId, judgeName, roundId, eventId, position, zone }`.
+- [lib/official-session.ts](../../lib/official-session.ts) — the `next/headers` cookie layer: `setOfficialSessionCookie` (`httpOnly`, `sameSite: "lax"`, `secure` in prod), `clearOfficialSessionCookie`, `getOfficialSession`, and `requireOfficialSession(positions?)` which every official Server Action calls to enforce its allowed position.
+
+The middleware ([proxy.ts](../../proxy.ts)) slides the cookie on official routes (verify every request, re-sign only in the last ~25% of TTL) so an open, polling workspace never lapses; it truly expires only after ~12h of inactivity. `logoutOfficial()` in [officials.ts](../../app/actions/officials.ts) clears the cookie, and `leaveOfficialSession()` in [app/actions/official-session.ts](../../app/actions/official-session.ts) clears it and redirects to the public live page when an official confirms the end-of-round dialog.
 
 ## Each role's join form
-
-All four follow the same pattern with role-specific copy:
 
 | Form | File |
 |------|------|
 | Judge | [judge-join-form.tsx](../../components/judge/judge-join-form.tsx) |
 | Head Judge | [head-judge-join-form.tsx](../../components/judge/head-judge-join-form.tsx) |
 | Event Logger | [event-logger-join-form.tsx](../../components/judge/event-logger-join-form.tsx) |
-| Timekeeper | [timekeeper-join-form.tsx](../../components/timekeeper/timekeeper-join-form.tsx) |
+
+All three follow the same pattern with role-specific copy, and all submit through the same `joinAsOfficial` action.
 
 ## Pages that surface this feature
 
 - [Judge join](../pages/judge/join.md)
 - [Head judge join](../pages/head-judge/join.md)
 - [Event logger join](../pages/event-logger/join.md)
-- [Timekeeper join](../pages/timekeeper/join.md)
-- [Admin moderator](../pages/admin/moderator.md) — issues and displays codes
+- [Admin moderator](../pages/admin/moderator.md) — displays codes
 - [Admin round form](../pages/admin/round-form.md) — generates codes
 
 ## TODOs before production
 
-- Server-side code validation (currently client-side lookup only)
-- Code expiry (codes should be valid only during the event window)
-- Code revocation (admin can invalidate without regenerating)
-- Rate limiting on the join endpoint
-- Decide whether a single code is single-use or multi-use within the round
+- Code expiry tied to the event window (codes are currently valid until the round is `FINISHED`, bounded only by the 12h session TTL)
+- Code revocation (admin invalidates a single code without regenerating the whole round)
