@@ -101,7 +101,7 @@ export function LapRecorder({
   // in toasts so the message matches what the official sees on screen.
   const handleRecordLap = (athlete: AthleteRecord, seq: number) => {
     if (isPending && actingId === athlete.athleteId) return;
-    if ((cooldowns[athlete.athleteId] ?? 0) > Date.now()) return; // still cooling down
+    if ((cooldowns[athlete.athleteId] ?? 0) > now) return; // still cooling down
     if (!isRunning) {
       toast.error("รอ Admin เริ่มจับเวลาก่อน");
       return;

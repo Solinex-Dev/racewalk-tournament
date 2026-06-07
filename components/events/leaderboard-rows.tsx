@@ -205,7 +205,9 @@ function DesktopPaged({
   // so the board's data polls (and athlete-count changes) never reset the
   // 10s autoplay phase. The interval is created exactly once.
   const totalPagesRef = useRef(totalPages);
-  totalPagesRef.current = totalPages;
+  useEffect(() => {
+    totalPagesRef.current = totalPages;
+  }, [totalPages]);
 
   useEffect(() => {
     const id = setInterval(() => {

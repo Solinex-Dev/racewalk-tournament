@@ -274,7 +274,6 @@ export default async function ModeratorPage(props: Readonly<Props>) {
     const pendingRedCards: PendingRedCard[] = r.cards
       .filter((c) => c.color === "RED" && c.state === "PENDING")
       .map((c) => {
-        const ra = r.roundAthletes.find((ra) => ra.athleteId === c.athleteId);
         const ro = r.roundOfficials.find((ro) => ro.judgeId === c.judgeId);
         return {
           id: c.id,

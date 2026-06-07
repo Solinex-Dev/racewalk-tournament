@@ -6,27 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
-import { Info } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "About – การแข่งขันเดินทน",
   description: "ข้อมูลแอปพลิเคชันจาก environment (เฉพาะ Root Admin)",
-};
-
-const ENV_LABEL: Record<string, string> = {
-  production: "Production",
-  staging: "Staging",
-  development: "Development",
-  test: "Test",
-};
-
-const ENV_BADGE: Record<string, string> = {
-  production: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  staging: "border-amber-200 bg-amber-50 text-amber-700",
-  development: "border-sky-200 bg-sky-50 text-sky-700",
-  test: "border-slate-200 bg-slate-100 text-slate-600",
 };
 
 function fmtDateTime(dt: Date): string {
@@ -59,7 +44,6 @@ export default async function AboutPage() {
   const me = await getCurrentAdmin();
   if (!me?.isRoot) return <NoAccess />;
 
-  const appEnv = (process.env.APP_ENV || "").trim();
   const appName = (process.env.APP_NAME || "").trim();
   const appVersion = (process.env.APP_VERSION || "").trim();
   const deployedAt = await resolveDeployedAt();

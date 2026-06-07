@@ -9,6 +9,7 @@ type LogoProps = ImgHTMLAttributes<HTMLImageElement>;
 /** Racewalk Tournament app logo (PNG). Full-colour — do NOT apply `invert`. */
 export function Logo({ className, alt = "", ...props }: Readonly<LogoProps>) {
   return (
+    // eslint-disable-next-line @next/next/no-img-element -- intentional: small static logo via a generic <img> wrapper; next/image's API doesn't fit
     <img
       src={logoIcon.src}
       alt={alt}

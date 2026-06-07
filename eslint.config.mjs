@@ -24,6 +24,8 @@ const eslintConfig = defineConfig([
     // Standalone load-test tooling (k6 / Node scripts with non-resolvable
     // k6 globals — not part of the app build).
     "loadtest/**",
+    // Generated test-coverage reports — not source.
+    "coverage/**",
   ]),
 ]);
 

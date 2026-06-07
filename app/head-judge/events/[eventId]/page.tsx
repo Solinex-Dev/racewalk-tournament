@@ -79,7 +79,6 @@ export default async function HeadJudgePage(props: Readonly<Props>) {
   const pendingCards: PendingCard[] = round.cards
     .filter((c) => c.color === "RED" && c.state === "PENDING")
     .map((c) => {
-      const ra = round.roundAthletes.find((ra) => ra.athleteId === c.athleteId);
       const ro = round.roundOfficials.find((ro) => ro.judgeId === c.judgeId);
       return {
         id: c.id,
