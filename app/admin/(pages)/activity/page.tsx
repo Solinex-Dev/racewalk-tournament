@@ -43,9 +43,15 @@ export default async function ActivityLogPage(props: Readonly<Props>) {
   const { page: pageParam } = await props.searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
 
+  // Non-root admins must not see activity performed BY a root admin. Root admins
+  // see everything. The same filter is applied to count and findMany so the total
+  // and pagination stay consistent with the rows the viewer is allowed to see.
+  const where = me?.isRoot ? {} : { user: { isRoot: false } };
+
   const [total, rows] = await Promise.all([
-    prisma.activityLog.count(),
+    prisma.activityLog.count({ where }),
     prisma.activityLog.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       take: PAGE_SIZE,
       skip: (page - 1) * PAGE_SIZE,
