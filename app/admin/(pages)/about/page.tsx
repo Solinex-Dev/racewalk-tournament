@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PageBreadcrumb } from "@/components/common/page-breadcrumb";
 import { NoAccess } from "@/components/admin/no-access";
 import { getCurrentAdmin } from "@/lib/authz";
+import { getChangelog } from "@/lib/changelog";
+import { ChangelogTable } from "@/components/admin/changelog-table";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +45,8 @@ async function resolveDeployedAt(): Promise<Date | null> {
 export default async function AboutPage() {
   const me = await getCurrentAdmin();
   if (!me?.isRoot) return <NoAccess />;
+
+  const changelog = getChangelog();
 
   const appName = (process.env.APP_NAME || "").trim();
   const appVersion = (process.env.APP_VERSION || "").trim();
@@ -100,6 +104,18 @@ export default async function AboutPage() {
             </dl>
           </CardContent>
         </Card>
+
+        <section className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+              Changelog
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Notable changes version
+            </p>
+          </div>
+          <ChangelogTable entries={changelog} />
+        </section>
 
         {/* <p className="text-xs text-slate-400">
           ค่าทั้งหมดอ่านจากตัวแปร environment ของเซิร์ฟเวอร์ขณะรัน — แก้ไขได้ที่ไฟล์ <span className="font-mono">.env</span>

@@ -1,0 +1,23 @@
+[
+  {
+    "date": "2026-06-07",
+    "version": "1.1.0",
+    "type": "feature",
+    "title": "Add a changelog table to the About page (Root Admin only)",
+    "details": "Logs notable changes after v1.0.0, read from the project's CHANGELOG.json file."
+  },
+  {
+    "date": "2026-06-07",
+    "version": "1.1.0",
+    "type": "perf",
+    "title": "Reduce Vercel Active CPU for the live scoreboard",
+    "details": "Switch the public scoreboard to a CDN-cached JSON poll every 5s instead of router.refresh() every 500ms (eliminating full server re-renders); narrow the middleware matcher to gated routes only; throttle the official cookie re-sign; add a 5-minute trust window to the auth JWT callback; widen official-workspace polling to 2-2.5s."
+  },
+  {
+    "date": "2026-06-07",
+    "version": "1.1.0",
+    "type": "docs",
+    "title": "Refresh all docs/ to match the current implementation",
+    "details": "Rewrote 59 files from the old \"UI prototype (mock)\" framing to the real system: Prisma backend, Server Actions + revalidate, CDN-cached scoreboard, auth/session and secret-code join; removed the nonexistent TIMEKEEPER role/route."
+  }
+]

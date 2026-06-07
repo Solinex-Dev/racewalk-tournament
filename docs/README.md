@@ -31,10 +31,17 @@ Docs link liberally. Every feature doc lists which roles use it, which pages imp
 
 ## Status conventions
 
-When a doc describes something not yet implemented, it is marked:
+When a doc describes a surface, it is marked with one of:
 
-- **Status: Implemented** — code exists and works
-- **Status: UI only (mock data)** — UI exists, backed by `MOCK_*` constants
+- **Status: Implemented** — code exists and works against the real backend
+- **Status: Partial** — implemented, with a genuine TODO still open (the TODO is named)
 - **Status: Planned** — described in docs, no code yet
 
-The system today is largely **UI only (mock data)**. The planned backend is Prisma + MySQL.
+The system today is **fully implemented on a real backend**. Reads are Prisma queries
+in Server Components; writes are Server Actions in `app/actions/*` that invalidate
+caches via `revalidatePath`/`revalidateTag`. The stack is Next.js 16 (App Router) +
+Prisma 7 against MySQL/MariaDB, NextAuth 4 (JWT) for admins, and a signed `jose`
+cookie for race-day officials. The public scoreboard polls a CDN-cached JSON route;
+official workspaces refresh via `router.refresh()` on a short interval. See
+[architecture/overview.md](architecture/overview.md) and
+[architecture/state-and-data-flow.md](architecture/state-and-data-flow.md) for the details.

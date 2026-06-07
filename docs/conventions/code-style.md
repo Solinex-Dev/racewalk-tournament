@@ -12,6 +12,7 @@ Project-level coding conventions. For the broader architecture rationale, see [.
 
 - One default export per file when the file represents a route (`page.tsx`, `layout.tsx`).
 - One named export per component file when the file is a component.
+- Server Actions live in `app/actions/<entity>.ts` with `"use server"` at the top.
 - Co-locate types with the component that owns them; promote to a shared types file only when reused.
 
 ## Naming
@@ -21,7 +22,7 @@ Project-level coding conventions. For the broader architecture rationale, see [.
 | Components | PascalCase | `JudgeWorkspace` |
 | Files | kebab-case | `judge-workspace.tsx` |
 | Hooks | camelCase, `use` prefix | `useIsMobile` |
-| Constants (module-level) | SCREAMING_SNAKE_CASE | `MAX_YELLOW`, `MOCK_EVENTS` |
+| Constants (module-level) | SCREAMING_SNAKE_CASE | `MAX_YELLOW`, `MAX_RED`, `POLL_INTERVAL_MS` |
 | Booleans | `is`/`has`/`can` prefix | `isFromThisJudge`, `canOverride` |
 
 ## Imports
@@ -32,19 +33,21 @@ Project-level coding conventions. For the broader architecture rationale, see [.
 ## Comments
 
 - **Default to no comments.** Self-documenting names are preferred.
-- Add a one-line comment when the **why** is non-obvious (a domain rule, a workaround, a subtle invariant).
+- Add a one-line comment when the **why** is non-obvious (a domain rule, a workaround, a subtle invariant). The domain code does this — e.g. the BIB format rule and the metres↔km boundary conversion in `components/events/event-form.tsx`.
 - Don't write what the code does; the code does that already.
 
 ## Forms
 
-- Forms use **controlled inputs with `useState`**. No form library (no `react-hook-form`, no `formik`).
+- Forms use **controlled inputs with `useState`**. No form library (no `react-hook-form`, no `formik`, no Zod).
+- Submit handlers call a Server Action from `app/actions/*` inside `startTransition`, then `router.refresh()` / `router.push()`. Errors are caught and shown as Thai-language strings (via `setError` and/or a `sonner` `toast`).
 - See [component-patterns.md](component-patterns.md) for the canonical shape.
 
 ## Client vs. server
 
-- Pages default to **Server Components**.
-- Add `"use client"` to a component only when it needs interaction (state, effects, event handlers).
-- The common pattern: a server `page.tsx` imports a client component and passes data as props.
+- Pages default to **Server Components**; they read data directly from Prisma (`@/lib/prisma`).
+- Add `"use client"` to a component only when it needs interaction (state, effects, event handlers, browser APIs, `framer-motion`, `next/navigation` client hooks).
+- The common pattern: a server `page.tsx` queries Prisma and passes data as props to a client component.
+- Writes never happen in client code directly — they go through Server Actions, which re-check authorization server-side.
 
 ## `params` in Next.js 16
 
@@ -53,11 +56,16 @@ Project-level coding conventions. For the broader architecture rationale, see [.
 - In a server component: `const { eventId } = await props.params;`
 - In a client component: `const { eventId } = use(props.params);`
 
-## Mocks during prototype
+## Units & data boundaries
 
-- Inline mock constants are named `MOCK_*` so they can be grepped and removed during the real-data migration.
-- Every place a mock is "written" (form submit, button action) uses `console.log` plus an `alert("... (mock)")` so the path is visible at runtime.
-- These are tagged with `TODO` comments where appropriate.
+- Distances are stored in **kilometres** (`distanceKm` columns) but the UI works in **metres**. Convert at the form boundary with `kmFromMeters` / `metersFromKm` from `@/lib/distance`.
+- Times (lap/finish) are stored as **milliseconds** (`timeMs`) and formatted for display only.
+- BIB is **event-scoped** (`EventAthlete.bib`, unique per event) and validated against the age-band format via `@/lib/bib`.
+
+## Testing
+
+- A **Vitest** runner is configured. `npm test` runs `vitest run`; `npm run test:coverage` adds coverage + lcov normalization.
+- Tests use `@testing-library/react` + `jsdom`. Add tests for non-trivial pure logic (e.g. `lib/leaderboard.ts`, `lib/athlete-sort.ts`).
 
 ## ESLint
 

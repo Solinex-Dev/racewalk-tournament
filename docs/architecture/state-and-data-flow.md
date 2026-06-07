@@ -1,102 +1,82 @@
 # State & Data Flow
 
-How data moves through the system today, and the plan for replacing the mocks with a real backend.
+How data moves through the system: Prisma reads in Server Components, Server Actions for writes, and an interval-based read/revalidate loop for live updates.
 
-## Today: UI prototype with mocks
+Status: **Implemented.** The domain runs on a real Prisma backend ([prisma/schema.prisma](../../prisma/schema.prisma)). There are no `MOCK_*` constants and no `console.log` + `alert` writes left in the live paths.
 
-All data is held in:
-
-1. **Inline `MOCK_*` constants** in page files — for read-only display
-2. **Component-level `useState`** — for interactive workspaces
-3. **`console.log` + `alert("...(mock)")`** — for write actions
-
-No backend, no persistence, no sync between users.
-
-### Mock data inventory
-
-| Location | Constants |
-|----------|-----------|
-| [app/events/[eventId]/page.tsx](../../app/events/[eventId]/page.tsx) | `MOCK_PUBLIC_EVENT` |
-| [app/admin/(pages)/events/page.tsx](../../app/admin/(pages)/events/page.tsx) | `MOCK_EVENTS` (22 events) |
-| [app/admin/(pages)/admins/page.tsx](../../app/admin/(pages)/admins/page.tsx) | `MOCK_ADMINS` |
-| [app/admin/(pages)/events/[eventId]/moderator/page.tsx](../../app/admin/(pages)/events/[eventId]/moderator/page.tsx) | `MOCK_EVENT_STATUS`, `MOCK_ATHLETES_BY_ROUND`, `MOCK_JUDGES_BY_ROUND`, `MOCK_ACTIVITY_LOGS`, `MOCK_PENDING_RED_CARDS` |
-| [app/head-judge/events/[eventId]/page.tsx](../../app/head-judge/events/[eventId]/page.tsx) | `MOCK_EVENT_STATUS`, `MOCK_ATHLETES_BY_ROUND`, `MOCK_JUDGES_BY_ROUND`, `MOCK_ACTIVITY_LOGS` |
-| [app/event-logger/events/[eventId]/page.tsx](../../app/event-logger/events/[eventId]/page.tsx) | `MOCK_EVENT_STATUS`, `MOCK_ATHLETES_BY_ROUND`, `MOCK_ACTIVITY_LOGS` |
-| [app/judge/events/[eventId]/page.tsx](../../app/judge/events/[eventId]/page.tsx) | `MOCK_JUDGE_EVENT_INFO` |
-| [components/judge/judge-workspace.tsx](../../components/judge/judge-workspace.tsx) | `INITIAL_ATHLETES` |
-| [app/timekeeper/events/[eventId]/page.tsx](../../app/timekeeper/events/[eventId]/page.tsx) | `INITIAL_ATHLETES` |
-| [components/rounds/round-form.tsx](../../components/rounds/round-form.tsx) | `MOCK_ATHLETE_OPTIONS`, `MOCK_JUDGE_OPTIONS` |
-| [components/judge/judge-join-form.tsx](../../components/judge/judge-join-form.tsx) | `MOCK_CODE_DESTINATIONS` |
-
-Every `TODO` comment in the code marks where a real API/database call will replace the mock.
-
-## Tomorrow: Prisma + MySQL
-
-### Read path
+## Read path
 
 ```
 Server Component
-  └─ await prisma.event.findUnique(...)
-  └─ pass props to Client Component
+  └─ await prisma.<model>.findMany/findUnique(...)
+  └─ pass serialized props to a Client Component
 ```
 
-Most listing and detail pages can be pure server components — they read from Prisma at render time, no client-side fetching.
+Listing and detail pages are server components — they read from Prisma at render time, no client-side fetching for the initial paint. The public scoreboard's heavy nested read is factored into [lib/leaderboard.ts](../../lib/leaderboard.ts) (`queryLeaderboardRaw` / `buildLeaderboard`) so the same query feeds both the initial server render and the polled JSON route.
 
-### Write path
+## Write path
 
-Two options under consideration:
+All writes are **Server Actions** under [app/actions/](../../app/actions/). Each action:
 
-1. **Server actions** — co-located with the form, server-side validation, automatic revalidation.
-2. **Route handlers** (`app/api/.../route.ts`) — REST endpoints, called from client components.
+1. Authorizes — admin actions call `requirePermission(resource, action)` ([lib/authz.ts](../../lib/authz.ts)); in-event actions call `requireOfficialSession([...positions])` ([lib/official-session.ts](../../lib/official-session.ts)).
+2. Mutates via Prisma (often inside a `$transaction` for multi-row invariants).
+3. Revalidates affected views.
 
-Probably **server actions for admin CRUD** (low frequency, form-driven) and **route handlers for the live workspaces** (higher frequency, JSON-driven).
+| Domain | Action file |
+|--------|-------------|
+| Events, registrations, BIBs | [app/actions/events.ts](../../app/actions/events.ts) |
+| Rounds, start lists, officials + secret codes | [app/actions/rounds.ts](../../app/actions/rounds.ts) |
+| Round start / stop timing | [app/actions/round-timing.ts](../../app/actions/round-timing.ts) |
+| Lap / finish times | [app/actions/timing.ts](../../app/actions/timing.ts) |
+| Cards (judge / head judge) | [app/actions/cards.ts](../../app/actions/cards.ts) |
+| Moderator live corrections | [app/actions/moderator.ts](../../app/actions/moderator.ts) |
+| Athletes / Judges / Affiliations / Orgs / Admins | [app/actions/athletes.ts](../../app/actions/athletes.ts), [judges.ts](../../app/actions/judges.ts), [affiliations.ts](../../app/actions/affiliations.ts), [organizations.ts](../../app/actions/organizations.ts), [admins.ts](../../app/actions/admins.ts) |
+| Official join / logout | [app/actions/officials.ts](../../app/actions/officials.ts) |
 
-### Real-time sync
+### Cache invalidation
 
-The hard problem. Today, no two users see each other's data:
+Race-day writes (card / lap / finish / round) call `revalidateRaceDayViews(eventId)` in [lib/revalidate-race-day.ts](../../lib/revalidate-race-day.ts), which:
 
-- A judge issues a card — nobody else sees it
-- A head judge confirms — nobody else sees it
-- The public scoreboard is frozen
+- `revalidatePath` for `/judge/events/{id}`, `/head-judge/events/{id}`, `/event-logger/events/{id}`, `/admin/events/{id}/moderator`, and `/events/{id}`;
+- `revalidateTag(leaderboardTag(eventId), "max")` — purges the cached public leaderboard query so the next poll re-reads the DB.
 
-For production, judges' card issuance must propagate to:
+## Real-time sync
 
-- Other judges' workspaces (so they see aggregate count and DQ state)
-- Head judge workspace (to confirm/override)
-- Moderator page (admin oversight)
-- Public scoreboard (live)
+There is no WebSocket / SSE layer; freshness comes from short read intervals plus write-time revalidation.
 
-Options:
+### Officials (judge / head judge / event logger)
 
-| Option | Pros | Cons |
-|--------|------|------|
-| **Polling** (every 1–3s) | Simple; works behind any infra | Wasteful; not truly real-time |
-| **Server-Sent Events (SSE)** | One-way real-time, easy on Next.js | One-way; can't push from client |
-| **WebSocket** | Two-way real-time | Needs sticky-session or external broker |
-| **Pusher / Ably (managed)** | Offloads infra | Cost; vendor lock-in |
+The workspace pages mount [components/common/auto-refresh.tsx](../../components/common/auto-refresh.tsx) (`AutoRefresh`), a client component that calls `router.refresh()` on a timer. All three pass:
 
-Decision pending — see [decisions/](../decisions/).
+```tsx
+<AutoRefresh intervalMs={round.status === "SCHEDULED" ? 2000 : 2500} />
+```
 
-## Migration sequence
+So the server component re-renders (re-reads Prisma) every **2000ms while SCHEDULED**, **2500ms otherwise**. The public home page uses `15000ms`.
 
-Recommended order to wire up real data:
+### Public scoreboard
 
-1. **Admin CRUD first** — events, athletes, judges, affiliations, admins. Low-frequency, form-driven. Use server actions.
-2. **Round configuration** — depends on (1). Generates and stores secret codes.
-3. **Join flows** — validate codes server-side against `RoundOfficial.secret_code`.
-4. **Card scoring writes** — judge workspace issues cards via route handler.
-5. **Real-time sync layer** — chosen mechanism; replaces polling/refresh.
-6. **Lap times** — similar to (4).
-7. **Public scoreboard** — initially polls; later subscribes.
-8. **Reports / export** — read-only, batch.
+[components/events/live-board.tsx](../../components/events/live-board.tsx) (`LiveBoard`, client) no longer re-renders the page. It holds the DTO in `useState(initial)` and **polls the JSON route every 5s** (`POLL_INTERVAL_MS`) via `fetch('/api/events/{eventId}/leaderboard[?round=…]')` with an `AbortController`. On a non-OK response or network blip it keeps the last good state (never blanks the board). Switching `?round=` adopts the freshly server-rendered `initial` immediately. The race clock is [components/common/live-timer.tsx](../../components/common/live-timer.tsx) (`LiveTimer`, `useSyncExternalStore`, frozen once `endedAt` is set).
 
-Each step replaces a `console.log` / `alert` with a real call. Mock constants stay in place until each consumer is migrated, so the UI never breaks.
+### Two-layer cache behind the board
+
+1. **CDN layer** — the JSON route ([app/api/events/[eventId]/leaderboard/route.ts](../../app/api/events/[eventId]/leaderboard/route.ts)) sets `Cache-Control: public, s-maxage=4, stale-while-revalidate=10`, so repeat polls within 4s are served from Vercel's edge **without invoking the function** (spectators absorbed at the CDN → ~0 Active CPU). No cookies/session are read in this route, which is what keeps it cacheable.
+2. **Next data cache** — `getCachedLeaderboard` ([lib/leaderboard.ts](../../lib/leaderboard.ts)) wraps the query in `unstable_cache` tagged `event:{eventId}` with `LEADERBOARD_REVALIDATE_SECONDS = 5`; purged on every race-day write via `revalidateTag`.
+
+This replaced an earlier design where the board re-rendered the whole server component on a 500ms `router.refresh()` — one full RSC render per spectator per tick.
+
+## Auth & session flow
+
+- **Admin:** NextAuth JWT strategy ([auth.ts](../../auth.ts)). On login a `UserSession` row is created (`ipAddress`, `userAgent`, `rememberMe`, `expiresAt`); the JWT callback caches its DB check for 5 minutes (`SESSION_REVALIDATE_EVERY_SEC`) to avoid two DB queries per request, then re-validates session revocation and user status. Mutating admin actions always re-check live via `getCurrentAdmin()`.
+- **In-event official:** the `rw_official_session` cookie (12h TTL, [lib/official-jwt.ts](../../lib/official-jwt.ts)) is issued after a 6-char code join and slid forward by middleware on activity (re-signed only in the last ~25% of its TTL to save CPU). `requireOfficialSession()` enforces the allowed position per action.
 
 ## Where state lives — current rules
 
-- **Server pages** hold no state.
-- **Client components** hold `useState` for the bits they need.
-- **No Context**, **no global store**.
-- **Activity log** is recreated separately in each consuming page (head judge, event logger, moderator) — once real, this will be one source of truth.
+- **Server pages** hold no client state; they read Prisma and pass props down.
+- **Client components** hold `useState` for the interactive bits (form fields, the live DTO, timers).
+- **No Context** for app state, **no global store** — the only provider is NextAuth's `SessionProvider`.
+- **Activity logs** are two distinct stores: the system audit trail `ActivityLog` (FK to User, written via [lib/activity-log.ts](../../lib/activity-log.ts)) and the per-round race timeline `RoundActivityLog` (FK to Round, denormalized actor strings). The race timeline is the single source the head-judge / event-logger / moderator views read.
 
-This works for the prototype. Once real-time sync lands, expect a thin Context (or a query library like SWR / TanStack Query) to wrap the read-and-subscribe pattern.
+## Possible future work
+
+- A managed real-time channel (SSE / Pusher / Ably) could replace interval polling if sub-second latency is ever required; today the interval + CDN approach is deliberate for the Vercel Active-CPU budget.

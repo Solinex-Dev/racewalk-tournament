@@ -121,6 +121,8 @@ Every page doc has this shape:
 **Type**: Server / Client
 **Code**: <file path>
 
+**Status**: Implemented
+
 ## Purpose
 What this page is for.
 
@@ -128,16 +130,16 @@ What this page is for.
 The visible blocks of the page.
 
 ## Data Displayed
-What data appears (mock constant names).
+What data appears — reads are Prisma queries in Server Components (name the lib/query if shared).
 
 ## Actions
-What the user can do here.
+What the user can do here — writes are Server Actions in `app/actions/*` (name the action), which revalidate via `revalidatePath` / `revalidateTag`.
 
 ## Features Surfaced
 Links to features/*.md.
 
 ## State / Behavior
-Local state, special interactions.
+Local state, special interactions, real-time mechanism (CDN-cached poll for the public board; `AutoRefresh` `router.refresh()` for official workspaces).
 
 ## Open Issues / TODOs
 Known gaps before this page is production-ready.
