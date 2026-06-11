@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-06-11",
+    "version": "1.1.5",
+    "type": "fix",
+    "title": "Fix intermittent production scoreboard failures (DB connection timeout)",
+    "details": "The public live scoreboard intermittently failed to load in production (\"This page couldn't load\"). The MySQL/MariaDB driver's default 1s connect timeout was too tight for Vercel serverless connecting to the cross-region database, so transient network jitter surfaced as socket-timeout 500s. Raised connectTimeout to 10s and acquireTimeout to 15s (both env-tunable), added an auto-retrying error boundary to the scoreboard, and made the leaderboard API return a soft 503 (keeping the last-good board) instead of a 500 on a momentary DB blip."
+  },
+  {
     "date": "2026-06-07",
     "version": "1.1.4",
     "type": "fix",
