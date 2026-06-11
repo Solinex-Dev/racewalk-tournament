@@ -13,7 +13,11 @@
  * which is what makes the response cacheable.
  */
 import { NextResponse } from "next/server";
-import { buildLeaderboard, getCachedLeaderboard } from "@/lib/leaderboard";
+import {
+  buildLeaderboard,
+  getCachedLeaderboard,
+  type LeaderboardData,
+} from "@/lib/leaderboard";
 
 export const dynamic = "force-dynamic"; // we set Cache-Control ourselves
 export const runtime = "nodejs"; // Prisma + mariadb adapter need Node, not Edge
@@ -24,7 +28,19 @@ export async function GET(request: Request, { params }: Params) {
   const { eventId } = await params;
   const round = new URL(request.url).searchParams.get("round") ?? undefined;
 
-  const event = await getCachedLeaderboard(eventId)();
+  let event: LeaderboardData;
+  try {
+    event = await getCachedLeaderboard(eventId)();
+  } catch {
+    // Transient DB blip (pool/socket timeout) on a cold-cache foreground fetch.
+    // Return 503 — the client <LiveBoard> poll treats any non-200 as "keep last
+    // good state", so the board never blanks; it just retries on the next tick.
+    // no-store so the CDN never caches the failure.
+    return NextResponse.json(
+      { error: "temporarily unavailable" },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   if (!event) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
